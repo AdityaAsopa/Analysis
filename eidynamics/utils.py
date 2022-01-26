@@ -140,8 +140,19 @@ def epoch_to_datapoints(epoch,Fs):
     return (x * Fs).astype(int)
 
 
-def charging_membrane(t, A, tau):
-    y = A * (1 - np.exp(-t / tau))
+def charging_membrane(t, A0, A, tau):
+    '''
+    A0 : initial value, before command pulse is applied
+    A  : steady state max value after Cm charges across Rm completely
+    tau: Rm*Cm, time constant of charging, given in same units as t.
+
+    If used for curve fitting, provide boundd and p0 (best guess) values.
+    For current clamp recordings with a command pulse of -20pA and Rm of ~100MOhm:
+    -10 < A0  <   10, p0 =    0
+    -10 < A   <    0, p0 = -2.0
+      0 > tau < 0.05, p0 = 0.02
+    '''
+    y = A0 + A * (1 - np.exp(-t / tau))
     return y
 
 

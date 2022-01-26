@@ -26,7 +26,7 @@ def main(fignum):
             print("Keys:", f.keys())
             print("data:", f['default'] )
             df = pd.DataFrame( f['default'] )
-            df.rename( columns = {0:"StimFreq", 1:"numSq", 2: "intensity", 3: "pulseWidth", 4: "MeanBaseline", 5: "ClampingPotl", 6:"Clamp", 7: "GABAzineFlag", 8:"AP",9:"InputRes", 10:"Ra", 11:"patternID"}, inplace = True )
+            df.rename( columns = {0:"StimFreq", 1:"numSq", 2: "intensity", 3: "pulseWidth", 4: "MeanBaseline", 5: "ClampingPotl", 6:"Clamp", 7: "GABAzineFlag", 8:"AP",9:"InputRes", 10:"Tau", 11:"patternID"}, inplace = True )
             
             # figure1(df)
             # plt.show()
@@ -41,7 +41,7 @@ def main(fignum):
             print("Keys:", f.keys())
             print("data:", f['default'] )
             df = pd.DataFrame( f['default'] )
-            df.rename( columns = {0:"StimFreq", 1:"numSq", 2: "intensity", 3: "pulseWidth", 4: "MeanBaseline", 5: "ClampingPotl", 6:"Clamp", 7: "GABAzineFlag", 8:"AP",9:"InputRes", 10:"Ra", 11:"patternID"}, inplace = True )
+            df.rename( columns = {0:"StimFreq", 1:"numSq", 2: "intensity", 3: "pulseWidth", 4: "MeanBaseline", 5: "ClampingPotl", 6:"Clamp", 7: "GABAzineFlag", 8:"AP",9:"InputRes", 10:"Tau", 11:"patternID"}, inplace = True )
             figure2(df)
             plt.show()
     elif fignum ==3: # VC recordings are useless
@@ -232,7 +232,7 @@ def ahp_figure(df):
     valName = "AHP (mV)"
     '''
     Reference:
-    columns = {0:"StimFreq", 1:"numSq", 2: "intensity", 3: "pulseWidth", 4: "MeanBaseline", 5: "ClampingPotl", 6:"Clamp", 7: "GABAzineFlag", 8:"InputRes", 9:"Ra", 10:"patternID",27:"AP"}
+    columns = {0:"StimFreq", 1:"numSq", 2: "intensity", 3: "pulseWidth", 4: "MeanBaseline", 5: "ClampingPotl", 6:"Clamp", 7: "GABAzineFlag", 8:"InputRes", 9:"Tau", 10:"patternID",27:"AP"}
     '''
     # Separate the identifier variables from value variables by melting the dataframe
     vals = "AHP"

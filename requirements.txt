@@ -10,3 +10,4 @@ scipy
 seaborn
 statsmodels
 flake8
+openpyxl

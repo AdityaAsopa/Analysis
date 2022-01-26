@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 # EI Dynamics module
 from eidynamics.abf_to_data         import abf_to_data
 from eidynamics.expt_to_dataframe   import expt2df
-from eidynamics.ephys_functions     import IRcalc, RaCalc
+from eidynamics.ephys_functions     import IR_calc, tau_calc
 from eidynamics.utils               import delayed_alpha_function, PSP_start_time, get_pulse_times
 from eidynamics                     import pattern_index
 from eidynamics.errors              import *
@@ -122,7 +122,7 @@ class Neuron:
             # 6  CC or VC : CC = 0, VC = 1
             # 7  Gabazine : Control = 0, Gabazine = 1
             # 8  IR : MOhn
-            # 9  Ra : membrane time constant
+            # 9  Tau : membrane time constant
             # 10 pattern ID : refer to pattern ID in pattern index
             # 11:26 coords of spots [11,12,13,14,15, 16,17,18,19,20, 21,22,23,24,25]
             # 26 AP : 1 if yes, 0 if no
@@ -141,8 +141,8 @@ class Neuron:
         pulseStartTimes= get_pulse_times(exptObj.numPulses,exptObj.stimStart,exptObj.stimFreq)
         Fs = exptObj.Fs
 
-        IR = IRcalc(exptObj.recordingData, exptObj.clamp, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, Fs=2e4)[0]
-        Ra = RaCalc(exptObj.recordingData, exptObj.clamp, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, Fs=2e4)[0]
+        IR = IR_calc(exptObj.recordingData, exptObj.clamp, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, Fs=2e4)[0]
+        tau = tau_calc(exptObj.recordingData, exptObj.clamp, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, Fs=2e4)[0]
 
         for sweep in range(exptObj.numSweeps):
             sweepTrace = cellData[sweep,:tracelength]
@@ -187,7 +187,7 @@ class Neuron:
                                    gabazineInBath,
                                    ap,
                                    IR[sweep],
-                                   Ra[sweep],
+                                   tau[sweep],
                                    patternID])
             tempArray2 = np.concatenate((tempArray,coordArrayTemp))
             inputSet  [sweep,:len(tempArray2)] = tempArray2
@@ -366,7 +366,7 @@ class Experiment:
         except ParameterMismatchError as err:
             print(err)
 
-        self.Flags          = {"IRFlag":False,"APFlag":False,"NoisyBaselineFlag":False,"RaChangeFlag":False}
+        self.Flags          = {"IRFlag":False,"APFlag":False,"NoisyBaselineFlag":False,"TauChangeFlag":False}
         datafile            = os.path.abspath(datafile)
         data                = abf_to_data(datafile,
                                           baseline_criterion=exptParams.baselineCriterion,
@@ -452,7 +452,7 @@ class Experiment:
 
     def inputRes(self,neuron):
         # calculate input resistance from data
-        neuron.properties.update({'IR':np.mean(IRcalc(self.recordingData,np.arange[1,200],np.arange[500,700]))})
+        neuron.properties.update({'IR':np.mean(IR_calc(self.recordingData,np.arange[1,200],np.arange[500,700]))})
         return self
 
     # FIXME: improve feature (do away with so many nested functions)

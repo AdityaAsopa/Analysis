@@ -28,20 +28,21 @@ def abf_to_data(abf_file,exclude_channels=[],
 
     arguments:
         abf_file            = path to abf file
-        exclude_channels    = list of which channels not to include in the output, default = '', Others: 'Cmd','Time',0,1,2,3
+        exclude_channels    = list of which channels not to include in the output, default = '', Example: ['Cmd','Time',0,1,2,3]
         baseline_criterion  = whether to flag a sweep if baseline fluctuates more than the specified fraction
-        sweep_baseline_epoch= window in milliseconds to use for baseline calculation
+        sweep_baseline_epoch= [t_start, t_stop], window in seconds to use for baseline calculation
         baseline_subtration = whether to offset the traces to zero baseline or not
         signal_scaling      = due to a DAQ glitch, sometimes the units and signal scaling are not proper. Whether to correct for that or not.
-        sampling_freq       = default 20000 sample/second
+        sampling_freq       = default 20000 samples/second
         filter_type         = default: 'None'. Others: 'bessel', 'butter', or 'decimate'. Check eidynamics.utils.filter_data()
         filter_cutoff       = upper cutoff. default: 2000Hz. to filter spikes use 100-200Hz. Check eidynamics.utils.filter_data()
         data_order          = whether to return a sweep wise or a channel wise dictionary of data
         plot_data           = whether to display all channels data, expensive    
+    
     returns:
         data                = sweepwise, or if optionally specified channelwise, all recorded traces
-        meanBaseline        = mean baseline value of Ch#0 in the baseline epoch
-        baselineFlag        = default: False, True if any sweep has higher fluctuation than baseline_criterion
+        medianBaseline      = median baseline value of Ch#0 in the baseline epoch, median so that extreme fluctuations don't affect
+        baselineFlag        = default: False. True if fluctuations in baseline values is higher than baseline_criterion
     """
 
     try:
@@ -59,7 +60,7 @@ def abf_to_data(abf_file,exclude_channels=[],
     sweepArray      = {}
 
     baselineValues  = np.zeros([numSweeps,1])
-    meanBaseline    = 0.0
+    medianBaseline  = 0.0
     baselineFlag    = False
 
     for sweep in range(numSweeps):
@@ -88,9 +89,9 @@ def abf_to_data(abf_file,exclude_channels=[],
         sweepArray  = {}
 
     if np.all(baselineValues):    
-        meanBaseline = np.mean(baselineValues)
-        baseline_fluctuation = ((np.max(baselineValues) - np.min(baselineValues)) / np.mean(baselineValues)) - 1
-        baselineFlag =  (baseline_fluctuation > baseline_criterion)
+        medianBaseline       = np.median(baselineValues)
+        baseline_fluctuation = abs( np.std(baselineValues,ddof=1) / np.mean(baselineValues) ) # coefficient of variation of the baseline values, in fraction
+        baselineFlag         =  (baseline_fluctuation > baseline_criterion) # Baseline flag is set True if fluctuation > screening criterion
 
     print(f'Datafile has {numSweeps} sweeps in {len(data[0])} channels.')
 
@@ -100,7 +101,7 @@ def abf_to_data(abf_file,exclude_channels=[],
     if plot_data:
         plot_abf_data(data)
 
-    return data,meanBaseline,baselineFlag
+    return data,medianBaseline,baselineFlag
 
     '''pyABF sweep extraction reference'''
     # abf.setSweep(sweepNumber: 3, channel: 0)
@@ -110,9 +111,18 @@ def abf_to_data(abf_file,exclude_channels=[],
 
 def _baseline_subtractor(sweep,sweep_baseline_epoch,sampling_freq,subtract_baseline):
     baselineWindow = epoch_to_datapoints(sweep_baseline_epoch,sampling_freq)
+    '''
+    Methods to calculate baseline:
+        Method 1: Mean of the baseline epoch, default, standard, and preferred
+        Method 2: Mean at least rolling variance in the sweep, not right as baseline should be from a predefined epoch
+        Method 3: 10%ile value from baseline epoch, Upi's suggestion, not sure how right is that to use
+    '''
+    # Method 1
     sweepBaseline  = np.mean(sweep[baselineWindow])
-    ### don't use the following method as baseline should be from a predefined epoch ###
-    # sweepBaseline = _mean_at_least_rolling_variance(sweep[13000:20000],window=2000) 
+    # Method 2
+    # sweepBaseline = _mean_at_least_rolling_variance(sweep[13000:20000],window=2000)
+    # Method 3
+    # sweepBaseline = np.percentile(sweep[baselineWindow],10) 
 
     if subtract_baseline:
         sweepNew = sweep - sweepBaseline

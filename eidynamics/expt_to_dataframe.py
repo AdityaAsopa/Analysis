@@ -55,12 +55,12 @@ def expt2df(expt,neuron,eP):
 
     # Add analysed data columns
     '''IR'''
-    df["IR"],IRflag = ephysFunc.IRcalc(expt.recordingData,eP.clamp,eP.IRBaselineEpoch,eP.IRsteadystatePeriod)
+    df["IR"],df["IRFlag"],IRflag = ephysFunc.IR_calc(expt.recordingData,eP.clamp,eP.IRBaselineEpoch,eP.IRsteadystatePeriod)
     expt.Flags.update({"IRFlag": IRflag})
 
     '''Ra'''
-    df["Ra"],Raflag = ephysFunc.RaCalc(expt.recordingData,eP.clamp,eP.IRBaselineEpoch,eP.IRchargingPeriod,eP.IRsteadystatePeriod)
-    expt.Flags.update({"RaFlag": Raflag})
+    df["Tau"],tau_flag,_ = ephysFunc.tau_calc(expt.recordingData,eP.clamp,eP.IRBaselineEpoch,eP.IRchargingPeriod,eP.IRsteadystatePeriod)
+    expt.Flags.update({"TauFlag": tau_flag})
 
     '''EPSP peaks'''
     df_peaks,APflag = ephysFunc.pulseResponseCalc(expt.recordingData,eP)

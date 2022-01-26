@@ -1,3 +1,4 @@
+from codecs import IncrementalDecoder
 import numpy as np
 import pandas as pd
 from scipy          import signal
@@ -7,41 +8,62 @@ from eidynamics.utils import epoch_to_datapoints as e2dp
 from eidynamics.utils import charging_membrane
 from eidynamics.utils import PSP_start_time
 
-def RaCalc(recordingData, clamp, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeriod, Fs=2e4):
+def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeriod, clamp='CC', Fs=2e4):
     ''' recordingData is the data dictionary with sweeps numbers as keys.
-        Provide steadystateWindow values in milliseconds'''
-
-    RaTrend = []
+        Provide steadystateWindow values in seconds.
+    '''
+    _info = "In current clamp(CC), after bridge balance, the charging/discharging depends only on Rm and Cm.\n\
+            In voltage clamp(VC), both pipette capacitance and cell capacitance contribute to charging and discharging.\n\
+            Therefore, in VC, after pipette capacitance (Cp), whole cell (Cm) and series resistance compensation (Rs),\n\
+            the tau and Cm values are not reflected in cell responses to voltage pulses. Instead, they should be noted\n\
+            down from multiclamp commander or clampex."        
+    
+    tau_trend = []
+    
     for s in recordingData.values():
-        cmdSig      = s['Cmd']
-        resSig      = s[0]
+        cmdTrace    = s['Cmd']
+        resTrace    = s[0]
         time        = s['Time']
 
         chargeTime  = time[e2dp(IRchargingPeriod,Fs)] - IRchargingPeriod[0]
-        chargeRes   = resSig[e2dp(IRchargingPeriod,Fs)]
+        chargeRes   = resTrace[e2dp(IRchargingPeriod,Fs)]
+        Icmd        = cmdTrace[int(Fs*IRsteadystatePeriod[0])]
 
-        popt,_      = curve_fit(charging_membrane,chargeTime,chargeRes,bounds=([-10,0],[10,100]),p0=([0.5,0.05]))
+        # check the charging_membrane function help for info on bounds and p0
+        popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0,-2.0,0.02]) )
 
-        RaTrend.append(popt[1])
+        tau_trend.append(popt[2])
 
-        # Ra change flag
-        # Ra change screening criterion is 20% change in Ra during the recording
-        Raflag      = 0
-        if (np.max(RaTrend) - np.min(RaTrend)) / np.mean(RaTrend) > 0.2:
-            Raflag  = 1
+    # Tau change flag
+    # Tau change screening criterion is 20% change in Tau during the recording OR tau going above 0.5s
+    tau_flag      = 0
+    if (np.percentile(tau_trend,95) / np.median(tau_trend) > 0.5) | (np.max(np.percentile(tau_trend,95)) > 0.5):
+        tau_flag  = 1
+    
+    # median Cm and Rm values
+    Rm = 1000*popt[1]/Icmd # MegaOhms
+    Cm = 1e6*np.median(tau_trend)/Rm #picoFarads
+    tau_trend = np.array(tau_trend)
 
-    return RaTrend, Raflag
+    if clamp=='VC':
+        print(_info)
+        Cm = np.nan
+        tau_trend = np.zeros(tau_trend.shape)
+        return np.nan*tau_trend, 0, Cm
+
+    return tau_trend, tau_flag, Cm
 
 
-def IRcalc(recordingData,clamp,IRBaselineEpoch,IRsteadystatePeriod,Fs=2e4):
+def IR_calc(recordingData,clamp,IRBaselineEpoch,IRsteadystatePeriod,Fs=2e4):
     ''' recordingData is the data dictionary with sweeps numbers as keys.
-        Provide steadystateWindow values in milliseconds'''
+        Provide steadystateWindow values in seconds'''
 
-    IRtrend = []
-    for s in recordingData.values():
-        cmdSig = s['Cmd']
-        ss1_cmd = np.mean(cmdSig[e2dp(IRBaselineEpoch,Fs)])
-        ss2_cmd = np.mean(cmdSig[e2dp(IRsteadystatePeriod,Fs)])
+    IRtrend = np.zeros(len(recordingData))
+    for i,k in enumerate(recordingData):
+        s = recordingData[k]
+        cmdTrace = s['Cmd']
+        ss1_cmd = np.mean(cmdTrace[e2dp(IRBaselineEpoch,Fs)])
+        ss2_cmd = np.mean(cmdTrace[e2dp(IRsteadystatePeriod,Fs)])
         delCmd = ss2_cmd - ss1_cmd
 
         recSig = s[0]
@@ -54,15 +76,24 @@ def IRcalc(recordingData,clamp,IRBaselineEpoch,IRsteadystatePeriod,Fs=2e4):
         else:
             ir = 1000 * delRes / delCmd  # mult with 1000 to convert to MOhms
 
-        IRtrend.append(ir)
-
+        IRtrend[i] = ir
+        
+        #putting a hard coded range of acceptable IR from percentile calculation done on data obtained so far,
+        # 25%ile = 86MOhm, median = 137MOhm, 75%ile = 182 MOhm
+        # 10%ile = 10MOhm, 90%ile = 282MOhm
+        # TAG TODO remove hard coded variable        
+        
         # IR change flag
         # IR change screening criterion is 20% change in IR during the recording
         IRflag = 0
         if (np.max(IRtrend) - np.min(IRtrend)) / np.mean(IRtrend) > 0.2:
             IRflag = 1
-
-    return IRtrend, IRflag
+        # OR
+        if np.max(IRtrend)>300 or np.min(IRtrend)<= 0:  #putting a hard coded range of acceptable IR
+            IRflag = 1
+    IRtrend = np.array(IRtrend)
+    sweepwise_irtrend = np.logical_or(IRtrend<15, IRtrend>400) 
+    return IRtrend, sweepwise_irtrend, IRflag
 
 
 def pulseResponseCalc(recordingData,eP):
