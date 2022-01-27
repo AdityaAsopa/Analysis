@@ -1,26 +1,26 @@
 # cell directories
 import os
 
-NCBSDataPath =   "\\storage.ncbs.res.in\\adityaa\\"
-cloudDataPath = "C:\\Users\\adity\\OneDrive\\NCBS\\"
-rigDataPath =   "C:\\Users\\aditya\\OneDrive\\NCBS\\"
-ladduDataPath = "D:\\Aditya\\Lab\\Projects\\EI_Dynamics\\"
-testDataPath = '.\\'
+NCBS_data_path =   "\\storage.ncbs.res.in\\adityaa\\"
+cloud_data_path = "C:\\Users\\adity\\OneDrive\\NCBS\\"
+rig_data_path =   "C:\\Users\\aditya\\OneDrive\\NCBS\\"
+laddu_data_path = "D:\\Aditya\\Lab\\Projects\\EI_Dynamics\\"
+test_data_path = '.\\'
 
-if os.path.exists(NCBSDataPath):
-    projectPathRoot = NCBSDataPath
-elif os.path.exists(ladduDataPath):
-    projectPathRoot = ladduDataPath
-elif os.path.exists(rigDataPath):
-    projectPathRoot = rigDataPath
-elif os.path.exists(cloudDataPath):
-    projectPathRoot = cloudDataPath
+if os.path.exists(NCBS_data_path):
+    project_path_root = NCBS_data_path
+elif os.path.exists(laddu_data_path):
+    project_path_root = laddu_data_path
+elif os.path.exists(rig_data_path):
+    project_path_root = rig_data_path
+elif os.path.exists(cloud_data_path):
+    project_path_root = cloud_data_path
 elif os.path.exists('.\\'):
     print('Data path error. Testing code on test cells.')
-    projectPathRoot = '.\\'
+    project_path_root = '.\\'
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
 
-allCells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
+all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5501\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5502\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-15_G562\\5621\\",
@@ -46,10 +46,10 @@ allCells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-06_G234\\2342\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-04_G233\\2331\\"]
 
-testCells = [".\\testExamples\\testCells\\5211\\",
+test_cells = [".\\testExamples\\testCells\\5211\\",
              ".\\testExamples\\testCells\\3882\\"]
 
 # convergence expt, not yet explored
-otherCells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\"]
+other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\"]
 
-allCellsResponseFile = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
+all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
