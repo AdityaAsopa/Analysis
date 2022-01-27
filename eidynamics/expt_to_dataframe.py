@@ -77,3 +77,4 @@ def expt2df(expt,neuron,eP):
     return expt
 
 # FIXME: remove hardcoded variables, fields, and values
+# FIXME: stray columns in excel file

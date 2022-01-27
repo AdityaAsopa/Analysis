@@ -81,7 +81,9 @@ class Neuron:
 
     def updateExperiment(self,exptObj,exptDict,condition,exptType,stimFreq,EorI):
         """
-        Accommodates all the expriment objects into a dictionary
+        Accommodates all the expriment objects into a dictionary.
+        Key   : Expt file name
+        Value : [ExptType, Condition, EorI, StimFreq, <Expt Object>]
         """
         exptID = exptObj.dataFile[:15]
         newDict = {exptID: [exptType, condition, EorI, stimFreq, exptObj]}
@@ -293,7 +295,7 @@ class Neuron:
         
         return frameExpected
 
-    def addCell2db(self):
+    def add_cell_to_xl_db(self):
         allCellFile = os.path.join(projectPathRoot,allCellsResponseFile)
         try:
             tempDF  = pd.read_excel(allCellFile)
@@ -381,7 +383,12 @@ class Experiment:
         self.Flags["NoisyBaselineFlag"] = data[2]
         del data
         
-        self.stimCoords     = Coords(coordfile).coords if coordfile else ''
+        if coordfile:
+            self.opticalStim    = Coords(coordfile)  
+            self.stimCoords     = self.opticalStim.coords
+        else:
+            self.opticalStim    = ''
+            self.stimCoords     = ''
 
         self.numSweeps      = len(self.recordingData.keys())
         self.sweepIndex     = 0  # start of the iterator over sweeps
