@@ -4,15 +4,19 @@ import os
 NCBSDataPath =   "\\storage.ncbs.res.in\\adityaa\\"
 cloudDataPath = "C:\\Users\\adity\\OneDrive\\NCBS\\"
 rigDataPath =   "C:\\Users\\aditya\\OneDrive\\NCBS\\"
+ladduDataPath = "D:\\Aditya\\Lab\\Projects\\EI_Dynamics\\"
 testDataPath = '.\\'
 
 if os.path.exists(NCBSDataPath):
     projectPathRoot = NCBSDataPath
-elif os.path.exists(cloudDataPath):
-    projectPathRoot = cloudDataPath
+elif os.path.exists(ladduDataPath):
+    projectPathRoot = ladduDataPath
 elif os.path.exists(rigDataPath):
     projectPathRoot = rigDataPath
+elif os.path.exists(cloudDataPath):
+    projectPathRoot = cloudDataPath
 elif os.path.exists('.\\'):
+    print('Data path error. Testing code on test cells.')
     projectPathRoot = '.\\'
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
 
@@ -40,12 +44,7 @@ allCells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-04-02_G250\\2501\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-06_G234\\2341\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-06_G234\\2342\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\21-03-04_G233\\2331\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5501\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5502\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\21-12-15_G562\\5621\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\21-11-10_G561\\5611\\"]
+            "Lab\\Projects\\EI_Dynamics\\Data\\21-03-04_G233\\2331\\"]
 
 testCells = [".\\testExamples\\testCells\\5211\\",
              ".\\testExamples\\testCells\\3882\\"]
