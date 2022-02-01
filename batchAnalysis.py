@@ -7,11 +7,12 @@ from eidynamics             import ephys_classes
 from all_cells              import *
 
 
-def batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=False, save_experiment_to_cell=False,save_plots=False):
-    _,savedCellFile = analysis.create_cell(cellDirectory,
+def batch_analysis(cellDirectory, add_cell_to_database=False, export_training_set=False, save_plots=False):
+    _,savedCellFile = analysis.analyse_cell(cellDirectory,
+                                        load_cell=True,
+                                        save_pickle=True,
                                         add_cell_to_database = add_cell_to_database,
                                         export_training_set = export_training_set,
-                                        save_experiment_to_cell = save_experiment_to_cell,
                                         save_plots = save_plots)
 
     return savedCellFile
@@ -44,13 +45,13 @@ if __name__ == "__main__":
         # dir_to_analyse = 
         for cellDirectory in all_cells:
         # cellDirectory = sys.argv[2]
-            savedCellFile = batch_analysis((project_path_root+cellDirectory),add_cell_to_database=True, export_training_set=True, save_experiment_to_cell=True,save_plots=True)
+            savedCellFile = batch_analysis((project_path_root+cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
             print("Data saved in cell file: ",savedCellFile)
             # batch_plot(savedCellFile)
     elif "codetest" in sys.argv:
         print("Checking if analysis pipline is working...")
         for cellDirectory in test_cells:
-            savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_experiment_to_cell=True,save_plots=True)
+            savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_plots=True)
             print(savedCellFile)
         print('All Tests Passed!')
     else:
@@ -62,6 +63,6 @@ if __name__ == "__main__":
                 batch_plot(cf[0])
             except FileNotFoundError:
                 print("Cell pickle not found. Beginning analysis.")
-                savedCellFile = batch_analysis((project_path_root+cellDirectory),add_cell_to_database=True, export_training_set=True, save_experiment_to_cell=True,save_plots=True)
+                savedCellFile = batch_analysis((project_path_root+cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
                 batch_plot(savedCellFile)

@@ -30,7 +30,7 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
         Icmd        = cmdTrace[int(Fs*IRsteadystatePeriod[0])]
 
         # check the charging_membrane function help for info on bounds and p0
-        popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0,-2.0,0.02]) )
+        popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0.01,-2.0,0.02]) )
 
         tau_trend.append(popt[2])
 

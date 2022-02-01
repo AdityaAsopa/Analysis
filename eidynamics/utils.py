@@ -1,6 +1,7 @@
 import sys
 import os
-import imp
+import importlib
+import pathlib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -258,7 +259,10 @@ def show_experiment_table(cellDirectory):
     epFiles = [os.path.join(cellDirectory, epFile) for epFile in os.listdir(cellDirectory) if epFile.endswith(fileExt)]
     df = pd.DataFrame(columns=['Polygon Protocol','Expt Type','Condition','Stim Freq','Stim Intensity','Pulse Width','Clamp','Clamping Potential'])
     for epFile in epFiles:
-        ep = imp.load_source('ExptParams',epFile)
+        epfileName = pathlib.Path(epFile).stem
+        epfilePath = str(pathlib.Path(epFile).parent)
+        sys.path.append(epfilePath)
+        ep = importlib.import_module(epfileName, epfilePath)
         exptID = ep.datafile
         df.loc[exptID] ={
                             'Polygon Protocol'  : ep.polygonProtocol,
