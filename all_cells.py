@@ -1,25 +1,7 @@
-# cell directories
-import os
+from pathlib import Path
+import sys
 
-NCBS_data_path =   "\\storage.ncbs.res.in\\adityaa\\"
-cloud_data_path = "C:\\Users\\adity\\OneDrive\\NCBS\\"
-rig_data_path =   "C:\\Users\\aditya\\OneDrive\\NCBS\\"
-laddu_data_path = "D:\\Aditya\\Lab\\Projects\\EI_Dynamics\\"
-test_data_path = '.\\'
-
-if os.path.exists(NCBS_data_path):
-    project_path_root = NCBS_data_path
-elif os.path.exists(laddu_data_path):
-    project_path_root = laddu_data_path
-elif os.path.exists(rig_data_path):
-    project_path_root = rig_data_path
-elif os.path.exists(cloud_data_path):
-    project_path_root = cloud_data_path
-elif os.path.exists('.\\'):
-    print('Data path error. Testing code on test cells.')
-    project_path_root = '.\\'
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-
 all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5501\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5502\\",
@@ -53,3 +35,22 @@ test_cells = [".\\testExamples\\testCells\\5211\\",
 other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\"]
 
 all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
+
+##############################################################################
+NCBS_data_path  = Path( "\\storage.ncbs.res.in\\adityaa\\" )
+cloud_data_path = Path( "C:\\Users\\adity\\OneDrive\\NCBS\\" )
+rig_data_path   = Path( "C:\\Users\\aditya\\OneDrive\\NCBS\\" )
+laddu_data_path = Path( "D:\\Aditya\\Lab\\Projects\\EI_Dynamics\\" )
+test_data_path  = Path( '.\\' )
+
+if NCBS_data_path.exists():
+    project_path_root = NCBS_data_path
+elif laddu_data_path.exists():
+    project_path_root = laddu_data_path
+elif rig_data_path.exists():
+    project_path_root = rig_data_path
+elif cloud_data_path.exists():
+    project_path_root = cloud_data_path
+else:
+    print('Data path error. Testing code on test cells.')
+    raise FileNotFoundError

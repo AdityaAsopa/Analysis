@@ -11,7 +11,7 @@ import importlib # FIXME: deprecated module, replace with importlib
 
 from eidynamics             import ephys_classes
 from eidynamics.errors      import *
-from eidynamics.plot_maker   import dataframe_to_plots
+from eidynamics.plot_maker  import dataframe_to_plots
 
 def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, export_training_set=False, save_plots=True):
     cell_directory = pathlib.Path(cell_directory)
@@ -103,9 +103,7 @@ def analyse_recording(recording_file, load_cell=True, cell_file=''):
         coordfileName   = exptParams.polygonProtocol
         if not coordfileName:
             raise FileNotFoundError
-        coordfile       = os.path.join(os.getcwd(), "polygonProtocols", coordfileName)
         coordfile       = pathlib.Path.cwd() / "polygonProtocols" / coordfileName
-        # os.path.isfile(coordfile)
         print('Local coord file loaded from: ', coordfile)
     except FileNotFoundError:
         print('No coord file found, probably there isn\'t one')

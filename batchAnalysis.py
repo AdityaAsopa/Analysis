@@ -42,12 +42,11 @@ def meta_plot(allCellsFile):
 if __name__ == "__main__":
     if "analyse" in sys.argv:
         print("Analysing all catalogued cells recordings...")
-        # dir_to_analyse = 
+
         for cellDirectory in all_cells:
-        # cellDirectory = sys.argv[2]
             savedCellFile = batch_analysis((project_path_root+cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
             print("Data saved in cell file: ",savedCellFile)
-            # batch_plot(savedCellFile)
+
     elif "codetest" in sys.argv:
         print("Checking if analysis pipline is working...")
         for cellDirectory in test_cells:

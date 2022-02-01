@@ -308,13 +308,6 @@ class Neuron:
         print("Cell experiment data has been added to {}".format(all_cells_response_file))
 
     def save_training_set(self,directory):
-        #removed the short training set, need to see if there is any utility
-        # celltrainingSet = self.trainingSet[:-1,:]
-        # filename = "cell"+str(self.cellID)+"_trainingSet.h5"
-        # trainingSetFile = os.path.join(directory,filename)
-        # with h5py.File(trainingSetFile, 'w') as f:
-        #     dset = f.create_dataset("default", data = celltrainingSet)
-
         celltrainingSetLong = self.trainingSetLong
         filename = "cell"+str(self.cellID)+"_trainingSet_longest.h5"
         trainingSetFile = os.path.join(directory,filename)
