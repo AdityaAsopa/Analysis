@@ -44,7 +44,7 @@ if __name__ == "__main__":
         print("Analysing all catalogued cells recordings...")
 
         for cellDirectory in all_cells:
-            savedCellFile = batch_analysis((project_path_root+cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
+            savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
             print("Data saved in cell file: ",savedCellFile)
 
     elif "codetest" in sys.argv:
@@ -53,6 +53,7 @@ if __name__ == "__main__":
             savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_plots=True)
             print(savedCellFile)
         print('All Tests Passed!')
+        
     else:
         for cellDirectory in all_cells:
             try:
@@ -62,6 +63,6 @@ if __name__ == "__main__":
                 batch_plot(cf[0])
             except FileNotFoundError:
                 print("Cell pickle not found. Beginning analysis.")
-                savedCellFile = batch_analysis((project_path_root+cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
+                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
                 batch_plot(savedCellFile)

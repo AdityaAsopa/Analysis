@@ -19,6 +19,12 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
             down from multiclamp commander or clampex."        
     
     tau_trend = []
+
+    if clamp=='VC':
+        print(_info)
+        Cm = np.nan
+        tau_trend = np.zeros(tau_trend.shape)
+        return np.nan*tau_trend, 0, Cm
     
     for s in recordingData.values():
         cmdTrace    = s['Cmd']
@@ -30,9 +36,12 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
         Icmd        = cmdTrace[int(Fs*IRsteadystatePeriod[0])]
 
         # check the charging_membrane function help for info on bounds and p0
-        popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0.01,-2.0,0.02]) )
-
-        tau_trend.append(popt[2])
+        try:
+            popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0.01,-2.0,0.02]) )
+            tau_trend.append(popt[2])
+        except:
+            tau_trend.append(0)
+        
 
     # Tau change flag
     # Tau change screening criterion is 20% change in Tau during the recording OR tau going above 0.5s
@@ -44,12 +53,6 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
     Rm = 1000*popt[1]/Icmd # MegaOhms
     Cm = 1e6*np.median(tau_trend)/Rm #picoFarads
     tau_trend = np.array(tau_trend)
-
-    if clamp=='VC':
-        print(_info)
-        Cm = np.nan
-        tau_trend = np.zeros(tau_trend.shape)
-        return np.nan*tau_trend, 0, Cm
 
     return tau_trend, tau_flag, Cm
 
