@@ -75,7 +75,7 @@ def abf_to_data(abf_file,exclude_channels=[],
             abf.setSweep(sweepNumber=sweep, channel=ch)
             if ch==0 and not ch in exclude_channels:
                 _parsedSweep,_swpBaseline   = _baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction)
-                baselineValues[sweep]       = _swpBaseline
+                baselineValues[sweep]       = _swpBaseline/signal_scaling
                 parsedSweep                 = filter_data(_parsedSweep,filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=sampling_freq)
                 sweepArray.update({ch: parsedSweep/signal_scaling})
             elif ch!=0 and not ch in exclude_channels:
