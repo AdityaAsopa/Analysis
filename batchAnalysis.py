@@ -11,11 +11,12 @@ from eidynamics.plot_maker  import dataframe_to_plots
 from eidynamics             import ephys_classes
 
 
-def batch_analysis(cellDirectory, add_cell_to_database=False, export_training_set=False, save_plots=False):
+def batch_analysis(cellDirectory, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=False):
     _,savedCellFile = analysis.analyse_cell(cellDirectory,
                                         load_cell=True,
                                         save_pickle=True,
                                         add_cell_to_database = add_cell_to_database,
+                                        all_cell_response_db = all_cell_response_db,
                                         export_training_set = export_training_set,
                                         save_plots = save_plots)
 
@@ -47,12 +48,13 @@ def main(args):
     all_cells_filename = pathlib.Path(args.file).stem
     all_cells_filepath = pathlib.Path(args.file)
     cell_list = importlib.import_module(all_cells_filename, all_cells_filepath)
+    all_cell_response_file = cell_list.all_cells_response_file
     if args.analyse:
         all_cells = cell_list.all_cells
         project_path_root = cell_list.project_path_root
         print("Analysing all catalogued cells recordings...")
         for cellDirectory in all_cells:
-                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
+                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
 
 
@@ -75,7 +77,7 @@ def main(args):
                 batch_plot(cf[0])
             except FileNotFoundError:
                 print("Cell pickle not found. Beginning analysis.")
-                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, export_training_set=True, save_plots=True)
+                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
                 batch_plot(savedCellFile)
 
@@ -110,5 +112,3 @@ else:
         main(args)
 
 print('All Done!')
-
-

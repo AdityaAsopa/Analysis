@@ -14,7 +14,6 @@ from eidynamics.ephys_functions     import IR_calc, tau_calc
 from eidynamics.utils               import delayed_alpha_function, PSP_start_time, get_pulse_times
 from eidynamics                     import pattern_index
 from eidynamics.errors              import *
-from all_cells                       import *
 
 
 class Neuron:
@@ -295,17 +294,17 @@ class Neuron:
         
         return frameExpected
 
-    def add_cell_to_xl_db(self):
-        allCellFile = os.path.join(project_path_root,all_cells_response_file)
+    def add_cell_to_xl_db(self,excel_file):
+        # excel_file = os.path.join(project_path_root,all_cells_response_file)
         try:
-            tempDF  = pd.read_excel(allCellFile)
+            tempDF  = pd.read_excel(excel_file)
         except FileNotFoundError:
             tempDF  = pd.DataFrame()
         outDF       = pd.concat([self.response,tempDF],ignore_index=True)
         # outDF       = pd.concat([cell.response,tempDF],axis=1)
         outDF       = outDF.drop_duplicates()
-        outDF.to_excel(allCellFile) #(all_cells_response_file)
-        print("Cell experiment data has been added to {}".format(all_cells_response_file))
+        outDF.to_excel(excel_file) #(all_cells_response_file)
+        print("Cell experiment data has been added to {}".format(excel_file))
 
     def save_training_set(self,directory):
         celltrainingSetLong = self.trainingSetLong

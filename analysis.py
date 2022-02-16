@@ -7,13 +7,13 @@ Created on Friday 12th March 2021
 import sys
 import os
 import pathlib
-import importlib # FIXME: deprecated module, replace with importlib
+import importlib
 
 from eidynamics             import ephys_classes
 from eidynamics.errors      import *
 from eidynamics.plot_maker  import dataframe_to_plots
 
-def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, export_training_set=False, save_plots=True):
+def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=True):
     cell_directory = pathlib.Path(cell_directory)
     print(120*"-","\nAnalyzing New Cell from: ",cell_directory)
     
@@ -34,7 +34,7 @@ def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_d
         cell.generate_expected_traces()
 
         if add_cell_to_database:
-            cell.add_cell_to_xl_db()
+            cell.add_cell_to_xl_db(all_cell_response_db)
 
         if export_training_set:
             print("Saving traces for training")
