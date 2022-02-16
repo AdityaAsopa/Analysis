@@ -141,4 +141,4 @@ if __name__ == "__main__":
     else:
         analyse_recording(input_address, load_cell=True, cell_file='')
 else:
-    print("Programme accessed from outside")
+    print("Analysis program imported")
