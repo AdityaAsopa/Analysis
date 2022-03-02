@@ -48,7 +48,9 @@ def main(args):
     all_cells_filename = pathlib.Path(args.file).stem
     all_cells_filepath = pathlib.Path(args.file)
     cell_list = importlib.import_module(all_cells_filename, all_cells_filepath)
-    all_cell_response_file = cell_list.all_cells_response_file
+    project_path_root = cell_list.project_path_root
+    all_cell_response_file = project_path_root / cell_list.all_cells_response_file
+
     if args.analyse:
         all_cells = cell_list.all_cells
         project_path_root = cell_list.project_path_root
@@ -68,7 +70,6 @@ def main(args):
 
     else:
         all_cells = cell_list.all_cells
-        project_path_root = cell_list.project_path_root
         for cellDirectory in all_cells:
             try:
                 print("Looking for analysed cell pickles to plot directly from...")
@@ -87,17 +88,17 @@ parser = argparse.ArgumentParser(description="Run the main analysis program on a
 
 parser.add_argument("file",   help="Required, python file that has list of selected cells to run batch analysis")
 
-parser.add_argument( "-v", "--verbose",action="store_true")
+parser.add_argument( "-q", "--quiet", action="store_true", help="Flag to turn off printout to the terminal")
 
 group  = parser.add_mutually_exclusive_group()
 group.add_argument("-t", "--test",    action="store_true", help="Flag to run a code test")
-group.add_argument("-a", "--analyse", action="store_true", help="Flas to run batch analysis")
+group.add_argument("-a", "--analyse", action="store_true", help="Flag to run batch analysis")
 
 parser.add_argument("-p", "--plot",    action="store_true", help="to display plots")
 
 args = parser.parse_args()
 
-# to suppress the print statements, if verbose flag == False                
+# to suppress the print statements, if quiet flag == True                
 @contextmanager 
 def suppress_stdout_stderr():
     """A context manager that redirects stdout and stderr to devnull"""
@@ -105,7 +106,7 @@ def suppress_stdout_stderr():
         with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
             yield (err, out)
 
-if args.verbose:
+if not args.quiet:
     main(args)
 else:
     with suppress_stdout_stderr():

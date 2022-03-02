@@ -40,7 +40,7 @@ all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.x
 NCBS_data_path  = Path( "\\storage.ncbs.res.in\\adityaa\\" )
 cloud_data_path = Path( "C:\\Users\\adity\\OneDrive\\NCBS\\" )
 rig_data_path   = Path( "C:\\Users\\aditya\\OneDrive\\NCBS\\" )
-laddu_data_path = Path( "D:\\Aditya\\Lab\\Projects\\EI_Dynamics\\" )
+laddu_data_path = Path( "D:\\Aditya\\")
 test_data_path  = Path( '.\\' )
 
 if NCBS_data_path.exists():

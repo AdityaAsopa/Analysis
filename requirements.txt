@@ -1,13 +1,15 @@
 # pip install -r requirements.txt
 
-h5py
-jupyterlab
-matplotlib
-numpy
-pandas
-pyabf
-scipy
-seaborn
-statsmodels
-flake8
-openpyxl
+wheel       # required for building packages
+h5py        # required for storing data into hdf format
+jupyterlab  # required for running scripts and testing
+matplotlib  # required for plotting
+numpy       # required for numerical operations
+pandas      # required for numerical operations, parsing, and data storage
+pyabf       # required for parsing .abf files
+scipy       # required for numerical operations, filtering, and analysis
+seaborn     # required for plotting
+statsmodels # required for statistical testing
+flake8      # required for maintaining PEP convention in the scripts
+openpyxl    # required for handling images
+ipympl      # required for matplotlib widget in jupyterlab notebooks
