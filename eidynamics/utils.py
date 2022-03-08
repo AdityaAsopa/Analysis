@@ -290,3 +290,32 @@ def cut_trace(trace1d, startpoint, numPulses, frequency, fs, prePulsePeriod = 0.
         trace2d[i,:] = trace1d[t1:t2]
 
     return trace2d
+
+
+def poisson_train(firing_rate, num_trials, trial_duration, Fs=2e4, plot_raster=False):
+    dt       = 1/Fs
+    num_bins = np.floor(trial_duration/dt).astype(int)
+    spikes   = np.random.rand(num_trials, num_bins)
+    spikes   = np.where(spikes<firing_rate*dt, 1, np.nan)
+    time     = np.linspace(0, trial_duration, int(trial_duration/dt))
+
+    if plot_raster:
+        plot_spike_raster(spikes)
+
+    return spikes, spike_times, time
+
+def plot_spike_raster(spike_matrix,Fs=2e4):
+    num_trials = len(spike_matrix)
+    time = np.arange(0,spike_matrix.shape[1]/Fs, 1/Fs)
+
+    for i in range(num_trials):
+        plt.eventplot(time, i+spike_matrix[i,:], marker='|', color='b')
+    
+    plt.show()
+
+def get_spike_times(spike_trials, Fs=2e4):
+    spike_times = []
+    for trial in spike_trials:
+        spike_locs = np.where(trial==1)
+        spike_times= spike_times.append(spike_locs)
+    return spike_times    
