@@ -100,6 +100,7 @@ def plot_abf_data(dataDict):
     fig.suptitle('ABF Data*')
     plt.show()
 
+
 def extract_channelwise_data(sweepwise_dict,exclude_channels=[]):
     '''
     Returns a dictionary holding channels as keys,
@@ -119,6 +120,7 @@ def extract_channelwise_data(sweepwise_dict,exclude_channels=[]):
         channelDict[ch] = tempChannelData
         tempChannelData = 0.0*tempChannelData            
     return channelDict
+
 
 def find_resposne_start(x,method='stdDev'):
     if method == 'stdDev':    
@@ -210,6 +212,7 @@ def delayed_alpha_function(t,A,tau,delta):
     y   = A*(a*T)*np.exp(1-a*T)
     return y
 
+
 def rolling_variance_baseline(vector,window=500,slide=50):
     t1          = 0
     leastVar    = 1000
@@ -231,6 +234,7 @@ def rolling_variance_baseline(vector,window=500,slide=50):
     baselineAvgWindow= np.arange(leastVarTime,leastVarTime+window)
     return [baselineAvg,baselineVariance,baselineAvgWindow]
 
+
 def mean_at_least_rolling_variance(vector,window=2000,slide=50):
     t1          = 0
     leastVar    = np.var(vector)
@@ -248,11 +252,13 @@ def mean_at_least_rolling_variance(vector,window=2000,slide=50):
         t1      = t1+slide
     return mu
 
+
 def get_pulse_times(numPulses,firstPulseStartTime,stimFreq):
     IPI = 1/stimFreq
     lastPulseTime = firstPulseStartTime+(numPulses-1)*IPI
     pulseTimes = np.linspace(firstPulseStartTime, lastPulseTime, num=numPulses, endpoint=True)
     return pulseTimes
+
 
 def show_experiment_table(cellDirectory):
     fileExt = "_experiment_parameters.py"
@@ -277,6 +283,7 @@ def show_experiment_table(cellDirectory):
     print('The Cell Directory has following experiments')
     print(df)
 
+
 def cut_trace(trace1d, startpoint, numPulses, frequency, fs, prePulsePeriod = 0.020):
     ipi             = 1/frequency
     pulseStartTimes = get_pulse_times(numPulses, startpoint, frequency) - prePulsePeriod
@@ -296,26 +303,23 @@ def poisson_train(firing_rate, num_trials, trial_duration, Fs=2e4, plot_raster=F
     dt       = 1/Fs
     num_bins = np.floor(trial_duration/dt).astype(int)
     spikes   = np.random.rand(num_trials, num_bins)
-    spikes   = np.where(spikes<firing_rate*dt, 1, np.nan)
+    spikes   = np.where(spikes<firing_rate*dt, 1, 0)
     time     = np.linspace(0, trial_duration, int(trial_duration/dt))
 
+    spike_times = get_event_times(spikes)
+
     if plot_raster:
-        plot_spike_raster(spikes)
+        plt.eventplot(spike_times)
+        plt.show()
 
     return spikes, spike_times, time
 
-def plot_spike_raster(spike_matrix,Fs=2e4):
-    num_trials = len(spike_matrix)
-    time = np.arange(0,spike_matrix.shape[1]/Fs, 1/Fs)
 
-    for i in range(num_trials):
-        plt.eventplot(time, i+spike_matrix[i,:], marker='|', color='b')
-    
-    plt.show()
-
-def get_spike_times(spike_trials, Fs=2e4):
+def get_event_times(spike_matrix, Fs=2e4):
     spike_times = []
-    for trial in spike_trials:
-        spike_locs = np.where(trial==1)
-        spike_times= spike_times.append(spike_locs)
+    for trial in spike_matrix:
+        spike_locs = (np.where(trial)[0]/Fs).tolist() # dividing by Fs to get spike times in seconds
+        # as number of spike events in a trial vary, it is better to store spike times as list of lists rather than
+        # numpy 2D array as the latter does not like rows to have different lengths.
+        spike_times.append(spike_locs)  
     return spike_times    
