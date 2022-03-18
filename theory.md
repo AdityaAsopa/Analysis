@@ -270,3 +270,11 @@ Sources:
     - Low capacitance --> low noise, but poor bandwidth  
     - Low Rf --> low noise, but Rf should be between 0.2 *Rm to 5* Rm (due to range of capacitance neutralization circuit)  
     - Increasing pipette cap neutralization --> more noise
+
+-------------
+
+## Other Notes
+
+![Patch Clamp Stages](/notes_figures/Patch_clamp_stages.png)
+
+![Compensations](/notes_figures/Compensations_board_notes.png)
