@@ -107,7 +107,7 @@ For a passing of current of ≈ 1 nA, it would cause a potential drop of 1 µV.
     When done is the cell: Pipette capacitance neutralization should be set the same time as the bridge balance. The pipette resistance and capacitance can change after the whole cell is established, so it is a good idea to monitor the bridge balance and pipette capacitance regularly while in the cell.  
 
     In compensating for electrode resistance, Bridge Balance is the current clamp analog of Rs Compensation in voltage clamp mode.  
-    
+
     Electronically, it operates in a manner analogous to voltage clamp mode Leak Subtraction.
 
 3. Capacitance compensation in Voltage clamp
@@ -151,9 +151,11 @@ For a passing of current of ≈ 1 nA, it would cause a potential drop of 1 µV.
 
     The junction potential is usually nulled while the pipette tip is immersedin the bath. When the seal forms, the junction potential disappears orchanges its magnitude, and,consequently, the nulling voltage is no longercorrect. The junction potential also changes upon going whole cell. Theseeffects must be taken into account or offset errors will exist in eithersingle-channel or whole-cell current recordings.
 
+    ![LJP Formula](/notes_figures/LJP_schematic.png)
+
     Calculated Values for Whole-cell measurements, with Ag/AgCl reference at 32°C
 
-    `VC'  
+    `VC`  
     Ion         | z     | mobility  | Cpip | Cbath
     ------------|-------|-----------|------|-------
     Ca          |  2    | 0.4048    | 0    | 2
@@ -173,7 +175,7 @@ For a passing of current of ≈ 1 nA, it would cause a potential drop of 1 µV.
     Therefore:
     > Vm = Vp - (17.4) m V
 
-    `CC'  
+    `CC`  
     Ion         | z     | mobility  | Cpip | Cbath
     ------------|-------|-----------|------|-------
     Ca          |  2    | 0.4048    | 0    | 2
@@ -192,9 +194,9 @@ For a passing of current of ≈ 1 nA, it would cause a potential drop of 1 µV.
 
     Note: Ions like ATP, GTP, and EGTA are not accounted for due to their large size -> low mobility.
 
-    Example of LJP Calculator in Clampfit, based on Barry 1994:  
+    Example of LJP Calculator in Clampex, based on Barry 1994:  
 
-    ![Correction](/notes_figures/LJP_calc_CC.png)
+    ![LJP Calc](/notes_figures/LJP_calc_CC.png)
 
 10. Voltage Clamp:  
     For single electrode VC, series resistance compensation is required. For the compensation to work, Rs should be lower than Rm. The voltage input to the op-amp is the voltage at the top of the pipette (Vp).
