@@ -146,7 +146,57 @@ For a passing of current of ≈ 1 nA, it would cause a potential drop of 1 µV.
     In `VC`
     Circuit is basically an I-V converter op-amp that converts current required to maintain Vp equal to Vcmd into voltage (Vo) that is measured. For single electrode voltage clamp
 
-9. Voltage Clamp:  
+9. Liquid Junction Potential  
+    Care must be taken to minimize junction-potential artifacts. When the pipette tip is immersed in the bath, a junction potential is generated. Its magnitude depends on the concentrations and mobilities of the ions in both the pipette solution and the bath.  
+
+    The junction potential is usually nulled while the pipette tip is immersedin the bath. When the seal forms, the junction potential disappears orchanges its magnitude, and,consequently, the nulling voltage is no longercorrect. The junction potential also changes upon going whole cell. Theseeffects must be taken into account or offset errors will exist in eithersingle-channel or whole-cell current recordings.
+
+    Calculated Values for Whole-cell measurements, with Ag/AgCl reference at 32°C
+
+    `VC'  
+    Ion         | z     | mobility  | Cpip | Cbath
+    ------------|-------|-----------|------|-------
+    Ca          |  2    | 0.4048    | 0    | 2
+    Cl          | -1    | 1.0388    | 9    | 133.3
+    Cs          |  1    | 1.05      | 130  | 0
+    Gluconate   | -1    | 0.33      | 130  | 0
+    H2PO        | -1    | 0.45      | 0    | 1.25
+    HCO3        | -1    | 0.605     | 0    | 26
+    HEPES       | -1    | 0.3       | 10   | 10
+    K           |  1    | 1         | 0    | 2.7
+    Mg          |  2    | 0.361     | 4    | 1.3
+    Na          |  1    | 0.682     | 5.5  | 151.25
+    H           |  1    | 4.76      | 130  | 0
+    OH          | -1    | 2.7       | 130  | 0
+
+    Junction Potential (original solution - pipette) = 17.4 mV
+    Therefore:
+    > Vm = Vp - (17.4) m V
+
+    `CC'  
+    Ion         | z     | mobility  | Cpip | Cbath
+    ------------|-------|-----------|------|-------
+    Ca          |  2    | 0.4048    | 0    | 2
+    Cl          | -1    | 1.0388    | 9    | 133.3
+    Gluconate   | -1    | 0.33      | 130  | 0
+    H2PO        | -1    | 0.45      | 0    | 1.25
+    HCO3        | -1    | 0.605     | 0    | 26
+    HEPES       | -1    | 0.3       | 10   | 10
+    K           |  1    | 1         | 130  | 2.7
+    Mg          |  2    | 0.361     | 4    | 1.3
+    Na          |  1    | 0.682     | 5.5  | 151.25
+
+    Junction Potential (original solution - pipette) = 15.0 mV
+    Therefore:
+    > Vm = Vp - (15.0) mV
+
+    Note: Ions like ATP, GTP, and EGTA are not accounted for due to their large size -> low mobility.
+
+    Example of LJP Calculator in Clampfit, based on Barry 1994:  
+
+    ![Correction](/notes_figures/LJP_calc_CC.png)
+
+10. Voltage Clamp:  
     For single electrode VC, series resistance compensation is required. For the compensation to work, Rs should be lower than Rm. The voltage input to the op-amp is the voltage at the top of the pipette (Vp).
 
     > Vp = Vm + current induced voltage drop across the access resistance
