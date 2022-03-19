@@ -7,7 +7,22 @@ References:
 3. Single Channel Recording, Sakmann and Neher, 1995  
 
 -------------
-  
+
+## Recording synaptic currents in `Voltage Clamp`  
+
+1. Use low resistance pipettes (2-4 MΩ)
+2. Remove pipette offset
+3. Neutralize Cp fast and Cp slow capacitance at gigaseal.
+4. Compensate whole cell capacitance (Cm) after breaking in.
+5. Measure Rs and discard if >25 MΩ
+6. Compensate Rs with careful bandwidth, prediction, and correction settings.
+7. Record baseline for 5 min to check for stable recording. Discard if shaky.
+8. Keep checking and compensating for series resistance and noting its values.
+
+Note: Low pipette resistance would also mean faster washout of cytoplasm. A trade-off worth balancing with right amount of Rs compensation with stable yet low resistance patches.
+
+-------------
+
 ## Whole Cell Patch Clamp Steps  
 
 ### A. Electrode in bath
@@ -136,7 +151,7 @@ For a passing of current of ≈ 1 nA, it would cause a potential drop of 1 µV.
 6. Feedback resistor (Rf)  
     `VC`: Determines the gain of headstage. Larger Rf means less noise, but at the risk of saturation if there are going to be larger currents in the cell. Rf of 500 MΩ is recommended for whole cell patching of neurons. I want to try 5GΩ. Since the amplifier can only create a maximum of 10 V step, this would mean that only upto 2 nA current can be passed if the Rf = 5GΩ.
 
-    `CC`: Determines the maximal injectable current by the amplifier. Rf should be between 10xRin to 0.1xRin. For ex. for a hippocampal pyramidal cell (Rm = 150mΩ), the Rf can be between 15MΩ and 1500MΩ. Therefore, Rf = 500MΩ should be selected.
+    `CC`: Determines the maximal injectable current by the amplifier. Rf should be between 10xRin to 0.1xRin. For ex. for a hippocampal pyramidal cell (Rm = 150MΩ), the Rf can be between 15MΩ and 1500MΩ. Therefore, Rf = 500MΩ should be selected.
 
     `Note`: Changing Rf in CC will also change the external command sensitivity.
 
@@ -217,6 +232,10 @@ For a passing of current of ≈ 1 nA, it would cause a potential drop of 1 µV.
 
     > tau ≈ Ra_eff * Cm
 
+    Voltage Clamp Errors:
+    - Space clamp: the injected current to maintain the cell at our desired voltage will radially spread into the cell and decay exponentially with a length constant (λ). Thus the Vm of the cell will be increasingly free of clamping away from the patch site. This means that currents produced by distant synapses in a branched cell are never seen by the amplifier and hence never recorded.
+    - Point Clamp: The amplifier technically does not clamp the cell inside but the headstage input point due to the non-zero series resistance between that point and the cell. This makes series resistance compensation important and necessary. Point clamp error causes slower kinetics and offset in clamping. The latter is dependent on the current injected.
+
 -------------
 
 ## Series resistance and Series resistance Compensation (SRC)  
@@ -241,6 +260,8 @@ Problems due to Rs:
 - Bandwidth errors: Rs and Cm together act like a low pass filter, with a -3dB cutoff given by:
 
     > f(-3dB) = 1/(2*pi*Rs*Cm)
+
+    For a normal pyramidal cell, Cm ≈ 100 pF, if the Rs ≈ 20 MΩ, the -3dB frequency comes out to be **79.57 Hz**. This is too low to resolve most synaptic current waveforms properly. Therefore, it is always recommended to comepnsate the Rs.
 
 ## SRC = Correction + Prediction
 
@@ -275,6 +296,6 @@ Sources:
 
 ## Other Notes
 
-![Patch Clamp Stages](/notes_figures/Patch_clamp_stages.png)
+![Patch Clamp Stages](/notes_figures/patch_clamp_stages.png)
 
 ![Compensations](/notes_figures/Compensations_board_notes.png)
