@@ -2,7 +2,8 @@ from pathlib import Path
 import sys
 
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
+all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-12-31_G620\\6201\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5501\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-16_G550\\5502\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-15_G562\\5621\\",
@@ -37,10 +38,10 @@ other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\"]
 all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
 
 ##############################################################################
-NCBS_data_path  = Path( "\\storage.ncbs.res.in\\adityaa\\" )
+NCBS_data_path  = Path( r"\\storage.ncbs.res.in\adityaa\\" )
 cloud_data_path = Path( "C:\\Users\\adity\\OneDrive\\NCBS\\" )
 rig_data_path   = Path( "C:\\Users\\aditya\\OneDrive\\NCBS\\" )
-laddu_data_path = Path( "D:\\Aditya\\")
+laddu_data_path = Path( "C:\\Users\\user\\OneDrive\\NCBS\\")
 test_data_path  = Path( '.\\' )
 
 if NCBS_data_path.exists():
