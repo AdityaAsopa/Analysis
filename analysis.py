@@ -113,7 +113,7 @@ def analyse_recording(recording_file, load_cell=True, cell_file=''):
         coordfile       = ''
 
 
-    if (cell_file is not '') & (load_cell is True):
+    if (cell_file != '') & (load_cell == True):
         try:
             print('Loading local cell data')
             cell = ephys_classes.Neuron.loadCell(cell_file)

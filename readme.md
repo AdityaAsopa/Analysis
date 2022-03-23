@@ -43,4 +43,25 @@ Required: Python 3.7+
 
 ## Structure of the Pipeline
 
-![Analysis Pipeline](/notes_figures/Pipeline_Structure_Dec21.png)
+![Analysis Pipeline](/notes_figures/Pipeline_Structure_Dec21.png)  
+
+-------------  
+
+## Examples  
+
+### 1. Analyse all recordings on one cell
+
++ Have a folder named as `cellID`. for ex. 'CA1PC001'
++ Make sure all the recording files that are going to be part of the cell are named with the suffix `xxxxx_rec.abf`, where xxxx is the experiment ID.
++ Make sure all the recording files also have a corresponding `xxxx_experiment_parameter.py`.
++ The experiment parameter file should follow [this template](/eidynamics/experiment_parameters_default.py)
+
+> python analysis.py /path/to/cell/folder
+
+![Running analysis.py on one recording file](/notes_figures/pipeline_testrun_cellFolder.png)
+
+### 2. To analyse one recording
+
+> python analysis.py /path/to/xxxx_rec.abf
+
+![Running analysis.py on one recording file](/notes_figures/pipeline_testrun_abfFile.png)

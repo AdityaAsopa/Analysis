@@ -34,7 +34,7 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
         chargeTime  = time[e2dp(IRchargingPeriod,Fs)] - IRchargingPeriod[0]
         chargeRes   = resTrace[e2dp(IRchargingPeriod,Fs)]
         Icmd        = cmdTrace[int(Fs*IRsteadystatePeriod[0])]
-
+        
         # check the charging_membrane function help for info on bounds and p0
         try:
             popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0.01,-2.0,0.02]) )

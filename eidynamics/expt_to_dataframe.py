@@ -59,7 +59,7 @@ def expt2df(expt,neuron,eP):
     expt.Flags.update({"IRFlag": IRflag})
 
     '''Ra'''
-    df["Tau"],tau_flag,_ = ephysFunc.tau_calc(expt.recordingData,eP.clamp,eP.IRBaselineEpoch,eP.IRchargingPeriod,eP.IRsteadystatePeriod)
+    df["Tau"],tau_flag,_ = ephysFunc.tau_calc(expt.recordingData,eP.IRBaselineEpoch,eP.IRchargingPeriod,eP.IRsteadystatePeriod,clamp=eP.clamp)
     expt.Flags.update({"TauFlag": tau_flag})
 
     '''EPSP peaks'''
