@@ -58,10 +58,10 @@ Required: Python 3.7+
 
 > python analysis.py /path/to/cell/folder
 
-![Running analysis.py on one recording file](/notes_figures/pipeline_testrun_cellFolder.png)
+![Running analysis.py on one recording file](/notes_figures/pipeline_run_cellFolder.png)
 
 ### 2. To analyse one recording
 
 > python analysis.py /path/to/xxxx_rec.abf
 
-![Running analysis.py on one recording file](/notes_figures/pipeline_testrun_abfFile.png)
+![Running analysis.py on one recording file](/notes_figures/pipeline_run_abfFile.png)
