@@ -58,7 +58,6 @@ def abf_to_data(abf_file,exclude_channels=[],
 
     data            = {}
     sweepArray      = {}
-
     baselineValues  = np.zeros([numSweeps,1])
     medianBaseline  = 0.0
     baselineFlag    = False
@@ -95,11 +94,11 @@ def abf_to_data(abf_file,exclude_channels=[],
 
     print(f'Datafile has {numSweeps} sweeps in {len(data[0])} channels.')
 
-    if data_order == 'channelwise':
-        data = extract_channelwise_data(data)
-
     if plot_data:
         plot_abf_data(data)
+        
+    if data_order == 'channelwise':
+        data = extract_channelwise_data(data)
 
     return data,medianBaseline,baselineFlag
 

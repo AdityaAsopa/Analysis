@@ -12,10 +12,12 @@ import importlib
 from eidynamics             import ephys_classes
 from eidynamics.errors      import *
 from eidynamics.plot_maker  import dataframe_to_plots
+from eidynamics.utils       import show_experiment_table
 
 def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=True):
     cell_directory = pathlib.Path(cell_directory)
     print(120*"-","\nAnalyzing New Cell from: ",cell_directory)
+    show_experiment_table(cell_directory)
     
     if load_cell:
         cellID = cell_directory.stem

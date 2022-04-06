@@ -3,10 +3,11 @@ import numpy as np
 import pandas as pd
 from scipy          import signal
 from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 from eidynamics.utils import epoch_to_datapoints as e2dp
 from eidynamics.utils import charging_membrane
-from eidynamics.utils import PSP_start_time
+from eidynamics.utils import PSP_start_time, get_pulse_times
 
 def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeriod, clamp='CC', Fs=2e4):
     ''' recordingData is the data dictionary with sweeps numbers as keys.
@@ -20,11 +21,11 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
     
     tau_trend = []
 
-    if clamp=='VC':
-        print(_info)
-        Cm = np.nan
-        tau_trend = np.zeros(tau_trend.shape)
-        return np.nan*tau_trend, 0, Cm
+    # if clamp=='VC':
+    #     print(_info)
+    #     Cm = np.nan
+    #     tau_trend = np.zeros(len(tau_trend))
+    #     return np.nan*tau_trend, 0, Cm
     
     for s in recordingData.values():
         cmdTrace    = s['Cmd']
@@ -172,4 +173,65 @@ def pulseResponseCalc(recordingData,eP):
 
     return df_peaks, APflag
 
+def extract_pulse_response_features(response_trace,stim_trace,stim_start, eP, Fs=2e4):
+    '''A more general purpose function to extract features from any ephys response
+    Features to be extracted:
+        1. Peak response (pi),
+        2. Area under the curve (ai),
+        3. 10%-90% slope (si),
+        4. Time to peak (ti),
+        5. Delay to onset (di)
+    '''
+    ipi = 1/eP.stimFreq    
+
+    pulse_times = get_pulse_times(eP.numPulses, eP.pulseTrainEpoch[0], eP.stimFreq)
+
+    df  = pd.DataFrame(columns=['peak','auc','time_to_peak','delay','slope']) 
+
+    try:
+        single_pulse_time = eP.singlePulseEpoch[0]
+        pulse_times = np.append(single_pulse_time, pulse_times)
+    except:
+        single_pulse_time = ''
+
+    print(pulse_times)
+
+    for Pn,PTn in enumerate(pulse_times):
+        t0 = int(Fs*(PTn-ipi/2))
+        t1 = int(Fs*PTn )
+        t2 = int(Fs*(PTn+ipi))
+
+        pulseStim = stim_trace[t0:t2]
+        pulseRes  = response_trace[t0:t2]
+        pulseRes_Abs  = np.abs(pulseRes)
+        # peak
+        pi = np.max(pulseRes_Abs)
+
+        # time to peak
+        # ti = (np.where(pulseRes_Abs==pi)[0][0] - ipi/2 )/Fs/1000
+        p,pp = signal.find_peaks(pulseRes_Abs,height=0.9*pi,distance=500)
+        print(ipi, t0,t1,t2, p,pp)
+        ti = p[0]/Fs - ipi/2
+        # Area under the curve
+        ai = np.trapz(pulseRes_Abs)
+
+        # delay to onset
+        # di = PSP_start_time(pulseRes, eP.clamp, eP.EorI, stimStartTime=PTn)
+
+        # 10-90% slope
+        
+        p90 = 0.9*pi
+        p10 = 0.1*pi
+
+        t90 = np.where(pulseRes_Abs==p90)
+        t10 = np.where(pulseRes_Abs==p10)
+
+        si  = p90-p10 / t90-t10
+        di=0
+        print(pi, ai, ti, di, si)
+        df.loc[Pn] = {'peak':pi,'auc':ai,'time_to_peak':ti,'delay':di,'slope':si}
+
+    return df
+           
+        
 # FIXME: remove hardcoded variables, fields, and values

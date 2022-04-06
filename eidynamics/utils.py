@@ -122,18 +122,25 @@ def extract_channelwise_data(sweepwise_dict,exclude_channels=[]):
     return channelDict
 
 
-def find_resposne_start(x,method='stdDev'):
+def find_resposne_start(x, method='stdDev'):
+    '''
+    Standard deviation method works on all photodiode traces, but the slope method only works for
+    the photodiode traces after installation of OPT101. For recordings from Jan 2022 onwards, use slope method.
+    '''
     if method == 'stdDev':    
-        y = np.abs(baseline(x))
-        stdX = np.std(y[:4600])
+        y       = np.abs(baseline(x))
+        stdX    = np.std(y[:3000])
         movAvgX = moving_average(y,10)
-        z = np.where(movAvgX > 5. * stdX)
-        return z[0][0]
+        z       = np.where((movAvgX > 5. * stdX) & (movAvgX > 1.1*np.max(y[:3999])))
+        # print(5*stdX)
+        # z       = find_peaks(movAvgX, height=10.0*stdX, distance=40)
+        return z[0]-10
+
     elif method == 'slope':
-        y = np.abs(baseline(x))
-        dy = np.diff(y,n=2) # using second derivative
-        z = np.where(dy==np.max(dy))
-        return z[0][0]
+        y       = np.abs(baseline(x))
+        d2y     = np.diff(y,n=2) # using second derivative
+        z       = np.where(d2y > 0.8 * np.max(d2y))
+        return z[0][::2]+1 # +1 because taking a double derivative causes the signal to shift
 
 
 def epoch_to_datapoints(epoch,Fs):
@@ -159,25 +166,31 @@ def charging_membrane(t, A0, A, tau):
     return y
 
 
-def alpha_synapse(x,Vmax,tau):
+def alpha_synapse(t,Vmax,tau):
     a = 1/tau
-    y = Vmax*(a*x)*np.exp(1-a*x)
+    y = Vmax*(a*t)*np.exp(1-a*t)
     return y
 
 
-def PSP_start_time(response_array_1sq,clamp,EorI,stimStartTime=0.231,Fs=2e4):
+def PSP_start_time(response_array,clamp,EorI,stimStartTime=0.231,Fs=2e4):
     '''
     Input: nxm array where n is number of frames, m is datapoints per sweep
     '''
-    if len(response_array_1sq.shape)==1:
-        avgAllSpots     = response_array_1sq - mean_at_least_rolling_variance(response_array_1sq,window=500,slide=50)
-        avgAllSpots     = avgAllSpots[:5600]
+    if len(response_array.shape)==1:
+        baseline        = mean_at_least_rolling_variance(response_array,window=500,slide=50)
+        avgAllSpots     = response_array - baseline
+        avgAllSpots     = avgAllSpots
         avgAllSpots     = np.where(avgAllSpots>30,30,avgAllSpots)        
     else:
-        avgAllSpots     = np.mean(response_array_1sq[:,:5600],axis=0) #clipping signal for speed
+        avgAllSpots     = np.mean(response_array,axis=0) 
+    
+    w                   = 40 if np.max(avgAllSpots)>=30 else 60
+    
     if clamp == 'VC' and EorI == 'E':
         avgAllSpots     = -1*avgAllSpots
-    w                   = 40 if np.max(avgAllSpots)>=30 else 60
+        w               = 60
+
+    
     stimStart           = int(Fs*stimStartTime)
     avgAllSpots         = filter_data(avgAllSpots, filter_type='butter',high_cutoff=300,sampling_freq=Fs)
     movAvgAllSpots      = moving_average(np.append(avgAllSpots,np.zeros(19)),20)
@@ -188,10 +201,9 @@ def PSP_start_time(response_array_1sq,clamp,EorI,stimStartTime=0.231,Fs=2e4):
 
     zeroCrossingPoint   = peaks[1]['left_ips']
 
-    PSPStartTime    = stimStart + zeroCrossingPoint
+    PSPStartTime    = stimStart + zeroCrossingPoint + w
     
     PSPStartTime    = PSPStartTime/Fs
-    
     
     try:
         synDelay_ms        = 1000*(PSPStartTime[0] - stimStartTime)
@@ -201,7 +213,7 @@ def PSP_start_time(response_array_1sq,clamp,EorI,stimStartTime=0.231,Fs=2e4):
         valueAtPSPstart    = avgAllSpots[stimStart]
 
     
-    return synDelay_ms,valueAtPSPstart
+    return synDelay_ms,valueAtPSPstart,responseSign
 
 
 def delayed_alpha_function(t,A,tau,delta):
@@ -254,6 +266,10 @@ def mean_at_least_rolling_variance(vector,window=2000,slide=50):
 
 
 def get_pulse_times(numPulses,firstPulseStartTime,stimFreq):
+    '''Theoretical values i.e. calculated from stim frequency and 
+    number of pulses. The actual light stim may have a delay of ≈20µs.
+    To parse out actual stim times from stim trace, use get_pulse_times_from_stim() function.
+    '''
     IPI = 1/stimFreq
     lastPulseTime = firstPulseStartTime+(numPulses-1)*IPI
     pulseTimes = np.linspace(firstPulseStartTime, lastPulseTime, num=numPulses, endpoint=True)
@@ -261,9 +277,13 @@ def get_pulse_times(numPulses,firstPulseStartTime,stimFreq):
 
 
 def show_experiment_table(cellDirectory):
+    '''Prints out a summary of all the experiments contained in a cell folder. The information
+    is read from _experiment_parameter.py files.
+    '''
+
     fileExt = "_experiment_parameters.py"
     epFiles = [os.path.join(cellDirectory, epFile) for epFile in os.listdir(cellDirectory) if epFile.endswith(fileExt)]
-    df = pd.DataFrame(columns=['Polygon Protocol','Expt Type','Condition','Stim Freq','Stim Intensity','Pulse Width','Clamp','Clamping Potential'])
+    df = pd.DataFrame(columns=['Polygon Protocol','Expt Type','Condition','Stim Freq (Hz)','Stim Intensity (%)','Pulse Width (ms)','Clamp','Clamping Potential (mV)'])
     for epFile in epFiles:
         epfileName = pathlib.Path(epFile).stem
         epfilePath = str(pathlib.Path(epFile).parent)
@@ -271,14 +291,14 @@ def show_experiment_table(cellDirectory):
         ep = importlib.import_module(epfileName, epfilePath)
         exptID = ep.datafile
         df.loc[exptID] ={
-                            'Polygon Protocol'  : ep.polygonProtocol,
-                            'Expt Type'         : ep.exptType,
-                            'Condition'         : ep.condition,
-                            'Stim Freq'         : ep.stimFreq,
-                            'Stim Intensity'    : ep.intensity,
-                            'Pulse Width'       : ep.pulseWidth,
-                            'Clamp'             : ep.clamp,
-                            'Clamping Potential': ep.clampPotential
+                            'Polygon Protocol'       : ep.polygonProtocol[9:-4],
+                            'Expt Type'              : ep.exptType,
+                            'Condition'              : ep.condition,
+                            'Stim Freq (Hz)'         : ep.stimFreq,
+                            'Stim Intensity (%)'     : ep.intensity,
+                            'Pulse Width (ms)'       : ep.pulseWidth,
+                            'Clamp'                  : ep.clamp,
+                            'Clamping Potential (mV)': ep.clampPotential
                         } 
     print('The Cell Directory has following experiments')
     print(df)
