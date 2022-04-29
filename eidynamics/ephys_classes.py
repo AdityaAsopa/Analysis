@@ -224,7 +224,7 @@ class Neuron:
         secondPulseTime         = int(Fs*(exptObj1sq.stimStart + IPI)) # 5628 sample points
 
         # Get the synaptic delay from the average responses of all the spots
-        avgResponseStartTime,_    = PSP_start_time(cell,clamp,EorI,stimStartTime=exptObj1sq.stimStart,Fs=Fs)   # 0.2365 seconds
+        avgResponseStartTime,_,_    = PSP_start_time(cell,clamp,EorI,stimStartTime=exptObj1sq.stimStart,Fs=Fs)   # 0.2365 seconds
         avgSecondResponseStartTime = avgResponseStartTime + IPI # 0.2865 seconds
         avgSynapticDelay        = avgResponseStartTime-exptObj1sq.stimStart # ~0.0055 seconds
 

@@ -116,7 +116,7 @@ def pulseResponseCalc(recordingData,eP):
         stimfreq        = eP.stimFreq  # pulse frequency
         Fs              = eP.Fs
         IPI_samples     = int(Fs * (1 / stimfreq))          # inter-pulse interval in datapoints
-        firstPulseStart = int(Fs * eP.opticalStimEpoch[0])
+        firstPulseStart = int(Fs * eP.pulseTrainEpoch[0])
         
         res             = []
         t1              = firstPulseStart
@@ -127,7 +127,7 @@ def pulseResponseCalc(recordingData,eP):
         res             = np.array(res)
         
         peakTimes       = []
-        df_peaks.loc[sweepID + 1, "firstPulseDelay"],_ = PSP_start_time(ch0_cell,eP.clamp,eP.EorI,stimStartTime=eP.opticalStimEpoch[0],Fs=Fs)
+        df_peaks.loc[sweepID + 1, "firstPulseDelay"],_,_ = PSP_start_time(ch0_cell,eP.clamp,eP.EorI,stimStartTime=eP.opticalStimEpoch[0],Fs=Fs)
 
         if eP.EorI == 'I' or eP.clamp == 'CC':
             maxRes = np.max(res, axis=1)

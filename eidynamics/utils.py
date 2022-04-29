@@ -49,7 +49,7 @@ def squareSizeCalc(gridSize,objMag,frameSz=frameSize):
     return ss
 
 
-def filter_data(x, filter_type='butter',high_cutoff=2e3,sampling_freq=2e4):
+def filter_data(x, filter_type='butter',high_cutoff=500,sampling_freq=2e4):
     if filter_type == 'butter':
         sos = butter(N=2, Wn=high_cutoff, fs=sampling_freq, output='sos')
         y = sosfiltfilt(sos,x)
@@ -283,7 +283,7 @@ def show_experiment_table(cellDirectory):
 
     fileExt = "_experiment_parameters.py"
     epFiles = [os.path.join(cellDirectory, epFile) for epFile in os.listdir(cellDirectory) if epFile.endswith(fileExt)]
-    df = pd.DataFrame(columns=['Polygon Protocol','Expt Type','Condition','Stim Freq (Hz)','Stim Intensity (%)','Pulse Width (ms)','Clamp','Clamping Potential (mV)'])
+    df = pd.DataFrame(columns=['Cell ID','Polygon Protocol','Expt Type','Condition','Stim Freq (Hz)','Stim Intensity (%)','Pulse Width (ms)','Clamp','Clamping Potential (mV)'])
     for epFile in epFiles:
         epfileName = pathlib.Path(epFile).stem
         epfilePath = str(pathlib.Path(epFile).parent)
@@ -291,6 +291,7 @@ def show_experiment_table(cellDirectory):
         ep = importlib.import_module(epfileName, epfilePath)
         exptID = ep.datafile
         df.loc[exptID] ={
+                            'Cell ID'                : ep.cellID,
                             'Polygon Protocol'       : ep.polygonProtocol[9:-4],
                             'Expt Type'              : ep.exptType,
                             'Condition'              : ep.condition,
@@ -302,6 +303,8 @@ def show_experiment_table(cellDirectory):
                         } 
     print('The Cell Directory has following experiments')
     print(df)
+
+    return df
 
 
 def cut_trace(trace1d, startpoint, numPulses, frequency, fs, prePulsePeriod = 0.020):
@@ -319,7 +322,7 @@ def cut_trace(trace1d, startpoint, numPulses, frequency, fs, prePulsePeriod = 0.
     return trace2d
 
 
-def poisson_train(firing_rate, num_trials, trial_duration, Fs=2e4, plot_raster=False):
+def poisson_train(firing_rate, num_trials, trial_duration, time_step=0.1, Fs=2e4, plot_raster=False):
     dt       = 1/Fs
     num_bins = np.floor(trial_duration/dt).astype(int)
     spikes   = np.random.rand(num_trials, num_bins)
@@ -328,11 +331,41 @@ def poisson_train(firing_rate, num_trials, trial_duration, Fs=2e4, plot_raster=F
 
     spike_times = get_event_times(spikes)
 
+    isi = np.array([])
+    for trial in spike_times:
+        isi_trial =  np.diff(trial,1)
+        isi = np.concatenate((isi,isi_trial),axis=0)
+    
     if plot_raster:
-        plt.eventplot(spike_times)
-        plt.show()
+        fig, axs = plt.subplots(1,2)
+        fig.suptitle('Generated Poisson Spike Train Data')
 
-    return spikes, spike_times, time
+        axs[0].eventplot(spike_times)
+        axs[0].set_title('Spike Train')
+        axs[0].set_xlabel('time (s)')
+        axs[0].set_ylabel('Trials')
+        
+        
+        axs[1].hist(isi, bins=int(max(isi)/0.01), density=True)
+        axs[1].set_title('Interstimulus Interval')
+        axs[1].set_xlabel('ISI (s)')
+        axs[1].set_ylabel('Frequency')
+        fig.show()
+
+    return spikes, spike_times, isi, time
+
+def kernel_convoluted_firing_rate(spiketrain, sigma, kernel='alpha'):
+    size = 6*sigma
+    x    = np.linspace(-size/2, size/2, size)
+    alpha= 1/sigma
+
+    alphafilt = ( ((alpha^2)*x ) * np.exp(-alpha*x) )
+    alphafilt = np.where(alphafilt<0, 0, alphafilt)
+    alphafilt = alphafilt / np.sum(alphafilt)
+
+    kcfr = np.convolve(spiketrain, alphafilt)
+
+    return kcfr
 
 
 def get_event_times(spike_matrix, Fs=2e4):
@@ -342,4 +375,4 @@ def get_event_times(spike_matrix, Fs=2e4):
         # as number of spike events in a trial vary, it is better to store spike times as list of lists rather than
         # numpy 2D array as the latter does not like rows to have different lengths.
         spike_times.append(spike_locs)  
-    return spike_times    
+    return spike_times

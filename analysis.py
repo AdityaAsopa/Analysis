@@ -139,7 +139,7 @@ def analyse_recording(recording_file, load_cell=True, cell_file=''):
 if __name__ == "__main__":
     input_address = pathlib.Path(sys.argv[1]) 
     if input_address.is_dir():
-        analyse_cell(input_address, load_cell=True, save_pickle=False, add_cell_to_database=False, export_training_set=False, save_plots=True)
+        analyse_cell(input_address, load_cell=True, save_pickle=True, add_cell_to_database=False, export_training_set=False, save_plots=True)
     else:
         analyse_recording(input_address, load_cell=True, cell_file='')
 else:

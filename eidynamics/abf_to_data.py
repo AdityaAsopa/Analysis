@@ -13,7 +13,7 @@ except ModuleNotFoundError:
 
 def abf_to_data(abf_file,exclude_channels=[],
                 baseline_criterion=0.1, sweep_baseline_epoch=[0, 0.2], baseline_subtraction=True,
-                signal_scaling=1, sampling_freq=2e4, filter_type='', filter_cutoff=2e3,
+                signal_scaling=1, sampling_freq=2e4, filter_type='bessel', filter_cutoff=500,
                 data_order="sweepwise", plot_data=False ):
     """
     A wrapper around pyabf module to generate sweep wise dictionary of recorded traces.
@@ -73,9 +73,10 @@ def abf_to_data(abf_file,exclude_channels=[],
         for ch in range(numChannels):
             abf.setSweep(sweepNumber=sweep, channel=ch)
             if ch==0 and not ch in exclude_channels:
-                _parsedSweep,_swpBaseline   = _baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction)
+                filteredSweep                 = filter_data(abf.sweepY,filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=sampling_freq)
+                parsedSweep,_swpBaseline   = _baseline_subtractor(filteredSweep,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction)
                 baselineValues[sweep]       = _swpBaseline/signal_scaling
-                parsedSweep                 = filter_data(_parsedSweep,filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=sampling_freq)
+                
                 sweepArray.update({ch: parsedSweep/signal_scaling})
             elif ch!=0 and not ch in exclude_channels:
                 parsedSweep,_               = _baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=True)
