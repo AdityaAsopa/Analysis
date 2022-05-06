@@ -32,7 +32,7 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
             resTrace    = s[0]
             time        = s['Time']
 
-            pulse_step_time = e2dp( [IRchargingPeriod[0], IRchargingPeriod[0]+0.0003], Fs)
+            pulse_step_time = e2dp( [IRchargingPeriod[0]-0.001, IRchargingPeriod[0]+0.001], Fs)
 
             Vcmd   = np.min(cmdTrace[pulse_step_time])
             Itrans = np.min(resTrace[pulse_step_time])
@@ -65,7 +65,7 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
     # Tau change flag
     # Tau change screening criterion is 20% change in Tau during the recording OR tau going above 0.5s
     tau_flag      = 0
-    print(tau_trend)
+    
     if (np.percentile(tau_trend,95) / np.median(tau_trend) > 0.5) | (np.max(np.percentile(tau_trend,95)) > 0.5):
         tau_flag  = 1
     
@@ -132,7 +132,10 @@ def pulseResponseCalc(recordingData,eP):
         stimfreq        = eP.stimFreq  # pulse frequency
         Fs              = eP.Fs
         IPI_samples     = int(Fs * (1 / stimfreq))          # inter-pulse interval in datapoints
-        firstPulseStart = int(Fs * eP.pulseTrainEpoch[0])
+        try:
+            firstPulseStart = int(Fs * eP.pulseTrainEpoch[0])
+        except:
+            firstPulseStart = int(Fs * eP.opticalStimEpoch[0])
         
         res             = []
         t1              = firstPulseStart

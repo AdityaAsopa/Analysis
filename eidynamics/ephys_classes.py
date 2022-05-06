@@ -186,14 +186,14 @@ class Neuron:
             ap    = 0
             if exptObj.clamp == 'CC' and np.max(sweepTrace[4460:stimEnd])>30:
                 ap = 1
-
+            
             tempArray  = np.array([int(exptObj.dataFile[-12:-8]),
                                    int(sweep+1),
                                    exptObj.stimFreq,
                                    numSquares,
                                    exptObj.stimIntensity,
                                    exptObj.pulseWidth,
-                                   np.round(exptObj.baselineTrend[sweep],1),
+                                   np.round(exptObj.baselineTrend[sweep][0],1),
                                    clampPotential,
                                    clamp,
                                    gabazineInBath,

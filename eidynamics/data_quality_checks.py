@@ -77,8 +77,9 @@ def is_ChR2_stable(dataDF, cellID, exptID_range):
     df = dataDF.loc[dataDF['numSq']>0]
 
     led = df.iloc[1,29:20029]
-    led = np.where(led>0.9*np.max(led), np.max(led), 0)
-    _, peak_props = signal.find_peaks(led, height=np.max(led), width=38)
+    led = np.where(led>0.1*np.max(led), np.max(led), 0)
+    _,peak_props = signal.find_peaks(led, height=0.9*np.max(led), width=30)
+
     first_pulse_start = int(peak_props['left_ips'][0]) + 20029
 
     df['firstpulsestart'] = first_pulse_start
