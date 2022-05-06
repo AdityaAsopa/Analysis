@@ -10,14 +10,15 @@ import pathlib
 import importlib
 
 from eidynamics             import ephys_classes
+from eidynamics             import data_quality_checks
 from eidynamics.errors      import *
 from eidynamics.plot_maker  import dataframe_to_plots
 from eidynamics.utils       import show_experiment_table
 
-def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=True):
+def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=True, save_plots=True):
     cell_directory = pathlib.Path(cell_directory)
     print(120*"-","\nAnalyzing New Cell from: ",cell_directory)
-    show_experiment_table(cell_directory)
+    _ = show_experiment_table(cell_directory)
     
     if load_cell:
         cellID = cell_directory.stem
@@ -35,14 +36,20 @@ def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_d
         print('Now generating expected traces.')
         cell.generate_expected_traces()
 
+        print('Running cell stability checks')
+        data_quality_checks.run_qc(cell, cell_directory)
+
         if add_cell_to_database:
             cell.add_cell_to_xl_db(all_cell_response_db)
 
         if export_training_set:
             print("Saving traces for training")
             cell.save_training_set(cell_directory)
+            
 
         if save_pickle:
+            del cell.trainingSetLong
+
             cellFile            = cell_directory / str(str(cell.cellID) + ".pkl" )
             cellFile_csv        = cell_directory / str(str(cell.cellID) + ".xlsx")
             ephys_classes.Neuron.saveCell(cell, cellFile)
@@ -51,6 +58,7 @@ def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_d
             cellFile = ''
         
     except UnboundLocalError as err:
+        print(err)
         print("Check if there are '_rec' labeled .abf files in the directory.")
 
     if save_plots:        

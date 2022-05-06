@@ -43,8 +43,7 @@ class Neuron:
         self.spotExpected       = {}
         self.singleSpotDataParsed= False
         self.spotStimFreq       = 20
-        #self.trainingSet        = np.zeros((1,40026))
-        self.trainingSetLong    = np.zeros((1,60027))
+        self.trainingSetLong    = np.zeros((1,60029))
 
     def cell_params_parser(self,ep):
         """
@@ -109,50 +108,60 @@ class Neuron:
         # if len(self.spotExpected)>0:
         for exptID,expt in self.experiments.items():
             exptObj = expt[-1]
+            print('Adding {} to training set.'.format(exptID))
             self.add_expt_training_set_long(exptObj)
+
+        df = pd.DataFrame(data=self.trainingSetLong)
+        df.rename( columns = {0:"exptID", 1:'sweep', 2:"StimFreq", 3:"numSq", 4: "intensity", 5: "pulseWidth", 6: "MeanBaseline", 7: "ClampingPotl", 8:"Clamp", 9: "GABAzineFlag", 10:"AP", 11:"InputRes", 12:"Tau", 13:"patternID"}, inplace = True )
+        df = df.astype({"exptID": 'int32', "sweep":"int32", "StimFreq": "int32", "numSq": 'int32'}, errors='ignore')
+        df.drop_duplicates(inplace=True)
+        self.data = df
+        
 
     def add_expt_training_set_long(self,exptObj):
         '''
         # Field ordering:
-            # 0  Stim Freq : 10, 20, 30, 40, 50, 100 Hz
-            # 1  numSquares : 1, 5, 7, 15 sq
-            # 2  intensity : 100 or 50%
-            # 3  pulse width : 2 or 5 ms
-            # 4  meanBaseline : mV
-            # 5  clamp potential: -70 or 0 mV
-            # 6  CC or VC : CC = 0, VC = 1
-            # 7  Gabazine : Control = 0, Gabazine = 1
-            # 8  IR : MOhn
-            # 9  Tau : membrane time constant
-            # 10 pattern ID : refer to pattern ID in pattern index
-            # 11:26 coords of spots [11,12,13,14,15, 16,17,18,19,20, 21,22,23,24,25]
-            # 26 AP : 1 if yes, 0 if no
-            # 27:20026 Sample points for LED
-            # 20027:40027 Sample points for ephys recording.
-            # 40027:60027 Expected response
+            # 0  datafile index (expt No., last 2 digits, 0-99. For ex. 32 for 2022_04_18_0032_rec.abf)
+            # 1  sweep No.
+            # 2  Stim Freq : 10, 20, 30, 40, 50, 100 Hz
+            # 3  numSquares : 1, 5, 7, 15 sq
+            # 4  intensity : 100 or 50%
+            # 5  pulse width : 2 or 5 ms
+            # 6  meanBaseline : mV
+            # 7  clamp potential: -70 or 0 mV
+            # 8  CC or VC : CC = 0, VC = 1
+            # 9  Gabazine : Control = 0, Gabazine = 1
+            # 10 IR : MOhm
+            # 11 Tau : membrane time constant (ms, for CC) & Ra_effective (MOhm, for VC)
+            # 12 pattern ID : refer to pattern ID in pattern index
+            # 13:28 coords of spots [12,13,14,15,16, 17,18,19,20,21, 22,23,24,25,26]
+            # 28 AP : 1 if yes, 0 if no
+            # 29:20029 Sample points for LED
+            # 20029:40029 Sample points for ephys recording.
+            # 40029:60029 Expected response
         '''
         exptID         = exptObj.dataFile[:15]
         cellData       = exptObj.extract_channelwise_data(exclude_channels=[1,2,3,'Time','Cmd'])[0]
         pdData         = exptObj.extract_channelwise_data(exclude_channels=[0,1,3,'Time','Cmd'])[2]
         
         tracelength    = 20000
-        inputSet       = np.zeros((exptObj.numSweeps,tracelength+27)) # photodiode trace
+        inputSet       = np.zeros((exptObj.numSweeps,tracelength+29)) # photodiode trace
         outputSet1     = np.zeros((exptObj.numSweeps,tracelength)) # sweep Trace
         outputSet2     = np.zeros((exptObj.numSweeps,tracelength)) # fit Trace
         pulseStartTimes= get_pulse_times(exptObj.numPulses,exptObj.stimStart,exptObj.stimFreq)
         Fs = exptObj.Fs
 
-        IR = IR_calc(exptObj.recordingData, exptObj.clamp, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, Fs=2e4)[0]
-        tau = tau_calc(exptObj.recordingData, exptObj.clamp, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, Fs=2e4)[0]
+        IR  =  IR_calc(exptObj.recordingData, exptObj.clamp, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, Fs=2e4)[0]
+        tau = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
 
         for sweep in range(exptObj.numSweeps):
             sweepTrace = cellData[sweep,:tracelength]
             pdTrace    = pdData[sweep,:tracelength]
-            pdTrace    = np.zeros(len(pdTrace))
+            # pdTrace    = np.zeros(len(pdTrace))
             
             pstimes = (Fs*pulseStartTimes).astype(int)
             stimEnd = pstimes[-1]+int(Fs*exptObj.IPI)
-            pdTrace[pstimes] = 1.0
+            # pdTrace[pstimes] = 1.0
             numSquares = len(exptObj.stimCoords[sweep+1])
             sqSet = exptObj.stimCoords[sweep+1]
             patternID = pattern_index.get_patternID(sqSet)
@@ -178,21 +187,23 @@ class Neuron:
             if exptObj.clamp == 'CC' and np.max(sweepTrace[4460:stimEnd])>30:
                 ap = 1
 
-            tempArray  = np.array([exptObj.stimFreq,
+            tempArray  = np.array([int(exptObj.dataFile[-12:-8]),
+                                   int(sweep+1),
+                                   exptObj.stimFreq,
                                    numSquares,
                                    exptObj.stimIntensity,
                                    exptObj.pulseWidth,
-                                   exptObj.meanBaseline,
+                                   np.round(exptObj.baselineTrend[sweep],1),
                                    clampPotential,
                                    clamp,
                                    gabazineInBath,
                                    ap,
-                                   IR[sweep],
-                                   tau[sweep],
+                                   np.round(IR[sweep] , 1),
+                                   np.round(tau[sweep], 3),
                                    patternID])
             tempArray2 = np.concatenate((tempArray,coordArrayTemp))
-            inputSet  [sweep,:len(tempArray2)] = tempArray2
-            inputSet  [sweep,len(tempArray2):] = pdTrace
+            inputSet  [sweep,:len(tempArray2) ] = tempArray2
+            inputSet  [sweep, len(tempArray2):] = pdTrace
             outputSet1[sweep,:] = sweepTrace
             outputSet2[sweep,:] = fitTrace
 
@@ -310,8 +321,12 @@ class Neuron:
         celltrainingSetLong = self.trainingSetLong
         filename = "cell"+str(self.cellID)+"_trainingSet_longest.h5"
         trainingSetFile = os.path.join(directory,filename)
-        with h5py.File(trainingSetFile, 'w') as f:
-            dset = f.create_dataset("default", data = celltrainingSetLong)
+        self.data.to_hdf(trainingSetFile, format='fixed', key='data', mode='w')
+        
+        # del self.trainingSetLong
+        # with h5py.File(trainingSetFile, 'w') as f:
+        #     dset = f.create_dataset("default", data = celltrainingSetLong)
+        print('Cell Data exported to {}'.format(trainingSetFile))
 
     def summarize_experiments(self):
         df = pd.DataFrame(columns=['Polygon Protocol','Expt Type','Condition','Stim Freq','Stim Intensity','Pulse Width','Clamp','Clamping Potential'])
@@ -327,6 +342,7 @@ class Neuron:
                             'Clamping Potential': expt[-1].clampPotential
                             }
         print(df)
+        return df
     
     @staticmethod
     def saveCell(neuronObj,filename):
@@ -371,8 +387,9 @@ class Experiment:
                                           filter_cutoff=exptParams.filterHighCutoff,
                                           plot_data=False)
         self.recordingData  = data[0]
-        self.meanBaseline   = data[1]        
-        self.Flags["NoisyBaselineFlag"] = data[2]
+        self.baselineTrend  = data[1]
+        self.meanBaseline   = data[2]        
+        self.Flags["NoisyBaselineFlag"] = data[3]
         del data
         
         if coordfile:

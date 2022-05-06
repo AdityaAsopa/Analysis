@@ -101,7 +101,7 @@ def abf_to_data(abf_file,exclude_channels=[],
     if data_order == 'channelwise':
         data = extract_channelwise_data(data)
 
-    return data,medianBaseline,baselineFlag
+    return data, baselineValues, medianBaseline,baselineFlag
 
     '''pyABF sweep extraction reference'''
     # abf.setSweep(sweepNumber: 3, channel: 0)

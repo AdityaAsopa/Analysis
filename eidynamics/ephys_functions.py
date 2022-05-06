@@ -9,6 +9,7 @@ from eidynamics.utils import epoch_to_datapoints as e2dp
 from eidynamics.utils import charging_membrane
 from eidynamics.utils import PSP_start_time, get_pulse_times
 
+
 def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeriod, clamp='CC', Fs=2e4):
     ''' recordingData is the data dictionary with sweeps numbers as keys.
         Provide steadystateWindow values in seconds.
@@ -17,42 +18,57 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
             In voltage clamp(VC), both pipette capacitance and cell capacitance contribute to charging and discharging.\n\
             Therefore, in VC, after pipette capacitance (Cp), whole cell (Cm) and series resistance compensation (Rs),\n\
             the tau and Cm values are not reflected in cell responses to voltage pulses. Instead, they should be noted\n\
-            down from multiclamp commander or clampex."        
+            down from multiclamp commander or clampex. However, if Cm and Rs compensation is not done in VC, the transient \n\
+            amplitude is proportinal Vcmd."        
     
     tau_trend = []
 
-    # if clamp=='VC':
-    #     print(_info)
-    #     Cm = np.nan
-    #     tau_trend = np.zeros(len(tau_trend))
-    #     return np.nan*tau_trend, 0, Cm
-    
-    for s in recordingData.values():
-        cmdTrace    = s['Cmd']
-        resTrace    = s[0]
-        time        = s['Time']
+    if clamp=='VC':
+        # print(_info)
+        Cm = np.nan
+        # tau_trend = np.zeros(len(tau_trend))
+        for s in recordingData.values():
+            cmdTrace    = s['Cmd']
+            resTrace    = s[0]
+            time        = s['Time']
 
-        chargeTime  = time[e2dp(IRchargingPeriod,Fs)] - IRchargingPeriod[0]
-        chargeRes   = resTrace[e2dp(IRchargingPeriod,Fs)]
-        Icmd        = cmdTrace[int(Fs*IRsteadystatePeriod[0])]
-        
-        # check the charging_membrane function help for info on bounds and p0
-        try:
-            popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0.01,-2.0,0.02]) )
-            tau_trend.append(popt[2])
-        except:
-            tau_trend.append(0)
+            pulse_step_time = e2dp( [IRchargingPeriod[0], IRchargingPeriod[0]+0.0003], Fs)
+
+            Vcmd   = np.min(cmdTrace[pulse_step_time])
+            Itrans = np.min(resTrace[pulse_step_time])
+
+            Ra_eff = np.round(1000* (Vcmd) / (Itrans), 1)
+            tau_trend.append(Ra_eff)
+
+    elif clamp=='CC':
+        for s in recordingData.values():
+            cmdTrace    = s['Cmd']
+            resTrace    = s[0]
+            time        = s['Time']
+
+            chargeTime  = time[e2dp(IRchargingPeriod,Fs)] - IRchargingPeriod[0]
+            chargeRes   = resTrace[e2dp(IRchargingPeriod,Fs)]
+            Icmd        = cmdTrace[int(Fs*IRsteadystatePeriod[0])]
+            
+            # check the charging_membrane function help for info on bounds and p0
+            try:
+                popt,_      = curve_fit( charging_membrane, chargeTime, chargeRes, bounds=([-10,-10,0],[10,10,0.05]), p0=([0.01,-2.0,0.02]) )
+                tau_trend.append(popt[2])
+            except:
+                tau_trend.append(0)
+
+        # median Cm and Rm values
+        Rm = 1000*popt[1]/Icmd # MegaOhms
+        Cm = 1e6*np.median(tau_trend)/Rm #picoFarads
         
 
     # Tau change flag
     # Tau change screening criterion is 20% change in Tau during the recording OR tau going above 0.5s
     tau_flag      = 0
+    print(tau_trend)
     if (np.percentile(tau_trend,95) / np.median(tau_trend) > 0.5) | (np.max(np.percentile(tau_trend,95)) > 0.5):
         tau_flag  = 1
     
-    # median Cm and Rm values
-    Rm = 1000*popt[1]/Icmd # MegaOhms
-    Cm = 1e6*np.median(tau_trend)/Rm #picoFarads
     tau_trend = np.array(tau_trend)
 
     return tau_trend, tau_flag, Cm
