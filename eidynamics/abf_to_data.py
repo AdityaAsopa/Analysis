@@ -13,7 +13,7 @@ except ModuleNotFoundError:
 
 def abf_to_data(abf_file,exclude_channels=[],
                 baseline_criterion=0.1, sweep_baseline_epoch=[0, 0.2], baseline_subtraction=True,
-                signal_scaling=1, sampling_freq=2e4, filter_type='bessel', filter_cutoff=500,
+                signal_scaling=1, sampling_freq=2e4, filter_type='bessel', filter_cutoff=1000,
                 data_order="sweepwise", plot_data=False ):
     """
     A wrapper around pyabf module to generate sweep wise dictionary of recorded traces.
@@ -74,12 +74,12 @@ def abf_to_data(abf_file,exclude_channels=[],
             abf.setSweep(sweepNumber=sweep, channel=ch)
             if ch==0 and not ch in exclude_channels:
                 filteredSweep                 = filter_data(abf.sweepY,filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=sampling_freq)
-                parsedSweep,_swpBaseline   = _baseline_subtractor(filteredSweep,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction)
+                parsedSweep,_swpBaseline   = _baseline_subtractor(filteredSweep,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction, method='percentile')
                 baselineValues[sweep]       = _swpBaseline/signal_scaling
                 
                 sweepArray.update({ch: parsedSweep/signal_scaling})
             elif ch!=0 and not ch in exclude_channels:
-                parsedSweep,_               = _baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=True)
+                parsedSweep,_               = _baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=True, method='percentile')
                 sweepArray.update({ch: parsedSweep/signal_scaling})
             else:
                 pass
@@ -109,20 +109,20 @@ def abf_to_data(abf_file,exclude_channels=[],
     # print(abf.sweepX) # displays sweep times (seconds)
     # print(abf.sweepC) # displays command waveform (DAC)
 
-def _baseline_subtractor(sweep,sweep_baseline_epoch,sampling_freq,subtract_baseline):
+def _baseline_subtractor(sweep, sweep_baseline_epoch, sampling_freq, subtract_baseline=True, method='percentile'):
     baselineWindow = epoch_to_datapoints(sweep_baseline_epoch,sampling_freq)
     '''
     Methods to calculate baseline:
-        Method 1: Mean of the baseline epoch, default, standard, and preferred
-        Method 2: Mean at least rolling variance in the sweep, not right as baseline should be from a predefined epoch
-        Method 3: 10%ile value from baseline epoch, Upi's suggestion, not sure how right is that to use
+        Method 1: mean, Mean of the baseline epoch, default, standard, and preferred
+        Method 2: variance, Mean at least rolling variance in the sweep, not right as baseline should be from a predefined epoch
+        Method 3: percentile, 10%ile value from baseline epoch, Upi's suggestion, not sure how right is that to use
     '''
-    # Method 1
-    sweepBaseline  = np.mean(sweep[baselineWindow])
-    # Method 2
-    # sweepBaseline = _mean_at_least_rolling_variance(sweep[13000:20000],window=2000)
-    # Method 3
-    # sweepBaseline = np.percentile(sweep[baselineWindow],10) 
+    if   method == 'mean':
+        sweepBaseline  = np.mean(sweep[baselineWindow])
+    elif method == 'variance':
+        sweepBaseline = _mean_at_least_rolling_variance(sweep[20000:30000],window=2000)
+    elif method == 'percentile':
+        sweepBaseline = np.percentile(sweep[20000:30000],10) 
 
     if subtract_baseline:
         sweepNew = sweep - sweepBaseline

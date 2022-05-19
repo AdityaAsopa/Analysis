@@ -1,17 +1,19 @@
 # Libraries
+from doctest import DocFileSuite
 import numpy as np
 import pandas as pd
 import pickle
 import os
 import h5py
 from scipy.optimize  import curve_fit
+from scipy import signal
 from PIL import Image, ImageOps
 
 # EI Dynamics module
 from eidynamics.abf_to_data         import abf_to_data
 from eidynamics.expt_to_dataframe   import expt2df
 from eidynamics.ephys_functions     import IR_calc, tau_calc
-from eidynamics.utils               import delayed_alpha_function, PSP_start_time, get_pulse_times
+from eidynamics.utils               import delayed_alpha_function, PSP_start_time, get_pulse_times, _signal_sign_cf, _find_fpr
 from eidynamics                     import pattern_index
 from eidynamics.errors              import *
 
@@ -43,7 +45,7 @@ class Neuron:
         self.spotExpected       = {}
         self.singleSpotDataParsed= False
         self.spotStimFreq       = 20
-        self.trainingSetLong    = np.zeros((1,60029))
+        self.trainingSetLong    = np.zeros((1,80029))
 
     def cell_params_parser(self,ep):
         """
@@ -51,7 +53,7 @@ class Neuron:
         from experiment parameter file
         """
         try:
-            self.cellID     = ep.cellID
+            self.cellID     = int(ep.cellID)
             self.location   = ep.location
             self.animal     = {"animalID":ep.animalID,          "sex":ep.sex,
                                "dateofBirth":ep.dateofBirth,    "dateofInjection":ep.dateofInj,
@@ -62,7 +64,8 @@ class Neuron:
                                "ageatExpt":ep.ageAtExp,         "incubation":ep.incubation}
             self.device     = {"objMag":ep.objMag,              "polygonFrameSize":ep.frameSize,
                                "polygonGridSize":ep.gridSize,   "polygonSquareSize":ep.squareSize,
-                               "DAQ":'Digidata 1440',           "Amplifier":'Multiclamp 700B'}
+                               "DAQ":'Digidata 1440',           "Amplifier":'Multiclamp 700B',
+                               "ephysDataUnit": ep.unit}
         except Exception as err:
             raise ParameterMismatchError(message=err)
 
@@ -111,13 +114,74 @@ class Neuron:
             print('Adding {} to training set.'.format(exptID))
             self.add_expt_training_set_long(exptObj)
 
-        df = pd.DataFrame(data=self.trainingSetLong)
-        df.rename( columns = {0:"exptID", 1:'sweep', 2:"StimFreq", 3:"numSq", 4: "intensity", 5: "pulseWidth", 6: "MeanBaseline", 7: "ClampingPotl", 8:"Clamp", 9: "GABAzineFlag", 10:"AP", 11:"InputRes", 12:"Tau", 13:"patternID"}, inplace = True )
-        df = df.astype({"exptID": 'int32', "sweep":"int32", "StimFreq": "int32", "numSq": 'int32'}, errors='ignore')
-        df.drop_duplicates(inplace=True)
-        self.data = df
         
+        df = pd.DataFrame(data=self.trainingSetLong)        
+        df.rename( columns = {0:"exptID", 
+                              1:'sweep', 
+                              2:"StimFreq", 
+                              3:"numSq", 
+                              4: "intensity", 
+                              5: "pulseWidth", 
+                              6: "MeanBaseline", 
+                              7: "ClampingPotl", 
+                              8:"Clamp", 
+                              9: "GABAzineFlag", 
+                              10: "AP", 
+                              11:"InputRes", 
+                              12:"Tau", 
+                              13:"patternID"
+                              }, inplace = True )
+        df = df.astype({"exptID": 'int32', "sweep":"int32", "StimFreq": "int32", "numSq": 'int32'}, errors='ignore')
+        df = df.loc[df["StimFreq"] != 0]
+        total_sweeps = df.shape[0]
 
+        expt_ids = np.unique(df['exptID'])
+        expt_idxs= range(len(expt_ids))
+
+        expt_seq = np.array( [ 0                            ]*(total_sweeps) )
+        cellID   = np.array( [ self.cellID                  ]*(total_sweeps) )
+        sigUnit  = np.array( [ self.device["ephysDataUnit"] ]*(total_sweeps) )
+        
+        age      = np.array( [ ((self.animal["dateofExpt"]      - self.animal["dateofBirth"]     ).days)]*(total_sweeps) )
+        ageInj   = np.array( [ ((self.animal["dateofInjection"] - self.animal["dateofBirth"]     ).days)]*(total_sweeps) )
+        inc      = np.array( [ ((self.animal["dateofExpt"]      - self.animal["dateofInjection"] ).days)]*(total_sweeps) )
+
+        
+        
+        # print(df.index)
+        #---------------------
+        led = df.iloc[1,29:20029]
+        led = np.where(led>=0.1*np.max(led), np.max(led), 0)
+        _,peak_props = signal.find_peaks(led, height=0.9*np.max(led), width=30)
+        first_pulse_start = (peak_props['left_ips'][0]) / 2e4
+        first_pulse_start_datapoint = int(first_pulse_start*2e4) + 20029
+
+
+        fpt = np.array([first_pulse_start]*(total_sweeps))
+
+        _ss = _signal_sign_cf(df.iloc[:,7], df.iloc[:,8])
+
+        res_traces = (df.iloc[:, first_pulse_start_datapoint: first_pulse_start_datapoint+1000]).multiply(_ss, axis=0)
+
+        stimFreq_array = df.iloc[:,2]
+
+        peakres, peakres_time = _find_fpr(stimFreq_array, res_traces)
+        peakres_time = peakres_time + first_pulse_start
+
+        # Assemble dataframe
+        # print(df_prop.index, peakres.index)
+        df_prop = pd.DataFrame(data={"expt_seq":expt_seq, "cellID":cellID, "age":age, "ageInj":ageInj, "incubation":inc, "firstpulsetime":fpt, "firstpulse_peaktime": peakres_time, "firstpeakres":peakres, "Unit": sigUnit})
+
+        df2 = pd.concat([df_prop, df], ignore_index=False, axis=1)
+        
+        for i,j in zip(expt_ids, expt_idxs):
+            df2.loc[df["exptID"] == i, "expt_seq"] = j
+
+        # dataframe cleanup
+        
+        df2.drop_duplicates(inplace=True)
+        self.data = df2
+        
     def add_expt_training_set_long(self,exptObj):
         '''
         # Field ordering:
@@ -140,14 +204,21 @@ class Neuron:
             # 20029:40029 Sample points for ephys recording.
             # 40029:60029 Expected response
         '''
+        tracelength    = 20000
+        
         exptID         = exptObj.dataFile[:15]
         cellData       = exptObj.extract_channelwise_data(exclude_channels=[1,2,3,'Time','Cmd'])[0]
         pdData         = exptObj.extract_channelwise_data(exclude_channels=[0,1,3,'Time','Cmd'])[2]
+        try:
+            fieldData  = exptObj.extract_channelwise_data(exclude_channels=[0,1,2,'Time','Cmd'])[3]
+        except:
+            print('Field channel does not exist in the recording.')
+            fieldData  = np.zeros((exptObj.numSweeps,tracelength))
         
-        tracelength    = 20000
         inputSet       = np.zeros((exptObj.numSweeps,tracelength+29)) # photodiode trace
         outputSet1     = np.zeros((exptObj.numSweeps,tracelength)) # sweep Trace
         outputSet2     = np.zeros((exptObj.numSweeps,tracelength)) # fit Trace
+        outputSet3     = np.zeros((exptObj.numSweeps,tracelength)) # field Trace
         pulseStartTimes= get_pulse_times(exptObj.numPulses,exptObj.stimStart,exptObj.stimFreq)
         Fs = exptObj.Fs
 
@@ -157,6 +228,7 @@ class Neuron:
         for sweep in range(exptObj.numSweeps):
             sweepTrace = cellData[sweep,:tracelength]
             pdTrace    = pdData[sweep,:tracelength]
+            fieldTrace = fieldData[sweep,:tracelength]
             # pdTrace    = np.zeros(len(pdTrace))
             
             pstimes = (Fs*pulseStartTimes).astype(int)
@@ -206,8 +278,9 @@ class Neuron:
             inputSet  [sweep, len(tempArray2):] = pdTrace
             outputSet1[sweep,:] = sweepTrace
             outputSet2[sweep,:] = fitTrace
+            outputSet3[sweep,:] = fieldTrace
 
-        newTrainingSet = np.concatenate((inputSet,outputSet1,outputSet2),axis=1)
+        newTrainingSet = np.concatenate((inputSet,outputSet1,outputSet2,outputSet3),axis=1)
         oldTrainingSet = self.trainingSetLong
         self.trainingSetLong = np.concatenate((newTrainingSet,oldTrainingSet),axis=0)
 

@@ -283,7 +283,8 @@ def show_experiment_table(cellDirectory):
 
     fileExt = "_experiment_parameters.py"
     epFiles = [os.path.join(cellDirectory, epFile) for epFile in os.listdir(cellDirectory) if epFile.endswith(fileExt)]
-    df = pd.DataFrame(columns=['Cell ID','Polygon Protocol','Expt Type','Condition','Stim Freq (Hz)','Stim Intensity (%)','Pulse Width (ms)','Clamp','Clamping Potential (mV)'])
+    df = pd.DataFrame(columns=['Cell ID','Polygon Protocol','Expt Type','Condition','Stim Freq (Hz)','Stim Intensity (%)','Pulse Width (ms)','Clamp',\
+                                'Clamping Potential (mV)','EorI','sex','Age','DateOfExpt'])
     for epFile in epFiles:
         epfileName = pathlib.Path(epFile).stem
         epfilePath = str(pathlib.Path(epFile).parent)
@@ -299,7 +300,13 @@ def show_experiment_table(cellDirectory):
                             'Stim Intensity (%)'     : ep.intensity,
                             'Pulse Width (ms)'       : ep.pulseWidth,
                             'Clamp'                  : ep.clamp,
-                            'Clamping Potential (mV)': ep.clampPotential
+                            'Clamping Potential (mV)': ep.clampPotential,
+                            'EorI'                   : ep.EorI,
+                            'sex'                    : ep.sex,
+                            'Age'                    : ep.ageAtExp,
+                            'DateOfExpt'             : ep.dateofExpt,
+
+
                         } 
     print('The Cell Directory has following experiments')
     print(df)
@@ -376,3 +383,49 @@ def get_event_times(spike_matrix, Fs=2e4):
         # numpy 2D array as the latter does not like rows to have different lengths.
         spike_times.append(spike_locs)  
     return spike_times
+
+def join_training_sets(directory):
+    file_suffix = "_trainingSet_longest.h5"
+    trainingSetFiles = list( directory.glob('*'+file_suffix) )
+
+    df = pd.DataFrame()
+    for trainingSetFile in trainingSetFiles:
+        pd.concat()
+
+
+def _signal_sign_cf(clampingPot, clamp):
+    '''
+    conversion function to convert CC/VC clamping potential values
+    to inverting factors for signal. For VC recordings, -70mV clamp means EPSCs
+    that are recorded as negative deflections. To get peaks, we need to invert 
+    the signal and take max. 
+    But for CC recordings, EPSPs are positive deflections and therefore, no inversion
+    is needed.
+    In data DF, clamping potential for VC and CC is stored as -70/0 mV and clamp is stored
+    as 0 for CC and 1 for VC.
+
+    VC                  CC
+    -70 -> E -> -1      -70 -> E -> +1
+    0   -> I -> +1
+    '''    
+    return (1+(clampingPot/35))**clamp
+
+def _find_fpr(stimFreq_array, res_window_matrix):
+    
+    if stimFreq_array.shape[0] != res_window_matrix.shape[0]:
+        raise ValueError
+
+    fpr      = np.zeros([stimFreq_array.shape[0]])
+    fpr_time = np.zeros([stimFreq_array.shape[0]])
+
+    for i in range(stimFreq_array.shape[0]):
+        f   = stimFreq_array[i]
+        ipi = int(2e4/f)
+
+        trace = res_window_matrix.iloc[i,:ipi]
+        fpr[i]      = np.max(trace)
+        fpr_time[i] = np.where(trace>= np.max(trace))[0][0] + 1
+
+    return fpr, fpr_time
+
+        

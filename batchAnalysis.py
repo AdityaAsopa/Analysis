@@ -59,6 +59,8 @@ def main(args):
                 savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
 
+        # make data quality plots for all_cells data
+        
 
     elif args.test:
         test_cells = cell_list.test_cells

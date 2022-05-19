@@ -11,7 +11,7 @@ import sys
 
 
 allCellDataFile = "C:\\Users\\aditya\\OneDrive\\NCBS\\Lab\\Projects\\EI_Dynamics\\trainingSet_Long\\allCells_trainingSet_short.h5"
-allCellExcelFile = "C:\\Users\\aditya\\OneDrive\\NCBS\\Lab\\Projects\\EI_Dynamics\\AnalysisFile\\allCells.xlsx"
+allCellExcelFile = "C:\\Users\\adity\\OneDrive\\NCBS\Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
 ephysStart = 28
 ephysEnd   = 20028
 fitStart   = 20028
@@ -150,7 +150,7 @@ def figure3(df2):
     (df["Clamp"]=='VC') & (df["NumSquares"]!=1) & (df["ExptType"] != 'LTMRand') &\
                (df["Intensity"] == 100) & (df["PulseWidth"] == 5) & (df["datafile"] != '2021_04_03_0004_rec.abf') &\
                  (df["datafile"] != '2021_04_03_0004_rec.abf')]'''
-    df3 = df2.loc[ (df2["Clamp"]=='VC') & (df2["EI"]=='E') &(df2["NumSquares"]!=1) & (df2["ExptType"] != 'LTMRand') & (df2["datafile"] != '2021_04_03_0004_rec.abf') ]
+    df3 = df2.loc[ (df2["Clamp"]=='VC') & (df2["EI"]=='E') &(df2["NumSquares"]!=1) & (df2["ExptType"] != 'LTMRand') ]#& (df2["datafile"] != '2021_04_03_0004_rec.abf') ]
     p1ser = df3["P1"]
     df4 = df3.loc[:,["P1","P2","P3","P4","P5","P6","P7","P8"]].div(p1ser,axis='rows')
     allVal = df4.to_numpy()
@@ -158,13 +158,14 @@ def figure3(df2):
     fig = sns.histplot(data=allVal,color="#4575b4",kde=True,alpha=0.5)
     fig.set_xlim([0,10])
 
-    df3 = df2.loc[ (df2["Clamp"]=='VC') & (df2["EI"]=='I') &(df2["NumSquares"]!=1) & (df2["ExptType"] != 'LTMRand') & (df2["datafile"] != '2021_04_03_0004_rec.abf') ]
+    df3 = df2.loc[ (df2["Clamp"]=='VC') & (df2["EI"]=='I') &(df2["NumSquares"]!=1) & (df2["ExptType"] != 'LTMRand') ]#& (df2["datafile"] != '2021_04_03_0004_rec.abf') ]
     p1ser = df3["P1"]
     df4 = df3.loc[:,["P1","P2","P3","P4","P5","P6","P7","P8"]].div(p1ser,axis='rows')
     allVal = df4.to_numpy()
     allVal = np.reshape(allVal,newshape=-1)
     fig = sns.histplot(data=allVal,color="#b35806",kde=True,alpha=0.5)
     fig.set_xlim([0,10])
+    plt.show()
 
 def figure4(df2):
     df3 = df2.loc[ (df2["Clamp"]=='CC')  & (df2["NumSquares"]!=1) & (df2["ExptType"] != 'LTMRand') & (df2["datafile"] != '2021_04_03_0004_rec.abf') & (df2["AP"]==0)]

@@ -17,7 +17,7 @@ from eidynamics.utils       import show_experiment_table
 
 def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=True, save_plots=True):
     cell_directory = pathlib.Path(cell_directory)
-    print(120*"-","\nAnalyzing New Cell from: ",cell_directory)
+    print(150*"=","\nAnalyzing New Cell from: ",cell_directory)
     _ = show_experiment_table(cell_directory)
     
     if load_cell:

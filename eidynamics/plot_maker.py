@@ -1,4 +1,7 @@
 import pandas as pd
+import matplotlib
+#matplotlib.use("Agg") # to suppress default matplotlib bitmap backend engine (QtAgg), prevents resource overload
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
