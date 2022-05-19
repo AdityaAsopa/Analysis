@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 from eidynamics.abf_to_data         import abf_to_data
 from eidynamics.expt_to_dataframe   import expt2df
 from eidynamics.ephys_functions     import IR_calc, tau_calc
-from eidynamics.utils               import delayed_alpha_function, PSP_start_time, get_pulse_times, _signal_sign_cf, _find_fpr
+from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _signal_sign_cf, _find_fpr
 from eidynamics                     import pattern_index
 from eidynamics.errors              import *
 
@@ -116,23 +116,25 @@ class Neuron:
 
         
         df = pd.DataFrame(data=self.trainingSetLong)        
-        df.rename( columns = {0:"exptID", 
-                              1:'sweep', 
-                              2:"StimFreq", 
-                              3:"numSq", 
-                              4: "intensity", 
-                              5: "pulseWidth", 
-                              6: "MeanBaseline", 
-                              7: "ClampingPotl", 
-                              8:"Clamp", 
-                              9: "GABAzineFlag", 
+        df.rename( columns = {0:  "exptID", 
+                              1:  "sweep", 
+                              2:  "StimFreq", 
+                              3:  "numSq", 
+                              4:  "intensity", 
+                              5:  "pulseWidth", 
+                              6:  "MeanBaseline", 
+                              7:  "ClampingPotl", 
+                              8:  "Clamp", 
+                              9:  "GABAzineFlag", 
                               10: "AP", 
-                              11:"InputRes", 
-                              12:"Tau", 
-                              13:"patternID"
+                              11: "InputRes", 
+                              12: "Tau", 
+                              13: "patternID"
                               }, inplace = True )
         df = df.astype({"exptID": 'int32', "sweep":"int32", "StimFreq": "int32", "numSq": 'int32'}, errors='ignore')
         df = df.loc[df["StimFreq"] != 0]
+        df.replace({'Clamp'     : { 0.0 :   'CC', 1.0 : 'VC'  }})
+        df.replace({'Condition' : { 0.0 : 'CTRL', 1.0 : 'GABA'}})
         total_sweeps = df.shape[0]
 
         expt_ids = np.unique(df['exptID'])
@@ -215,6 +217,10 @@ class Neuron:
             print('Field channel does not exist in the recording.')
             fieldData  = np.zeros((exptObj.numSweeps,tracelength))
         
+        sos = signal.butter(N=2, Wn=500, fs=2e4, output='sos')
+        cellData  = signal.sosfiltfilt(sos, cellData,  axis=1)
+        fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
+
         inputSet       = np.zeros((exptObj.numSweeps,tracelength+29)) # photodiode trace
         outputSet1     = np.zeros((exptObj.numSweeps,tracelength)) # sweep Trace
         outputSet2     = np.zeros((exptObj.numSweeps,tracelength)) # fit Trace
@@ -391,7 +397,7 @@ class Neuron:
         print("Cell experiment data has been added to {}".format(excel_file))
 
     def save_training_set(self,directory):
-        celltrainingSetLong = self.trainingSetLong
+        # celltrainingSetLong = self.trainingSetLong
         filename = "cell"+str(self.cellID)+"_trainingSet_longest.h5"
         trainingSetFile = os.path.join(directory,filename)
         self.data.to_hdf(trainingSetFile, format='fixed', key='data', mode='w')
