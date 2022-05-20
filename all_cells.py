@@ -33,7 +33,7 @@ all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-04-18_G749\\7492\\",
 
 
 test_cells = [".\\testExamples\\testCells\\5211\\",
-             ".\\testExamples\\testCells\\3882\\"]
+              ".\\testExamples\\testCells\\3882\\"]
 
 # convergence expt, not yet explored
 other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\"]

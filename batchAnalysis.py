@@ -9,6 +9,7 @@ from os import devnull
 import analysis
 from eidynamics.plot_maker  import dataframe_to_plots
 from eidynamics             import ephys_classes
+import generate_screening_param_figures
 
 
 def batch_analysis(cellDirectory, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=False):
@@ -60,7 +61,8 @@ def main(args):
                 print("Data saved in cell file: ",savedCellFile)
 
         # make data quality plots for all_cells data
-        
+        generate_screening_param_figures.main()
+
 
     elif args.test:
         test_cells = cell_list.test_cells
@@ -68,6 +70,10 @@ def main(args):
         for cellDirectory in test_cells:
                 savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_plots=True)
                 print(savedCellFile)
+
+        # make data quality plots for all_cells data
+        print("generating test plots")
+        generate_screening_param_figures.test()
         print('All Tests Passed!')
 
     else:

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from eidynamics import ephys_classes, utils
 import all_cells
+import collate_dataset
 
 def run_qc(cellObject, cellDirectory):
     global cell_location
@@ -65,7 +66,6 @@ def is_ChR2_stable(dataDF, cellID, exptID_range, plot_axis):
 
     sns.stripplot(data=df, x='firstpeakres', y='exptID', hue='ClampingPotl', orient="h", palette='mako', ax=plot_axis)
 
-
 def is_IR_stable(dataDf, cellID, exptID_range, plot1_axis, plot2_axis):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
@@ -77,7 +77,6 @@ def is_IR_stable(dataDf, cellID, exptID_range, plot1_axis, plot2_axis):
 
     sns.lineplot(data=df, x='sweep', y='InputRes', palette='viridis', hue='exptID', hue_norm=exptID_range, ax=plot2_axis)
  
-
 def is_baseline_stable(datadf, cellID, exptID_range, plot1_axis, plot2_axis):
     df = datadf.copy()
     df.sort_values(by=['exptID','sweep'])
@@ -104,12 +103,28 @@ def _signal_sign_cf(clampingPot, clamp):
     '''    
     return (1+(clampingPot/35))**clamp
 
+def collated_plots():
+    collate_dataset.main()
 
-for cell in all_cells.all_cells:
-    cellpath = all_cells.project_path_root / cell
-    cellID = cellpath.stem
-    cellpickle = cellpath / (str(cellID) + ".pkl")
+def main():
+    for cell in all_cells.all_cells:
+        cellpath = all_cells.project_path_root / cell
+        cellID = cellpath.stem
+        cellpickle = cellpath / (str(cellID) + ".pkl")
 
-    cell = ephys_classes.Neuron.loadCell(cellpickle)
-    print(cellpath)
-    run_qc(cell, cellpath)  
+        cell = ephys_classes.Neuron.loadCell(cellpickle)
+        print(cellpath)
+        run_qc(cell, cellpath)
+
+def test():
+    for cell in all_cells.test_cells:
+        cellpath = Path(cell)
+        cellID = cellpath.stem
+        cellpickle = cellpath / (str(cellID) + ".pkl")
+
+        cell = ephys_classes.Neuron.loadCell(cellpickle)
+        print(cellpath)
+        run_qc(cell, cellpath)
+
+if __name__ == "__main__": 
+    main()
