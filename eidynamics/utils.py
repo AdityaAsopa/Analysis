@@ -5,6 +5,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 from scipy.signal import filter_design
 from scipy.signal import butter, bessel, decimate, sosfiltfilt
@@ -329,50 +330,96 @@ def cut_trace(trace1d, startpoint, numPulses, frequency, fs, prePulsePeriod = 0.
     return trace2d
 
 
-def poisson_train(firing_rate, num_trials, trial_duration, time_step=0.1, Fs=2e4, plot_raster=False):
+def poisson_train(avg_firing_rate, num_trials, trial_duration, firing_rate_high_cutoff=100, time_step=0.1, Fs=2e4, plot_raster=False):
     dt       = 1/Fs
     num_bins = np.floor(trial_duration/dt).astype(int)
+    # np.random.seed(111)
     spikes   = np.random.rand(num_trials, num_bins)
-    spikes   = np.where(spikes<firing_rate*dt, 1, 0)
+    spikes   = np.where(spikes<avg_firing_rate*dt, 1, 0)
     time     = np.linspace(0, trial_duration, int(trial_duration/dt))
 
-    spike_times = get_event_times(spikes)
+    spiketrain = spikes[0]
+    
+    spike_locs = np.where(spiketrain)[0]
+    spiketrain_filtered = spiketrain.copy()
+
+    omit_spikes = []
+
+    # remove spikes that occur earlier than firing rate high cutoff ISI
+    for i,pp in enumerate(spike_locs[:-1]):
+
+        spike_loc1 = spike_locs[i]
+        spike_loc2 = spike_locs[i+1]
+        
+        if (spike_loc2-spike_loc1) < (Fs/firing_rate_high_cutoff):
+            omit_spikes.append(spike_loc2)
+
+    spiketrain_filtered[omit_spikes] = 0
+
+    spike_times = get_event_times([spiketrain_filtered])
 
     isi = np.array([])
     for trial in spike_times:
         isi_trial =  np.diff(trial,1)
         isi = np.concatenate((isi,isi_trial),axis=0)
-    
-    if plot_raster:
-        fig, axs = plt.subplots(1,2)
-        fig.suptitle('Generated Poisson Spike Train Data')
 
-        axs[0].eventplot(spike_times)
-        axs[0].set_title('Spike Train')
-        axs[0].set_xlabel('time (s)')
-        axs[0].set_ylabel('Trials')
-        
-        
-        axs[1].hist(isi, bins=int(max(isi)/0.01), density=True)
-        axs[1].set_title('Interstimulus Interval')
-        axs[1].set_xlabel('ISI (s)')
-        axs[1].set_ylabel('Frequency')
+    acfr = Fs * kernel_convoluted_firing_rate(spiketrain_filtered, 0.1, kernel='alpha')[0]
+
+    if plot_raster:
+        fig = plt.figure(1)
+        fig.suptitle('Generated Poisson Spike Train Data')
+        gridspec.GridSpec(3,2)
+
+        plt.subplot2grid((3,2), (0,0), colspan=1, rowspan=1)
+        plt.title('Spike Train')
+        plt.xlabel('Time')
+        plt.ylabel('Trials')
+        plt.eventplot(spike_times)
+
+        # small subplot 1
+        plt.subplot2grid((3,2), (0,1), colspan=1, rowspan=1)
+        plt.title('Inter Spike Interval Distribution')
+        plt.xlabel('ISI (second)')
+        plt.ylabel('Count')
+        plt.hist(isi, bins=int(max(isi)/0.005), density=True)
+
+        # small subplot 2
+        plt.subplot2grid((3,2), (1,0), colspan=2, rowspan=1)
+        plt.title('Spike Train')
+        plt.xlabel('Time')
+        plt.ylabel('Spikes')
+        plt.plot(spiketrain_filtered, color='b')
+
+        # small subplot 2
+        plt.subplot2grid((3,2), (2,0), colspan=2, rowspan=1)
+        plt.title('Alpha convoluted firing rate')
+        plt.xlabel('Time')
+        plt.ylabel('ACFR (Hz)')
+        plt.plot(acfr, color='k')
+
         fig.show()
 
-    return spikes, spike_times, isi, time
+
+
+    return spiketrain_filtered, spike_times, isi, time, acfr
+
 
 def kernel_convoluted_firing_rate(spiketrain, sigma, kernel='alpha'):
+    '''
+    Reference: 1.2 Spike Trains and Firing Rates, Computational Neuroscience, Dayan and Abbott, page 12-13 
+    '''
     size = 6*sigma
-    x    = np.linspace(-size/2, size/2, size)
+    tau  = np.linspace(-size/2, size/2, int(2e4*size) )
     alpha= 1/sigma
 
-    alphafilt = ( ((alpha^2)*x ) * np.exp(-alpha*x) )
+    alphafilt = ( ((alpha**2)*tau ) * np.exp(-alpha*tau) )
+    # rectification
     alphafilt = np.where(alphafilt<0, 0, alphafilt)
     alphafilt = alphafilt / np.sum(alphafilt)
 
-    kcfr = np.convolve(spiketrain, alphafilt)
+    kcfr = np.convolve(spiketrain, alphafilt, mode="valid")
 
-    return kcfr
+    return kcfr, alphafilt
 
 
 def get_event_times(spike_matrix, Fs=2e4):
@@ -384,31 +431,6 @@ def get_event_times(spike_matrix, Fs=2e4):
         spike_times.append(spike_locs)  
     return spike_times
 
-def join_training_sets(directory):
-    file_suffix = "_trainingSet_longest.h5"
-    trainingSetFiles = list( directory.glob('*'+file_suffix) )
-
-    df = pd.DataFrame()
-    for trainingSetFile in trainingSetFiles:
-        pd.concat()
-
-
-def _signal_sign_cf(clampingPot, clamp):
-    '''
-    conversion function to convert CC/VC clamping potential values
-    to inverting factors for signal. For VC recordings, -70mV clamp means EPSCs
-    that are recorded as negative deflections. To get peaks, we need to invert 
-    the signal and take max. 
-    But for CC recordings, EPSPs are positive deflections and therefore, no inversion
-    is needed.
-    In data DF, clamping potential for VC and CC is stored as -70/0 mV and clamp is stored
-    as 0 for CC and 1 for VC.
-
-    VC                  CC
-    -70 -> E -> -1      -70 -> E -> +1
-    0   -> I -> +1
-    '''    
-    return (1+(clampingPot/35))**clamp
 
 def _find_fpr(stimFreq_array, res_window_matrix):
     
@@ -428,4 +450,33 @@ def _find_fpr(stimFreq_array, res_window_matrix):
 
     return fpr, fpr_time
 
-        
+
+def generate_optical_stim_waveform():
+    spikedata = poisson_train(30, 1, 10, plot_raster=True)
+
+    Fs = 2e4
+    spiketrain = spikedata[0]
+    kept_spike_locs = np.where(spiketrain)[0]
+    pulse_width = 0.002 # ms
+    for loc in kept_spike_locs:
+        spiketrain[loc:loc+(int(pulse_width*Fs))] = 1
+    
+    total_sweep_duration = 12 #seconds
+    full_sweep = np.zeros(int(12*Fs))
+
+    zeroth_pulse = epoch_to_datapoints([0.2, 0.202], Fs)
+    train_epoch  = epoch_to_datapoints([0.5,  10.5], Fs) 
+    full_sweep[zeroth_pulse] = 1
+    full_sweep[train_epoch] = spiketrain
+
+    fig2 = plt.figure(2)
+    plt.plot(full_sweep)
+    fig2.show()
+
+    fig3 = plt.figure(3)
+    plt.plot(spikedata[-1])
+    fig3.show()
+
+    output_trace = np.concatenate([[full_sweep]]*5, axis = 0).T
+
+    np.savetxt("spike_train_12s_5sweeps.txt", output_trace)

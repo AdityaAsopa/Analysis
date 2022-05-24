@@ -125,7 +125,7 @@ class Neuron:
                               6:  "MeanBaseline", 
                               7:  "ClampingPotl", 
                               8:  "Clamp", 
-                              9:  "GABAzineFlag", 
+                              9:  "Condition", 
                               10: "AP", 
                               11: "InputRes", 
                               12: "Tau", 
@@ -133,8 +133,8 @@ class Neuron:
                               }, inplace = True )
         df = df.astype({"exptID": 'int32', "sweep":"int32", "StimFreq": "int32", "numSq": 'int32'}, errors='ignore')
         df = df.loc[df["StimFreq"] != 0]
-        df.replace({'Clamp'     : { 0.0 :   'CC', 1.0 : 'VC'  }})
-        df.replace({'Condition' : { 0.0 : 'CTRL', 1.0 : 'GABA'}})
+        df.replace({'Clamp'     : { 0.0 :   'CC', 1.0 : 'VC'  }}, inplace=True)
+        df.replace({'Condition' : { 0.0 : 'CTRL', 1.0 : 'GABA'}}, inplace=True)
         total_sweeps = df.shape[0]
 
         expt_ids = np.unique(df['exptID'])
@@ -161,13 +161,15 @@ class Neuron:
 
         fpt = np.array([first_pulse_start]*(total_sweeps))
 
-        _ss = _signal_sign_cf(df.iloc[:,7], df.iloc[:,8])
+        # _ss = _signal_sign_cf(df.iloc[:,7], df.iloc[:,8])
+        # res_traces = (df.iloc[:, first_pulse_start_datapoint: first_pulse_start_datapoint+1000]).multiply(_ss, axis=0)
 
-        res_traces = (df.iloc[:, first_pulse_start_datapoint: first_pulse_start_datapoint+1000]).multiply(_ss, axis=0)
+        res_traces = (df.iloc[:, first_pulse_start_datapoint: first_pulse_start_datapoint+1000])
+        stimFreq_array  = df.iloc[:,2]
+        clamp_pot_array = df.iloc[:,7]
+        clamp_array     = df.iloc[:,8]
 
-        stimFreq_array = df.iloc[:,2]
-
-        peakres, peakres_time = _find_fpr(stimFreq_array, res_traces)
+        peakres, peakres_time = _find_fpr(clamp_pot_array, clamp_array, stimFreq_array, res_traces)
         peakres_time = peakres_time + first_pulse_start
 
         # Assemble dataframe
@@ -239,7 +241,6 @@ class Neuron:
             
             pstimes = (Fs*pulseStartTimes).astype(int)
             stimEnd = pstimes[-1]+int(Fs*exptObj.IPI)
-            # pdTrace[pstimes] = 1.0
             numSquares = len(exptObj.stimCoords[sweep+1])
             sqSet = exptObj.stimCoords[sweep+1]
             patternID = pattern_index.get_patternID(sqSet)
@@ -259,8 +260,9 @@ class Neuron:
             elif exptObj.clamp == 'CC':
                 clampPotential = -70
 
-            gabazineInBath = 1 if (exptObj.condition == 'Gabazine') else 0
+            Condition = 1 if (exptObj.condition == 'Gabazine') else 0
             clamp = 0 if (exptObj.clamp == 'CC') else 1
+
             ap    = 0
             if exptObj.clamp == 'CC' and np.max(sweepTrace[4460:stimEnd])>30:
                 ap = 1
@@ -274,7 +276,7 @@ class Neuron:
                                    np.round(exptObj.baselineTrend[sweep][0],1),
                                    clampPotential,
                                    clamp,
-                                   gabazineInBath,
+                                   Condition,
                                    ap,
                                    np.round(IR[sweep] , 1),
                                    np.round(tau[sweep], 3),

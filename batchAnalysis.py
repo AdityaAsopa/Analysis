@@ -1,5 +1,6 @@
 import os
 import sys
+import datetime
 import pathlib
 import argparse
 import importlib
@@ -115,9 +116,16 @@ def suppress_stdout_stderr():
             yield (err, out)
 
 if not args.quiet:
+    start_time = datetime.datetime.now()
+    print("Start:", str(start_time))
     main(args)
 else:
     with suppress_stdout_stderr():
         main(args)
 
 print('All Done!')
+
+stop_time = datetime.datetime.now()
+print("Start:", str(start_time))
+print("Stop:", str(stop_time))
+print("Batch analysis took {} to run".format(stop_time-start_time) )

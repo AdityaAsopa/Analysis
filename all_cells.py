@@ -41,7 +41,7 @@ other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\"]
 all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
 
 ##############################################################################
-NCBS_data_path  = Path( r"\\sstorage.ncbs.res.in\adityaa\\" )
+NCBS_data_path  = Path( r"\\storage.ncbs.res.in\adityaa\\" )
 cloud_data_path = Path( "C:\\Users\\adity\\OneDrive\\NCBS\\" )
 rig_data_path   = Path( "C:\\Users\\aditya\\OneDrive\\NCBS\\" )
 laddu_data_path = Path( "C:\\Users\\user\\OneDrive\\NCBS\\")
