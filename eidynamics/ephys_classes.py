@@ -12,8 +12,9 @@ from PIL import Image, ImageOps
 # EI Dynamics module
 from eidynamics.abf_to_data         import abf_to_data
 from eidynamics.expt_to_dataframe   import expt2df
+from eidynamics.spiketrain          import spiketrain_analysis
 from eidynamics.ephys_functions     import IR_calc, tau_calc
-from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _signal_sign_cf, _find_fpr
+from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _find_fpr
 from eidynamics                     import pattern_index
 from eidynamics.errors              import *
 
@@ -102,6 +103,7 @@ class Neuron:
             if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
                 c,ei,f = expt[1:4]
                 FreqExptObj = expt[-1]
+                print(exptID)
                 for k,v in self.spotExpected.items():
                     if [c,ei] == v[:2]:
                         spotExpectedDict1sq = v[-1]
@@ -110,9 +112,10 @@ class Neuron:
         
         # if len(self.spotExpected)>0:
         for exptID,expt in self.experiments.items():
-            exptObj = expt[-1]
-            print('Adding {} to training set.'.format(exptID))
-            self.add_expt_training_set_long(exptObj)
+            if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
+                exptObj = expt[-1]
+                print('Adding {} to training set.'.format(exptID))
+                self.add_expt_training_set_long(exptObj)
 
         
         df = pd.DataFrame(data=self.trainingSetLong)        
@@ -169,7 +172,8 @@ class Neuron:
         clamp_pot_array = df.iloc[:,7]
         clamp_array     = df.iloc[:,8]
 
-        peakres, peakres_time = _find_fpr(clamp_pot_array, clamp_array, stimFreq_array, res_traces)
+        peakres, peakres_time = _find_fpr(stimFreq_array, res_traces)
+        # peakres, peakres_time = _find_fpr(clamp_pot_array, clamp_array, stimFreq_array, res_traces)
         peakres_time = peakres_time + first_pulse_start
 
         # Assemble dataframe
@@ -318,8 +322,8 @@ class Neuron:
         # Get the synaptic delay from the average responses of all the spots
         avgResponseStartTime,_,_    = PSP_start_time(cell,clamp,EorI,stimStartTime=exptObj1sq.stimStart,Fs=Fs)   # 0.2365 seconds
         avgSecondResponseStartTime = avgResponseStartTime + IPI # 0.2865 seconds
-        avgSynapticDelay        = avgResponseStartTime-exptObj1sq.stimStart # ~0.0055 seconds
-
+        avgSynapticDelay        = 0.0055#avgResponseStartTime-exptObj1sq.stimStart # ~0.0055 seconds
+        print(avgResponseStartTime)
         spotExpectedDict        = {}
 
         for i in range(len(spotCoords)):
@@ -376,6 +380,7 @@ class Neuron:
                 T2 = t1+int(0.4*Fs)
                 window1 = range(t1,t2)
                 window2 = range(t1,T2)
+                print(i, frameID, avgSynapticDelay, t1,t2, T2)
                 expectedResToPulses[window1] += firstPulseExpected[:len(window1)]
                 
                 fittedResToPulses[window2]   += firstPulseFitted[:len(window2)]
@@ -542,6 +547,9 @@ class Experiment:
         elif self.exptType in ['1sq20Hz','FreqSweep','LTMRand','LTMSeq','convergence']:
             # Call a function to analyze the freq dependent response
             return self.FreqResponse(neuron,exptParams)
+        elif self.exptType in ['SpikeTrain']:
+            # Call a function to analyze the freq dependent response
+            return self.SpikeTrainResponse(neuron,exptParams)
 
     def sealTest(self):
         # calculate access resistance from data, currently not implemented
@@ -557,6 +565,10 @@ class Experiment:
         # there can be multiple kinds of freq based experiments and their responses.
         return expt2df(self,neuron,exptParams)  # this function takes expt and converts to a dataframe of responses
 
+    def SpikeTrainResponse(self, neuron, exptParams):
+        # Analysis of cell response to a invivo like poisson spike train
+        return spiketrain_analysis(self, neuron, exptParams)
+    
     def exptParamsParser(self,ep):
         try:
             self.dataFile           = ep.datafile
