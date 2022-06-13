@@ -2,7 +2,9 @@ from pathlib import Path
 import sys
 
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-04-18_G749\\7492\\",
+all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-06-03_GrikAA014\\141\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\22-06-01_GrikAA011\\111\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\22-04-18_G749\\7492\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-04-18_G749\\7491\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-31_G620\\6201\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-12-28_G630\\6301\\",
@@ -32,7 +34,8 @@ all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-04-18_G749\\7492\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-04_G233\\2331\\"]
 
 
-test_cells = [".\\testExamples\\testCells\\5211\\",
+test_cells = [".\\testExamples\\testCells\\111\\",
+              ".\\testExamples\\testCells\\5211\\",
               ".\\testExamples\\testCells\\3882\\"]
 
 # convergence expt, not yet explored

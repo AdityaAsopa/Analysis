@@ -47,6 +47,7 @@ class Neuron:
         self.singleSpotDataParsed= False
         self.spotStimFreq       = 20
         self.trainingSetLong    = np.zeros((1,80029))
+        self.spikeTrainSet      = []
 
     def cell_params_parser(self,ep):
         """
@@ -190,7 +191,7 @@ class Neuron:
         df2.drop_duplicates(inplace=True)
         self.data = df2
         
-    def add_expt_training_set_long(self,exptObj):
+    def add_expt_training_set_long(self, exptObj):
         '''
         # Field ordering:
             # 0  datafile index (expt No., last 2 digits, 0-99. For ex. 32 for 2022_04_18_0032_rec.abf)
@@ -210,7 +211,8 @@ class Neuron:
             # 28 AP : 1 if yes, 0 if no
             # 29:20029 Sample points for LED
             # 20029:40029 Sample points for ephys recording.
-            # 40029:60029 Expected response
+            # 40029:60029 1sq based Expected response
+            # 60029:80029 Field response
         '''
         tracelength    = 20000
         
@@ -298,7 +300,7 @@ class Neuron:
 
         return self
 
-    def make_spot_profile(self,exptObj1sq):
+    def make_spot_profile(self, exptObj1sq):
         if not exptObj1sq.exptType == '1sq20Hz':
             raise ParameterMismatchError(message='Experiment object has to be a 1sq experiment')
 
@@ -346,13 +348,13 @@ class Neuron:
 
         return spotExpectedDict
 
-    def find_frame_expected(self,exptObj,spotExpectedDict_1sq):
+    def find_frame_expected(self, exptObj, spotExpectedDict_1sq):
         stimFreq        = exptObj.stimFreq
         IPI             = exptObj.IPI # IPI of current freq sweep experiment
         numPulses       = exptObj.numPulses
         numSweeps       = exptObj.numSweeps
         numRepeats      = exptObj.numRepeats
-        cell            = exptObj.extract_trial_averaged_data(channels=[0])[0][:,:20000] # 8 x 40000
+        cell            = exptObj.extract_trial_averaged_data(channels=[0])[0][:,:20000] # 8 x 40000 #TODO Hardcoded variable: slice length
         stimCoords      = dict([(k, exptObj.stimCoords[k]) for k in range(1,1+int(numSweeps/numRepeats))]) # {8 key dict}
         stimStart       = exptObj.stimStart
         Fs              = exptObj.Fs
@@ -380,7 +382,7 @@ class Neuron:
                 T2 = t1+int(0.4*Fs)
                 window1 = range(t1,t2)
                 window2 = range(t1,T2)
-                print(i, frameID, avgSynapticDelay, t1,t2, T2)
+                # print(i, frameID, avgSynapticDelay, t1,t2, T2)
                 expectedResToPulses[window1] += firstPulseExpected[:len(window1)]
                 
                 fittedResToPulses[window2]   += firstPulseFitted[:len(window2)]
@@ -391,7 +393,16 @@ class Neuron:
         
         return frameExpected
 
-    def add_cell_to_xl_db(self,excel_file):
+    def find_sweep_expected(self, exptObj):
+        # sweep_expected_array = []
+        # cell = exptObj.extract_channelwise_data(exclude_channels=[1,2,3,'Cmd','Time'])
+
+        # first_pulse_time = 0
+
+        # return sweep_expected_array
+        pass
+    
+    def add_cell_to_xl_db(self, excel_file):
         # excel_file = os.path.join(project_path_root,all_cells_response_file)
         try:
             tempDF  = pd.read_excel(excel_file)
@@ -403,7 +414,7 @@ class Neuron:
         outDF.to_excel(excel_file) #(all_cells_response_file)
         print("Cell experiment data has been added to {}".format(excel_file))
 
-    def save_training_set(self,directory):
+    def save_training_set(self, directory):
         # celltrainingSetLong = self.trainingSetLong
         filename = "cell"+str(self.cellID)+"_trainingSet_longest.h5"
         trainingSetFile = os.path.join(directory,filename)

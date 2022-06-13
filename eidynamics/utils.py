@@ -133,7 +133,6 @@ def find_resposne_start(x, method='stdDev'):
         stdX    = np.std(y[:3000])
         movAvgX = moving_average(y,10)
         z       = np.where((movAvgX > 5. * stdX) & (movAvgX > 1.1*np.max(y[:3999])))
-        # print(5*stdX)
         # z       = find_peaks(movAvgX, height=10.0*stdX, distance=40)
         return z[0]-10
 
@@ -324,7 +323,6 @@ def cut_trace(trace1d, startpoint, numPulses, frequency, fs, prePulsePeriod = 0.
 
     for i in range(numPulses):
         t1,t2 = pulseStartTimes[i],pulseEndTimes[i]
-        print(t1,t2)
         trace2d[i,:] = trace1d[t1:t2]
 
     return trace2d

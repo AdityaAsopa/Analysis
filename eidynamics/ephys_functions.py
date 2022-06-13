@@ -229,7 +229,7 @@ def extract_pulse_response_features(response_trace,stim_trace,stim_start, eP, Fs
         # time to peak
         # ti = (np.where(pulseRes_Abs==pi)[0][0] - ipi/2 )/Fs/1000
         p,pp = signal.find_peaks(pulseRes_Abs,height=0.9*pi,distance=500)
-        print(ipi, t0,t1,t2, p,pp)
+        
         ti = p[0]/Fs - ipi/2
         # Area under the curve
         ai = np.trapz(pulseRes_Abs)
@@ -247,7 +247,7 @@ def extract_pulse_response_features(response_trace,stim_trace,stim_start, eP, Fs
 
         si  = p90-p10 / t90-t10
         di=0
-        print(pi, ai, ti, di, si)
+
         df.loc[Pn] = {'peak':pi,'auc':ai,'time_to_peak':ti,'delay':di,'slope':si}
 
     return df
