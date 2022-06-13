@@ -10,3 +10,5 @@ __pycache__
 *temp*.*
 *copy*.*
 *test*.*
+*.h5
+*.xlsx
