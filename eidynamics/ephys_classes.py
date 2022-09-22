@@ -295,9 +295,12 @@ class Neuron:
             outputSet3[sweep,:] = fieldTrace
 
         newTrainingSet = np.concatenate((inputSet,outputSet1,outputSet2,outputSet3),axis=1)
-        oldTrainingSet = self.trainingSetLong
-        self.trainingSetLong = np.concatenate((newTrainingSet,oldTrainingSet),axis=0)
-
+        try:
+            oldTrainingSet = self.trainingSetLong
+            self.trainingSetLong = np.concatenate((newTrainingSet,oldTrainingSet),axis=0)
+        except AttributeError:
+            self.trainingSetLong = newTrainingSet
+            
         return self
 
     def make_spot_profile(self, exptObj1sq):

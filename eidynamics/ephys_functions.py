@@ -33,12 +33,15 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
             time        = s['Time']
 
             pulse_step_time = e2dp( [IRchargingPeriod[0]-0.001, IRchargingPeriod[0]+0.001], Fs)
-
+            
+            # minimum because the Vcmd pulse is hyperpolarizing
             Vcmd   = np.min(cmdTrace[pulse_step_time])
             Itrans = np.min(resTrace[pulse_step_time])
 
             Ra_eff = np.round(1000* (Vcmd) / (Itrans), 1)
             tau_trend.append(Ra_eff)
+
+        Cm = tau_trend / Ra_eff
 
     elif clamp=='CC':
         for s in recordingData.values():
@@ -71,7 +74,9 @@ def tau_calc(recordingData, IRBaselineEpoch, IRchargingPeriod, IRsteadystatePeri
     
     tau_trend = np.array(tau_trend)
 
-    return tau_trend, tau_flag, Cm
+    sweepwise_tau_flag = np.logical_or(tau_trend<5, tau_trend>40)
+
+    return tau_trend, sweepwise_tau_flag, tau_flag, Cm
 
 
 def IR_calc(recordingData,clamp,IRBaselineEpoch,IRsteadystatePeriod,Fs=2e4):
@@ -109,11 +114,11 @@ def IR_calc(recordingData,clamp,IRBaselineEpoch,IRsteadystatePeriod,Fs=2e4):
         if (np.max(IRtrend) - np.min(IRtrend)) / np.mean(IRtrend) > 0.2:
             IRflag = 1
         # OR
-        if np.max(IRtrend)>300 or np.min(IRtrend)<= 0:  #putting a hard coded range of acceptable IR
+        if np.max(IRtrend)>300 or np.min(IRtrend)<= 50:  #putting a hard coded range of acceptable IR
             IRflag = 1
     IRtrend = np.array(IRtrend)
-    sweepwise_irtrend = np.logical_or(IRtrend<15, IRtrend>400) 
-    return IRtrend, sweepwise_irtrend, IRflag
+    sweepwise_IRflag = np.logical_or(IRtrend<50, IRtrend>200) 
+    return IRtrend, sweepwise_IRflag, IRflag
 
 
 def pulseResponseCalc(recordingData,eP):
@@ -124,19 +129,19 @@ def pulseResponseCalc(recordingData,eP):
 
     APflag          = bool(0)
 
+    stimfreq        = eP.stimFreq  # pulse frequency
+    Fs              = eP.Fs
+    IPI_samples     = int(Fs * (1 / stimfreq))          # inter-pulse interval in datapoints
+    try:
+        firstPulseStart = int(Fs * eP.pulseTrainEpoch[0])
+    except:
+        firstPulseStart = int(Fs * eP.opticalStimEpoch[0])
+
     for sweepID,sweep in recordingData.items():
         ch0_cell        = sweep[0]
         ch1_frameTTL    = sweep[1]
         ch2_photodiode  = sweep[2]
 
-        stimfreq        = eP.stimFreq  # pulse frequency
-        Fs              = eP.Fs
-        IPI_samples     = int(Fs * (1 / stimfreq))          # inter-pulse interval in datapoints
-        try:
-            firstPulseStart = int(Fs * eP.pulseTrainEpoch[0])
-        except:
-            firstPulseStart = int(Fs * eP.opticalStimEpoch[0])
-        
         res             = []
         t1              = firstPulseStart
         for i in range(eP.numPulses):
@@ -153,7 +158,7 @@ def pulseResponseCalc(recordingData,eP):
             aucRes = np.trapz(res,axis=1)
             PeakResponses.append(np.max(maxRes))
             
-            df_peaks.loc[sweepID + 1, [1,2,3,4,5,6,7,8]] = maxRes
+            df_peaks.loc[sweepID + 1, [1,2,3,4,5,6,7,8]] = maxRes #sweep number should start at 1 in the stored data, not from 0
             
             for resSlice in res:
                 maxVal = np.max(resSlice)
@@ -187,8 +192,8 @@ def pulseResponseCalc(recordingData,eP):
             df_peaks.loc[sweepID + 1, [17,18,19,20,21,22,23,24]] = aucRes
 
     df_peaks.astype({"AP":'bool'})    
-    df_peaks["PeakResponse"]                     = PeakResponses
-    df_peaks["datafile"]                         = eP.datafile
+    df_peaks["PeakResponse"]    = PeakResponses
+    df_peaks["datafile"]        = eP.datafile
 
     return df_peaks, APflag
 

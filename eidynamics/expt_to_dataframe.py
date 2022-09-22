@@ -7,7 +7,7 @@ from eidynamics import ephys_functions as ephysFunc
 
 
 def expt2df(expt,neuron,eP):
-    '''read experiment type and returns experiment object'''
+    '''Returns dataframe for FreqSweep type of experiments'''
     numSweeps       = len(expt.stimCoords)
     numRepeats      = eP.repeats
 
@@ -59,7 +59,7 @@ def expt2df(expt,neuron,eP):
     expt.Flags.update({"IRFlag": IRflag})
 
     '''Ra'''
-    df["Tau"],tau_flag,_ = ephysFunc.tau_calc(expt.recordingData,eP.IRBaselineEpoch,eP.IRchargingPeriod,eP.IRsteadystatePeriod,clamp=eP.clamp)
+    df["Tau"],df["IRFlag"],tau_flag,_ = ephysFunc.tau_calc(expt.recordingData,eP.IRBaselineEpoch,eP.IRchargingPeriod,eP.IRsteadystatePeriod,clamp=eP.clamp)
     expt.Flags.update({"TauFlag": tau_flag})
 
     '''EPSP peaks'''
