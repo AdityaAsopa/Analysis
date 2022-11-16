@@ -12,3 +12,4 @@ __pycache__
 *test*.*
 *.h5
 *.xlsx
+*.cpython*.pyc
