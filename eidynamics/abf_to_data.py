@@ -1,15 +1,19 @@
 import sys
-import pyabf
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pyabf
 
 # tag FIXME HACK
 # if the module is imported 
 try: 
-    from eidynamics.utils import epoch_to_datapoints, extract_channelwise_data, filter_data, plot_abf_data
+    from eidynamics.utils import (epoch_to_datapoints,
+                                  extract_channelwise_data, filter_data,
+                                  plot_abf_data)
 # when the module is run from command line
 except ModuleNotFoundError:
-    from utils            import epoch_to_datapoints, extract_channelwise_data, filter_data, plot_abf_data
+    from utils import (epoch_to_datapoints, extract_channelwise_data,
+                       filter_data, plot_abf_data)
 
 def abf_to_data(abf_file,exclude_channels=[],
                 baseline_criterion=0.1, sweep_baseline_epoch=[0, 0.2], baseline_subtraction=True,
@@ -110,13 +114,15 @@ def abf_to_data(abf_file,exclude_channels=[],
     # print(abf.sweepC) # displays command waveform (DAC)
 
 def _baseline_subtractor(sweep, sweep_baseline_epoch, sampling_freq, subtract_baseline=True, method='percentile'):
-    baselineWindow = epoch_to_datapoints(sweep_baseline_epoch,sampling_freq)
     '''
     Methods to calculate baseline:
         Method 1: mean, Mean of the baseline epoch, default, standard, and preferred
         Method 2: variance, Mean at least rolling variance in the sweep, not right as baseline should be from a predefined epoch
         Method 3: percentile, 10%ile value from baseline epoch, Upi's suggestion, not sure how right is that to use
     '''
+    baselineWindow = epoch_to_datapoints(sweep_baseline_epoch,sampling_freq)
+    sweepBaseline  = 0
+    
     if   method == 'mean':
         sweepBaseline  = np.mean(sweep[baselineWindow])
     elif method == 'variance':
