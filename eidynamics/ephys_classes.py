@@ -10,12 +10,14 @@ from scipy import signal
 from PIL import Image, ImageOps
 
 # EI Dynamics module
-from eidynamics.abf_to_data         import abf_to_data
+from eidynamics                     import abf_to_data
 from eidynamics.expt_to_dataframe   import expt2df
 from eidynamics.spiketrain          import spiketrain_analysis
 from eidynamics.ephys_functions     import IR_calc, tau_calc
-from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _find_fpr
+from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _find_fpr, plot_abf_data
 from eidynamics                     import pattern_index
+from eidynamics                     import fit_PSC
+from eidynamics                     import utils
 from eidynamics.errors              import *
 
 
@@ -94,23 +96,33 @@ class Neuron:
 
         return exptDict
 
-    def generate_expected_traces(self):
-        for exptID,expt in self.experiments.items():
-            if '1sq20Hz' in expt:
-                _1sqSpotProfile  = self.make_spot_profile(expt[-1])
-                _1sqExpectedDict = {exptID:[expt[1], expt[2], expt[3], _1sqSpotProfile]}
-                self.spotExpected.update(_1sqExpectedDict)
-        for exptID,expt in self.experiments.items():
-            if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
-                c,ei,f = expt[1:4]
-                FreqExptObj = expt[-1]
-                print(exptID)
-                for k,v in self.spotExpected.items():
-                    if [c,ei] == v[:2]:
-                        spotExpectedDict1sq = v[-1]
-                        frameExpectedDict    = self.find_frame_expected(FreqExptObj,spotExpectedDict1sq)
-                        self.expectedResponse[exptID] = frameExpectedDict
+    def generate_expected_traces(self, method='1sq'):
+        # Step 1: Generate frame expected traces and assign them to self.expectedResponse[exptID]
+        if method == '1sq':
+            for exptID,expt in self.experiments.items():
+                if '1sq20Hz' in expt:
+                    _1sqSpotProfile  = self.make_spot_profile(expt[-1])
+                    _1sqExpectedDict = {exptID:[expt[1], expt[2], expt[3], _1sqSpotProfile]}
+                    self.spotExpected.update(_1sqExpectedDict)
+            for exptID,expt in self.experiments.items():
+                if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
+                    c,ei,f = expt[1:4]
+                    FreqExptObj = expt[-1]
+                    for k,v in self.spotExpected.items():
+                        if [c,ei] == v[:2]:
+                            spotExpectedDict1sq = v[-1]
+                            frameExpectedDict    = self.find_frame_expected(FreqExptObj,spotExpectedDict1sq)
+                            self.expectedResponse[exptID] = frameExpectedDict
         
+        elif method == 'sweep_fit':
+            for exptID,expt in self.experiments.items():
+                print("Generating fits for experiment {}".format(exptID))
+                if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
+                    sweepExpectedDict = self.find_sweep_expected(expt[-1])
+                    self.expectedResponse[exptID] = sweepExpectedDict
+                    
+        
+        # Step 2: Take the expected response dict and make a training set for the whole neuron
         # if len(self.spotExpected)>0:
         for exptID,expt in self.experiments.items():
             if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
@@ -196,43 +208,46 @@ class Neuron:
         # Field ordering:
             # 0  datafile index (expt No., last 2 digits, 0-99. For ex. 32 for 2022_04_18_0032_rec.abf)
             # 1  sweep No.
-            # 2  Stim Freq : 10, 20, 30, 40, 50, 100 Hz
-            # 3  numSquares : 1, 5, 7, 15 sq
-            # 4  intensity : 100 or 50%
-            # 5  pulse width : 2 or 5 ms
-            # 6  meanBaseline : mV
-            # 7  clamp potential: -70 or 0 mV
-            # 8  CC or VC : CC = 0, VC = 1
-            # 9  Gabazine : Control = 0, Gabazine = 1
-            # 10 IR : MOhm
-            # 11 Tau : membrane time constant (ms, for CC) & Ra_effective (MOhm, for VC)
-            # 12 pattern ID : refer to pattern ID in pattern index
-            # 13:28 coords of spots [12,13,14,15,16, 17,18,19,20,21, 22,23,24,25,26]
-            # 28 AP : 1 if yes, 0 if no
-            # 29:20029 Sample points for LED
-            # 20029:40029 Sample points for ephys recording.
-            # 40029:60029 1sq based Expected response
-            # 60029:80029 Field response
+            # 2  Stim Freq:     10, 20, 30, 40, 50, 100 Hz
+            # 3  numSquares:    1, 5, 7, 15 sq
+            # 4  intensity:     100 or 50%
+            # 5  pulse width:   2 or 5 ms
+            # 6  meanBaseline:  mV
+            # 7  clamp pot:     -70 or 0 mV
+            # 8  CC or VC:      CC = 0, VC = 1
+            # 9  Gabazine:      Control = 0, Gabazine = 1
+            # 10 IR:            MOhm
+            # 11 Tau:           membrane time constant (ms, for CC) & Ra_effective (MOhm, for VC)
+            # 12 pattern ID:    refer to pattern ID in pattern index
+            # 13:28:            coords of spots [12,13,14,15,16, 17,18,19,20,21, 22,23,24,25,26]
+            # 28 AP:            1 if yes, 0 if no
+            # 29:20029:         Sample points for LED
+            # 20029:40029:      Sample points for ephys recording.
+            # 40029:60029:      1sq based Expected response edit 22Nov22: now contains deconv fit from Upi's deconv11
+            # 60029:80029:      Field response
+            # 80029:80038:      Deconv fit P0 to P7
         '''
         tracelength    = 20000
+        sos = signal.butter(N=2, Wn=500, fs=2e4, output='sos')
         
         exptID         = exptObj.dataFile[:15]
         cellData       = exptObj.extract_channelwise_data(exclude_channels=[1,2,3,'Time','Cmd'])[0]
         pdData         = exptObj.extract_channelwise_data(exclude_channels=[0,1,3,'Time','Cmd'])[2]
         try:
             fieldData  = exptObj.extract_channelwise_data(exclude_channels=[0,1,2,'Time','Cmd'])[3]
+            fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
         except:
             print('Field channel does not exist in the recording.')
             fieldData  = np.zeros((exptObj.numSweeps,tracelength))
         
-        sos = signal.butter(N=2, Wn=500, fs=2e4, output='sos')
         cellData  = signal.sosfiltfilt(sos, cellData,  axis=1)
-        fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
-
+        
         inputSet       = np.zeros((exptObj.numSweeps,tracelength+29)) # photodiode trace
         outputSet1     = np.zeros((exptObj.numSweeps,tracelength)) # sweep Trace
         outputSet2     = np.zeros((exptObj.numSweeps,tracelength)) # fit Trace
         outputSet3     = np.zeros((exptObj.numSweeps,tracelength)) # field Trace
+        outputSet4     = np.zeros((exptObj.numSweeps,8)) # field Trace
+
         pulseStartTimes= get_pulse_times(exptObj.numPulses,exptObj.stimStart,exptObj.stimFreq)
         Fs = exptObj.Fs
 
@@ -247,17 +262,21 @@ class Neuron:
             
             pstimes = (Fs*pulseStartTimes).astype(int)
             stimEnd = pstimes[-1]+int(Fs*exptObj.IPI)
-            numSquares = len(exptObj.stimCoords[sweep+1])
-            sqSet = exptObj.stimCoords[sweep+1]
+            numSquares = len(exptObj.stimCoords[sweep][3:])
+            sqSet = exptObj.stimCoords[sweep][3:]
             patternID = pattern_index.get_patternID(sqSet)
 
             try:
-                fitTrace   = self.expectedResponse[exptID][patternID][5]
+                # fitTrace  = self.expectedResponse[exptID][patternID][5] # replaced fitted trace with trial avg trace
+                # fitTrace  = self.expectedResponse[exptID][patternID][4] 
+                fitTrace    = self.expectedResponse[exptID][sweep][4]
             except:
                 fitTrace = np.zeros(len(pdTrace))
 
+            deconv_pulse_trend = self.expectedResponse[exptID][sweep][5]
+
             coordArrayTemp = np.zeros((15))            
-            coordArrayTemp[:numSquares] = exptObj.stimCoords[sweep+1]
+            coordArrayTemp[:numSquares] = exptObj.stimCoords[sweep][3:]
 
             if exptObj.clamp == 'VC' and exptObj.EorI == 'E':
                 clampPotential = -70
@@ -293,6 +312,7 @@ class Neuron:
             outputSet1[sweep,:] = sweepTrace
             outputSet2[sweep,:] = fitTrace
             outputSet3[sweep,:] = fieldTrace
+            outputSet4[sweep,:] = deconv_pulse_trend
 
         newTrainingSet = np.concatenate((inputSet,outputSet1,outputSet2,outputSet3),axis=1)
         try:
@@ -319,29 +339,28 @@ class Neuron:
         pd                      = exptObj1sq.extract_trial_averaged_data(channels=[2])[2] # 45 x 40000
         cell                    = exptObj1sq.extract_trial_averaged_data(channels=[0])[0] # 45 x 40000
         # Get a dict of all spots
-        spotCoords              = dict([(k, exptObj1sq.stimCoords[k]) for k in range(1,1+int(exptObj1sq.numSweeps/exptObj1sq.numRepeats))])
-        
+        spotCoords              = dict([(k+1, exptObj1sq.stimCoords[k]) for k in range( 0, int(exptObj1sq.numSweeps/exptObj1sq.numRepeats))])
+
         firstPulseTime          = int(Fs*(exptObj1sq.stimStart)) # 4628 sample points
         secondPulseTime         = int(Fs*(exptObj1sq.stimStart + IPI)) # 5628 sample points
 
         # Get the synaptic delay from the average responses of all the spots
         avgResponseStartTime,_,_    = PSP_start_time(cell,clamp,EorI,stimStartTime=exptObj1sq.stimStart,Fs=Fs)   # 0.2365 seconds
-        avgSecondResponseStartTime = avgResponseStartTime + IPI # 0.2865 seconds
-        avgSynapticDelay        = 0.0055#avgResponseStartTime-exptObj1sq.stimStart # ~0.0055 seconds
-        print(avgResponseStartTime)
-        spotExpectedDict        = {}
+        avgSecondResponseStartTime  = avgResponseStartTime + IPI # 0.2865 seconds
+        avgSynapticDelay            = 0.0055    #avgResponseStartTime-exptObj1sq.stimStart # ~0.0055 seconds
+        spotExpectedDict            = {}
 
         for i in range(len(spotCoords)):
             # spotPD_trialAvg               = pd[i,int(Fs*avgResponseStartTime):int(Fs*avgSecondResponseStartTime)] # 1 x 1000
-            spotCell_trialAVG_pulse2pulse = cell[i,firstPulseTime:secondPulseTime+200]
+            spotCell_trialAVG_pulse2pulse = cell[i, firstPulseTime:secondPulseTime+200]
 
-            t                   = np.linspace(0,IPI+0.01,len(spotCell_trialAVG_pulse2pulse)) # seconds at Fs sampling
-            T                   = np.linspace(0,0.4,int(0.4*Fs)) # seconds at Fs sampling
-            popt,_              = curve_fit(delayed_alpha_function,t,spotCell_trialAVG_pulse2pulse,p0=([0.5,0.05,0.005])) #p0 are initial guesses A=0.5 mV, tau=50ms,delta=5ms
+            t                   = np.linspace(0, IPI+0.01, len(spotCell_trialAVG_pulse2pulse)) # seconds at Fs sampling
+            T                   = np.linspace(0, 0.4, int(0.4*Fs)) # seconds at Fs sampling
+            popt,_              = curve_fit(delayed_alpha_function, t, spotCell_trialAVG_pulse2pulse, p0=([0.5,0.05,0.005])) #p0 are initial guesses A=0.5 mV, tau=50ms,delta=5ms
             A,tau,delta         = popt
-            fittedSpotRes       = delayed_alpha_function(T,*popt) # 400 ms = 8000 datapoints long predicted trace from the fit for the spot, not really usable
+            fittedSpotRes       = delayed_alpha_function(T, *popt) # 400 ms = 8000 datapoints long predicted trace from the fit for the spot, not really usable
+            spotExpectedDict[spotCoords[i+1][3]] = [avgSynapticDelay, A, tau, delta, spotCell_trialAVG_pulse2pulse, fittedSpotRes]
             
-            spotExpectedDict[spotCoords[i+1][0]] = [avgSynapticDelay, A, tau, delta, spotCell_trialAVG_pulse2pulse, fittedSpotRes]
         
         all1sqAvg                     = np.mean(cell[:,firstPulseTime:secondPulseTime+200],axis=0)
         popt,_                        = curve_fit(delayed_alpha_function,t,all1sqAvg,p0=([0.5,0.05,0.005])) #p0 are initial guesses A=0.5 mV, tau=50ms,delta=5ms
@@ -352,28 +371,33 @@ class Neuron:
         return spotExpectedDict
 
     def find_frame_expected(self, exptObj, spotExpectedDict_1sq):
+        '''
+        generates expected response trace for a sweep by summing up the responses from
+        1sq spot that make the N-sq frame corresponding to that sweep
+        '''
+        print("finding frame expected for: {}".format(exptObj))
         stimFreq        = exptObj.stimFreq
         IPI             = exptObj.IPI # IPI of current freq sweep experiment
         numPulses       = exptObj.numPulses
         numSweeps       = exptObj.numSweeps
         numRepeats      = exptObj.numRepeats
         cell            = exptObj.extract_trial_averaged_data(channels=[0])[0][:,:20000] # 8 x 40000 #TODO Hardcoded variable: slice length
-        stimCoords      = dict([(k, exptObj.stimCoords[k]) for k in range(1,1+int(numSweeps/numRepeats))]) # {8 key dict}
+        stimCoords      = dict([(k, exptObj.stimCoords[k-1]) for k in range(1,1+int(numSweeps/numRepeats))]) # {8 key dict}
         stimStart       = exptObj.stimStart
         Fs              = exptObj.Fs
-    
         frameExpected   = {}
-        for i in range(len(stimCoords)):
-            coordsTemp = stimCoords[i+1] # nd array of spot coords
+
+        for k,v in stimCoords.items():
+            coordsTemp = v[3:] # nd array of spot coords
             frameID    = pattern_index.get_patternID(coordsTemp)
             numSq      = len(coordsTemp)
             firstPulseExpected = np.zeros((int(Fs*(IPI+0.01))))
             firstPulseFitted   = np.zeros((int(Fs*(0.4))))# added 0.01 second = 10 ms to IPI, check line 41,43,68,69
             
-            for spot in coordsTemp:            
-                spotExpected        = spotExpectedDict_1sq[spot][4]
-                spotFitted          = spotExpectedDict_1sq['1sqAvg'][5]
-                firstPulseExpected  += spotExpected[:len(firstPulseExpected)]
+            for spot in coordsTemp:                            
+                spotExpected        = spotExpectedDict_1sq[spot][4] # raw traces avgd across trials, not fitted
+                spotFitted          = spotExpectedDict_1sq['1sqAvg'][5] # all 1sq traces across all spots, all trials, avgd and then fitted
+                firstPulseExpected  += spotExpected[:len(firstPulseExpected)] # expected summation of all spot responses making a N-sq frame
                 firstPulseFitted    += spotFitted[:len(firstPulseFitted)]
             avgSynapticDelay    = spotExpectedDict_1sq[spot][0]
             expectedResToPulses = np.zeros(10000+len(cell[0,:]))
@@ -386,7 +410,7 @@ class Neuron:
                 window1 = range(t1,t2)
                 window2 = range(t1,T2)
                 # print(i, frameID, avgSynapticDelay, t1,t2, T2)
-                expectedResToPulses[window1] += firstPulseExpected[:len(window1)]
+                expectedResToPulses[window1] += firstPulseExpected[:len(window1)] # expected trace given repeated pulses of the same frame
                 
                 fittedResToPulses[window2]   += firstPulseFitted[:len(window2)]
                 t1 = t1+int(Fs*IPI)
@@ -397,13 +421,23 @@ class Neuron:
         return frameExpected
 
     def find_sweep_expected(self, exptObj):
-        # sweep_expected_array = []
-        # cell = exptObj.extract_channelwise_data(exclude_channels=[1,2,3,'Cmd','Time'])
+        sweepExpectedDict = {}
+        freq = exptObj.stimFreq
+        fit_slice = utils.epoch_to_datapoints(exptObj.opticalStimEpoch, Fs=exptObj.Fs)
+        for s in range(exptObj.numSweeps):
+            print(s)
+            time = exptObj.recordingData[s]['Time'][:20000]
+            cell0= exptObj.recordingData[s][0][:20000]
+            if exptObj.exptType == '1sq20Hz':
+                x = np.zeros((20000))
+                y = np.zeros((8))
+            else:
+                fits = fit_PSC.main(time, cell0, freq, show_plots=False)
+                x = fits['dfit']
+                y = fits['deconv']
+            sweepExpectedDict[s] = ['numSq', freq, exptObj.stimIntensity, exptObj.pulseWidth, x, y]
 
-        # first_pulse_time = 0
-
-        # return sweep_expected_array
-        pass
+        return sweepExpectedDict
     
     def add_cell_to_xl_db(self, excel_file):
         # excel_file = os.path.join(project_path_root,all_cells_response_file)
@@ -478,14 +512,16 @@ class Experiment:
 
         self.Flags          = {"IRFlag":False,"APFlag":False,"NoisyBaselineFlag":False,"TauChangeFlag":False}
         datafile            = os.path.abspath(datafile)
-        data                = abf_to_data(datafile,
+        data                = abf_to_data.abf_to_data(datafile,
                                           baseline_criterion=exptParams.baselineCriterion,
                                           sweep_baseline_epoch=exptParams.sweepBaselineEpoch,
+                                          baseline_subtraction=exptParams.baselineSubtraction,
                                           signal_scaling=exptParams.signalScaling,
                                           sampling_freq=exptParams.Fs,
                                           filter_type=exptParams.filter,
                                           filter_cutoff=exptParams.filterHighCutoff,
                                           plot_data=False)
+
         self.recordingData  = data[0]
         self.baselineTrend  = data[1]
         self.meanBaseline   = data[2]        
@@ -501,6 +537,20 @@ class Experiment:
 
         self.numSweeps      = len(self.recordingData.keys())
         self.sweepIndex     = 0  # start of the iterator over sweeps
+
+        # ### When Sweep class is implemented
+        # self.sweep          = {}
+        
+        # f0                  = 0 # f for frames
+        # frame_increament_per_sweep = len(signal.find_peaks(self.recordingData[0][1], height=1, distance=100)[0])
+        # f1                  = frame_increament_per_sweep
+
+        # for s in range(self.numSweeps):
+        #     coord_file_frames = self.stimCoords[f0:f1]
+        #     self.sweep[s] = Sweep(self.recordingData[s], s, coord_file_frames, exptParams)
+        #     f0 = f1
+        #     f1 = f1 + frame_increament_per_sweep
+
 
     def __iter__(self):
         return self
@@ -606,7 +656,15 @@ class Experiment:
 
             self.sweepDuration      = ep.sweepDuration      
             self.sweepBaselineEpoch = ep.sweepBaselineEpoch 
-            self.opticalStimEpoch   = ep.opticalStimEpoch   
+            self.opticalStimEpoch   = ep.opticalStimEpoch
+            
+            try:
+                self.probePulseEpoch    = ep.singlePulseEpoch
+                self.pulseTrainEpoch    = ep.pulseTrainEpoch
+            except:
+                self.probePulseEpoch    = [ ep.opticalStimEpoch[0], ep.opticalStimEpoch[0] + self.IPI ]
+                self.pulseTrainEpoch    = ep.opticalStimEpoch
+
             self.IRBaselineEpoch    = ep.IRBaselineEpoch    
             self.IRpulseEpoch       = ep.IRpulseEpoch       
             self.IRchargingPeriod   = ep.IRchargingPeriod   
@@ -614,6 +672,7 @@ class Experiment:
             self.interSweepInterval = ep.interSweepInterval
 
             self.unit = 'pA' if self.clamp == 'VC' else 'mV' if self.clamp == 'CC' else 'a.u.'
+        
         except Exception as err:
             raise ParameterMismatchError(message=err)
 
@@ -634,7 +693,7 @@ class Coords:
         self.coords         = self.coordParser(coordFile)
 
     def coordParser(self,coordFile):
-        coords              = {}
+        coords              = []
         import csv
         with open(coordFile,'r') as cf:
             c               = csv.reader(cf, delimiter=" ")
@@ -643,9 +702,9 @@ class Coords:
                 for i in lines:
                     intline.append(int(i))
                 frameID     = intline[0]
-                coords[frameID] = (intline[3:])
+                coords.append(intline)
         self.gridSize       = [intline[1],intline[2]]
-        self.numSweeps      = len(coords)
+        # self.numSweeps      = len(coords)
         return coords
 
     def __iter__(self):
@@ -661,32 +720,71 @@ class Coords:
 
 
 # TODO
-class EphysData:
+class Sweep:
     """
     Experimental Class: actual experimental data.
     """
-    def __init__(self,abfFile, exptParams):
-        self.datafile           = abfFile
+    def __init__(self, sweep_data, sweep_number, sweep_coords, expt_params):
+        self.unit                               = expt_params.unit             
+        self.EorI                               = expt_params.EorI             
+        self.clamp_potential                    = expt_params.clampPotential  
+        self.light_intensity                    = expt_params.intensity  
+        self.light_pulse_width                  = expt_params.pulseWidth
+        self.freq                               = expt_params.stimFreq
+        self.clamp                              = expt_params.clamp
+        self.baseline_epoch                     = expt_params.sweepBaselineEpoch
+        self.IRBaselineEpoch                    = expt_params.IRBaselineEpoch
+        self.IRchargingPeriod                   = expt_params.IRchargingPeriod
+        self.optical_stim_epoch                 = [0, expt_params.opticalStimEpoch[1]]
+        self.IRsteadystatePeriod                = expt_params.IRsteadystatePeriod
+        
+        self.numChannels                        = len(sweep_data)
+        self.Cmd                                = sweep_data['Cmd']
+        self.time                               = sweep_data["Time"]
+        self.cell,      self.baseline           = abf_to_data.baseline_subtractor(sweep_data[0],
+                                                              sweep_baseline_epoch=expt_params.sweepBaselineEpoch,
+                                                              sampling_freq=expt_params.Fs,
+                                                              subtract_baseline=True)
+        self.frameTTL,  _                       = abf_to_data.baseline_subtractor(sweep_data[1],
+                                                              sweep_baseline_epoch=expt_params.sweepBaselineEpoch,
+                                                              sampling_freq=expt_params.Fs,
+                                                              subtract_baseline=True)
+        self.light_stim,_                       = abf_to_data.baseline_subtractor(sweep_data[2],
+                                                              sweep_baseline_epoch=expt_params.sweepBaselineEpoch,
+                                                              sampling_freq=expt_params.Fs,
+                                                              subtract_baseline=True)
+        
+        if 3 in sweep_data:
+            self.field, _                       = abf_to_data.baseline_subtractor(sweep_data[3],
+                                                              sweep_baseline_epoch=expt_params.sweepBaselineEpoch,
+                                                              sampling_freq=expt_params.Fs,
+                                                              subtract_baseline=True)
+        else:
+            self.field                          = None 
 
-        self.filter             = exptParams.filter
-        self.filterCutoff       = exptParams.filterHighCutoff
-        self.sweepBaselineEpoch = exptParams.sweepBaselineEpoch
-        self.baselineSubtraction= exptParams.baselineSubtraction
-        self.scaling            = exptParams.signalScaling
+        self.light_frames                       = [pattern_index.get_patternID(x[3:]) for x in sweep_coords]
+        
+        self.sweepID                            = 0
 
-        self.data               = self.parseABF()
-        self.numSweeps          = 0        
-        self.numChannels        = 0
+    def plot_sweep(self):
+        plot_abf_data(
+            {"Cmd": self.cmd,
+             "Cell1": self.cell,
+             "frameTTL": self.frameTTL,
+             "Light": self.light_stim,
+             "Field": self.field,
+             "Time": self.time,
+            },
+            label=str(self.sweepID)
+        )
 
-    def parseABF(self,exptParams):
-        self.data = abf_to_data(self.datafile,
-                                baseline_criterion=exptParams.baselineCriterion,
-                                sweep_baseline_epoch=exptParams.sweepBaselineEpoch,
-                                signal_scaling=exptParams.signalScaling,
-                                sampling_freq=exptParams.Fs,
-                                filter_type=exptParams.filter,
-                                filter_cutoff=exptParams.filterHighCutOff,
-                                plot_sample_data=False)
-    
-    def plotEphysData(self):
-        return None
+    def fit(self, show_plots=False):
+        fit_slice = utils.epoch_to_datapoints(self.optical_stim_epoch)
+        self.fits = fit_PSC.main(self.time[fit_slice], self.cell, self.freq, show_plots=show_plots)
+
+    def get_sweep_params(self):
+        self.IR   = IR_calc(self.cell, self.clamp, self.IRBaselineEpoch, self.IRsteadystatePeriod, )
+        self.tau  = tau_calc(self.cell, self.IRBaselineEpoch, self.IRchargingPeriod, self.IRsteadystatePeriod, clamp=self.clamp, )
+        print("IR = {}, Tau = {}".format(self.IR, self.tau))
+
+        return self.IR, self.tau

@@ -13,6 +13,7 @@ statsmodels # required for statistical testing
 flake8      # required for maintaining PEP convention in the scripts
 openpyxl    # required for handling images
 ipympl      # required for matplotlib widget in jupyterlab notebooks
+tables      # required for pandas module
 
 #Optional for interactive plots for notebooks
 altair

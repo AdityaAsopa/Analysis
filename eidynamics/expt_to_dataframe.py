@@ -33,10 +33,11 @@ def expt2df(expt,neuron,eP):
     
     # fill in columns for experiment parameters,
     # they will serve as axes for sorting analysed data in plots
-    for r,co in expt.stimCoords.items():
+    for r,co in enumerate(expt.stimCoords): #.items():
+        r = r+1
         df.loc[r,"Sweep"]      = int(r)
-        df.loc[r,"NumSquares"] = int(len(co))  # numSquares
-        df.loc[r,"PatternID"]  = int(pattern_index.get_patternID(co))
+        df.loc[r,"NumSquares"] = int(len(co[3:]))  # numSquares
+        df.loc[r,"PatternID"]  = int(pattern_index.get_patternID(co[3:]))
 
     repeatSeq       = (np.concatenate([np.linspace(1, 1, int(numSweeps / numRepeats)),
                                        np.linspace(2, 2, int(numSweeps / numRepeats)),
