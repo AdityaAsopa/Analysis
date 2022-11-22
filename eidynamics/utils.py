@@ -73,7 +73,7 @@ def baseline(x):
     return x - np.mean(x[:baselineWindow])
 
 
-def plot_abf_data(dataDict):
+def plot_abf_data(dataDict, label=""):
     numChannels = len(dataDict[0])
     chLabels    = list(dataDict[0].keys())
     sweepLength = len(dataDict[0][chLabels[0]])
@@ -97,8 +97,8 @@ def plot_abf_data(dataDict):
                 axs[i].set_ylabel('Ch# '+str(ch))
 
     axs[-1].set_xlabel('Time (s)')
-    axs[-1].annotate('* Data undersampled for plotting',xy=(1.0, -0.5),xycoords='axes fraction',ha='right',va="center",fontsize=6)
-    fig.suptitle('ABF Data*')
+    axs[-1].annotate('* Data undersampled for plotting', xy=(1.0, -0.5), xycoords='axes fraction',ha='right',va="center",fontsize=6)
+    fig.suptitle(label + ' - ABF Data*')
     plt.show()
 
 
@@ -143,7 +143,7 @@ def find_resposne_start(x, method='stdDev'):
         return z[0][::2]+1 # +1 because taking a double derivative causes the signal to shift
 
 
-def epoch_to_datapoints(epoch,Fs):
+def epoch_to_datapoints(epoch,Fs=2e4):
     t1 = epoch[0]
     t2 = epoch[1]
     x = np.arange(t1, t2, 1 / Fs)

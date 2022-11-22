@@ -12,7 +12,7 @@ except ModuleNotFoundError:
     from utils            import epoch_to_datapoints, extract_channelwise_data, filter_data, plot_abf_data
 
 def abf_to_data(abf_file,exclude_channels=[],
-                baseline_criterion=0.1, sweep_baseline_epoch=[0, 0.2], baseline_subtraction=True,
+                baseline_criterion=0.1, sweep_baseline_epoch=[0, 0.2], baseline_subtraction=False,
                 signal_scaling=1, sampling_freq=2e4, filter_type='bessel', filter_cutoff=1000,
                 data_order="sweepwise", plot_data=False ):
     """
@@ -74,12 +74,12 @@ def abf_to_data(abf_file,exclude_channels=[],
             abf.setSweep(sweepNumber=sweep, channel=ch)
             if ch==0 and not ch in exclude_channels:
                 filteredSweep               = filter_data(abf.sweepY,filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=sampling_freq)
-                parsedSweep,_swpBaseline    = _baseline_subtractor(filteredSweep,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction, method='percentile')
+                parsedSweep,_swpBaseline    = baseline_subtractor(filteredSweep,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction, method='percentile')
                 baselineValues[sweep]       = _swpBaseline/signal_scaling
                 
                 sweepArray.update({ch: parsedSweep/signal_scaling})
             elif ch!=0 and not ch in exclude_channels:
-                parsedSweep,_               = _baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=True, method='percentile')
+                parsedSweep,_               = baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=True, method='percentile')
                 sweepArray.update({ch: parsedSweep/signal_scaling})
             else:
                 pass
@@ -109,7 +109,7 @@ def abf_to_data(abf_file,exclude_channels=[],
     # print(abf.sweepX) # displays sweep times (seconds)
     # print(abf.sweepC) # displays command waveform (DAC)
 
-def _baseline_subtractor(sweep, sweep_baseline_epoch, sampling_freq, subtract_baseline=True, method='percentile'):
+def baseline_subtractor(sweep, sweep_baseline_epoch, sampling_freq, subtract_baseline=False, method='percentile'):
     baselineWindow = epoch_to_datapoints(sweep_baseline_epoch,sampling_freq)
     '''
     Methods to calculate baseline:
@@ -120,9 +120,9 @@ def _baseline_subtractor(sweep, sweep_baseline_epoch, sampling_freq, subtract_ba
     if   method == 'mean':
         sweepBaseline  = np.mean(sweep[baselineWindow])
     elif method == 'variance':
-        sweepBaseline = _mean_at_least_rolling_variance(sweep[20000:30000],window=2000)
+        sweepBaseline = _mean_at_least_rolling_variance(sweep[baselineWindow], window=200) # 10 ms rolling window for calculating variance
     elif method == 'percentile':
-        sweepBaseline = np.percentile(sweep[20000:30000],10) 
+        sweepBaseline = np.percentile(sweep[baselineWindow],10) # 10th percentile value in the baseline period
 
     if subtract_baseline:
         sweepNew = sweep - sweepBaseline
@@ -130,7 +130,7 @@ def _baseline_subtractor(sweep, sweep_baseline_epoch, sampling_freq, subtract_ba
     else:
         return sweep, sweepBaseline
 
-def _mean_at_least_rolling_variance(vector,window=2000,slide=50):
+def _mean_at_least_rolling_variance(vector, window=2000, slide=50):
     t1          = 0
     leastVar    = np.var(vector)
     leastVarTime= 0
@@ -149,4 +149,4 @@ def _mean_at_least_rolling_variance(vector,window=2000,slide=50):
 
 if __name__ == '__main__':
     abfFile = sys.argv[1]
-    abf_to_data(abfFile,plot_data=True)
+    abf_to_data(abfFile, plot_data=True)

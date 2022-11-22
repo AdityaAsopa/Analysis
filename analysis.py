@@ -30,22 +30,21 @@ def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_d
         fileExt = "rec.abf"
         recFiles = list( cell_directory.glob('*'+fileExt) )
         for recFile in recFiles:
-            print("Now analysing: ", recFile.name)
+            print("#___ Now analysing: ", recFile.name)
             cell,cell_pickle_file,cell_response_file = analyse_recording(recFile, cell_file=cell_pickle_file)
 
-        print('Now generating expected traces.')
-        cell.generate_expected_traces()
+        print('##__ Now generating expected traces.')
+        cell.generate_expected_traces(method='sweep_fit')
 
-        print('Running cell stability checks')
+        print('###_ Running cell stability checks')
         data_quality_checks.run_qc(cell, cell_directory)
 
         if add_cell_to_database:
             cell.add_cell_to_xl_db(all_cell_response_db)
-
-        if export_training_set:
-            print("Saving traces for training")
-            cell.save_training_set(cell_directory)
             
+        if export_training_set:
+            print("#### Saving traces for training")
+            cell.save_training_set(cell_directory)
 
         if save_pickle:
             del cell.trainingSetLong
