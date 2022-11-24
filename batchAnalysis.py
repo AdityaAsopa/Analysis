@@ -55,14 +55,21 @@ def main(args):
 
     if args.analyse:
         all_cells = cell_list.all_cells
+        failed_cells = []
         project_path_root = cell_list.project_path_root
         print("Analysing all catalogued cells recordings...")
         for cellDirectory in all_cells:
+            try:
                 savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
-
+            except:
+                print("@@@@@@  Some error with this cell. Moving on to the next one.")
+                failed_cells.append(cellDirectory)
+        
         # make data quality plots for all_cells data
         generate_screening_param_figures.main()
+
+        print("failed to process following cells: \n", failed_cells)
 
 
     elif args.test:

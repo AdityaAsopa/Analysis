@@ -2,8 +2,7 @@ from pathlib import Path
 import sys
 
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-11-07_GrikAA191\\1911\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\",
+all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-21_GrikAA194\\1941\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-13_GrikAA149\\1491\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-05_GrikAA154\\1541\\",
@@ -12,7 +11,6 @@ all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-11-07_GrikAA191\\1911\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-04_GrikAA152\\1522\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-03_GrikAA153\\1531\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-09-20_GrikAA162\\1621\\",
-            "Lab\\Projects\\EI_Dynamics\\Data\\22-06-03_GrikAA014\\141\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-06-01_GrikAA011\\111\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-04-18_G749\\7492\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-04-18_G749\\7491\\",
@@ -43,13 +41,14 @@ all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-11-07_GrikAA191\\1911\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-06_G234\\2342\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-04_G233\\2331\\"]
 
-
+#"Lab\\Projects\\EI_Dynamics\\Data\\22-06-03_GrikAA014\\141\\",
 test_cells = [".\\testExamples\\testCells\\5211\\",
               ".\\testExamples\\testCells\\3882\\",
               ".\\testExamples\\testCells\\111\\"]
               
 # convergence expt, not yet explored
-other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\"]
+other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\",
+               "Lab\\Projects\\EI_Dynamics\\Data\\22-11-07_GrikAA191\\1911\\",]
 
 all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
 

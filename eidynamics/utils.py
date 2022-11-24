@@ -430,7 +430,7 @@ def get_event_times(spike_matrix, Fs=2e4):
     return spike_times
 
 
-def _find_fpr(stimFreq_array, res_window_matrix):
+def _find_fpr(stimFreq_array, res_window_matrix, clamp_pot_array, clamp_array):
     
     if stimFreq_array.shape[0] != res_window_matrix.shape[0]:
         raise ValueError
@@ -442,9 +442,19 @@ def _find_fpr(stimFreq_array, res_window_matrix):
         f   = stimFreq_array[i]
         ipi = int(2e4/f)
 
-        trace = res_window_matrix.iloc[i,:ipi]
-        fpr[i]      = np.max(trace)
-        fpr_time[i] = np.where(trace>= np.max(trace))[0][0] + 1
+        trace = res_window_matrix.iloc[i,:ipi].to_numpy()
+
+        if (clamp_array[i]=='VC'):
+            if (clamp_pot_array[i]== -70.0):
+                # trace      *= -1.0
+                fpr[i]      = np.min(trace)
+                fpr_time[i] = np.where(trace<= np.min(trace))[0][0] + 1
+            else:
+                fpr[i]      = np.max(trace)
+                fpr_time[i] = np.where(trace>= np.max(trace))[0][0] + 1
+        else:
+            fpr[i]      = np.max(trace)
+            fpr_time[i] = np.where(trace>= np.max(trace))[0][0] + 1
 
     return fpr, fpr_time
 

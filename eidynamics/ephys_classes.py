@@ -185,8 +185,7 @@ class Neuron:
         clamp_pot_array = df.iloc[:,7]
         clamp_array     = df.iloc[:,8]
 
-        peakres, peakres_time = _find_fpr(stimFreq_array, res_traces)
-        # peakres, peakres_time = _find_fpr(clamp_pot_array, clamp_array, stimFreq_array, res_traces)
+        peakres, peakres_time = _find_fpr(stimFreq_array, res_traces, clamp_pot_array, clamp_array,)
         peakres_time = peakres_time + first_pulse_start
 
         # Assemble dataframe
@@ -314,7 +313,7 @@ class Neuron:
             outputSet3[sweep,:] = fieldTrace
             outputSet4[sweep,:] = deconv_pulse_trend
 
-        newTrainingSet = np.concatenate((inputSet,outputSet1,outputSet2,outputSet3),axis=1)
+        newTrainingSet = np.concatenate((inputSet,outputSet1,outputSet2,outputSet3, outputSet4),axis=1)
         try:
             oldTrainingSet = self.trainingSetLong
             self.trainingSetLong = np.concatenate((newTrainingSet,oldTrainingSet),axis=0)

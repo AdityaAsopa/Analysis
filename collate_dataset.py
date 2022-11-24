@@ -20,7 +20,7 @@ def main():
     sweeps = []
 
     cell_set = all_cells.all_cells
-
+    print(cell_set)
     for cell in cell_set:
         cellpath = all_cells.project_path_root / cell
         cellID = cellpath.stem
@@ -29,12 +29,13 @@ def main():
 
         neuron = ephys_classes.Neuron.loadCell(cellpickle)
         neuron_data = neuron.data
-
+        print(neuron_data.shape)
         all_cell_data.append(neuron_data)
         sweeps.append(neuron_data.shape[0])
+        
 
-
-    all_expt = pd.concat(all_cell_data, ignore_index=True, axis=0) 
+    all_expt = pd.concat(all_cell_data, ignore_index=True, axis=0)
+    print(all_expt.shape) 
     # del cell_set, cellID, cellpath, cellpickle, neuron_data, _ss, all_cell_data, sweeps, neuron, led, peak_props, first_pulse_start, res_traces, expt_ids, expt_idxs, i, j,    
     all_expt.to_hdf('all_expt_data.h5', format='fixed', key='data', mode='w')
 
