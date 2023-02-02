@@ -2,7 +2,8 @@ from pathlib import Path
 import sys
 
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\",
+all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981",
+            "Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-21_GrikAA194\\1941\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-13_GrikAA149\\1491\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-05_GrikAA154\\1541\\",
@@ -70,3 +71,5 @@ elif cloud_data_path.exists():
 else:
     print('Data path error. Testing code on test cells.')
     raise FileNotFoundError
+
+print('>> Working on: ', project_path_root)

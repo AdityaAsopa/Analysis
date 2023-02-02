@@ -43,7 +43,7 @@ Required: Python 3.7+
 
 ## Structure of the Pipeline
 
-![Analysis Pipeline](/notes_figures/Pipeline_Structure_Dec21.png)  
+![Analysis Pipeline](/notes_figures/new_pipeline_structure_Jan2023.png)  
 
 -------------  
 

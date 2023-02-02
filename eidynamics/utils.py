@@ -284,13 +284,18 @@ def show_experiment_table(cellDirectory):
     fileExt = "_experiment_parameters.py"
     epFiles = [os.path.join(cellDirectory, epFile) for epFile in os.listdir(cellDirectory) if epFile.endswith(fileExt)]
     df = pd.DataFrame(columns=['Cell ID','Polygon Protocol','Expt Type','Condition','Stim Freq (Hz)','Stim Intensity (%)','Pulse Width (ms)','Clamp',\
-                                'Clamping Potential (mV)','EorI','sex','Age','DateOfExpt'])
+                                'Clamping Potential (mV)','EorI','sex','Age','DateOfExpt', 'Field Data Exists'])
     for epFile in epFiles:
         epfileName = pathlib.Path(epFile).stem
         epfilePath = str(pathlib.Path(epFile).parent)
         sys.path.append(epfilePath)
         ep = importlib.import_module(epfileName, epfilePath)
         exptID = ep.datafile
+        if type(ep.location) is dict:
+            field_data_exists = 1 if ep.location[3] != '' else 0
+        else:
+            field_data_exists = 0
+        
         df.loc[exptID] ={
                             'Cell ID'                : ep.cellID,
                             'Polygon Protocol'       : ep.polygonProtocol[9:-4],
@@ -305,6 +310,7 @@ def show_experiment_table(cellDirectory):
                             'sex'                    : ep.sex,
                             'Age'                    : ep.ageAtExp,
                             'DateOfExpt'             : ep.dateofExpt,
+                            'Field Data Exists'      : field_data_exists,
 
 
                         } 
@@ -431,6 +437,9 @@ def get_event_times(spike_matrix, Fs=2e4):
 
 
 def _find_fpr(stimFreq_array, res_window_matrix, clamp_pot_array, clamp_array):
+    stimFreq_array = stimFreq_array.to_numpy(copy=True)
+    clamp_pot_array = clamp_pot_array.to_numpy(copy=True)
+    clamp_array = clamp_array.to_numpy(copy=True)
     
     if stimFreq_array.shape[0] != res_window_matrix.shape[0]:
         raise ValueError
@@ -488,3 +497,10 @@ def generate_optical_stim_waveform():
     output_trace = np.concatenate([[full_sweep]]*5, axis = 0).T
 
     np.savetxt("spike_train_12s_5sweeps.txt", output_trace)
+
+def progress_bar(current, total, bar_length=80):
+    filled_length = int(bar_length * current / total)
+    bar = '█' * filled_length + '-' * (bar_length - filled_length)
+    print(f'\rProgress: |{bar}| {100 * current / total:.2f}%', end='')
+    if current == total:
+        print()

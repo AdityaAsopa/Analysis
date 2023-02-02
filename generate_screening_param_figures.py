@@ -14,16 +14,17 @@ def run_qc(cellObject, cellDirectory):
     global cell_location
     cell_location = cellDirectory
 
+    for protocol, protocol_data in cellObject.data.items():
+        if protocol_data is not None:
 
+            dataDF = protocol_data.iloc[:,:29]
+            dataDF = dataDF.loc[dataDF['numSq']!=0]
+            cellID = cellObject.cellID
 
-    dataDF = cellObject.data.iloc[:,:29]
-    dataDF = dataDF.loc[dataDF['numSq']!=0]
-    cellID = cellObject.cellID
+            global exptID_range
+            exptID_range = ( np.min(np.unique(dataDF['exptID'])), np.max(np.unique(dataDF['exptID'])) )
 
-    global exptID_range
-    exptID_range = ( np.min(np.unique(dataDF['exptID'])), np.max(np.unique(dataDF['exptID'])) )
-
-    fig_gen(dataDF, cellID, cellDirectory )
+            fig_gen(dataDF, cellID, cellDirectory )
 
 def fig_gen(dataDF, cellID, cellDirectory, mode='cell'):
 

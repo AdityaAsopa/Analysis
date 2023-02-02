@@ -145,6 +145,63 @@ def figure2(df):
                     # ax[2*i+1,j].set_title((str(int(freq))+" Hz"))
     fig.legend([E,I],labels=['E','I'],loc='right')
     
+def figure2_(df, include_spikes=True):
+    if include_spikes == True:
+        df = df.loc[ (df["Clamp"]=='VC') & (df["numSq"]!=1)& (df["numSq"]!=7) & (df["patternID"]<56) & (df["Condition"] == 'CTRL' ) ]
+    else:
+        df = df.loc[ (df["Clamp"]=='VC') & (df["numSq"]!=1)& (df["numSq"]!=7) & (df["patternID"]<56) & (df["Condition"] == 'CTRL' ) & (df["AP"]==0) ]
+        
+    freqs  = np.unique(df["StimFreq"])
+    spots  = np.unique(df["numSq"])
+    clamps = np.unique(df["ClampingPotl"])
+    
+    fig,ax = plt.subplots(4,4,sharex=True,sharey=True)
+    
+    ephysStart = 20038
+    ephysEnd   = 40038
+    
+    for i,sq in enumerate(spots):
+        for j,freq in enumerate(freqs):
+            for k,ei in enumerate(clamps):
+
+                p0      = df.loc[(df["numSq"]==sq) & (df["StimFreq"]==freq) & (df["ClampingPotl"]==ei)]
+                
+                patdata = p0.iloc[:,ephysStart:ephysEnd]
+                patmean = patdata.mean( axis = 0 )
+                
+                if k==0:
+                    for m, p1 in patdata.iterrows():
+                        epsc1Peak = -1*np.min(p1)
+                        p1 = p1/epsc1Peak
+                        p1 = utils.filter_data(p1, filter_type='butter',high_cutoff=1000,sampling_freq=2e4)
+                        ax[2*i,j].plot( np.linspace(0,1000,20000), p1, color='#91bfdb',alpha=0.05)
+                    epsc1Peak_formean = -1*np.min(patmean)
+                    patmean = patmean/epsc1Peak_formean
+                    patmean = utils.filter_data(patmean, filter_type='butter',high_cutoff=1000,sampling_freq=2e4)
+                    E = ax[2*i,j].plot( np.linspace(0,1000,20000), patmean, color="#4575b4")
+                    # ax[2*i,j].set_xlabel("Time (ms)") if j==0 else None
+                    ax[2*i,j].set_ylabel( "Normalized EPSC" ) if j==0 else None
+                    # ax[2*i+1,j].legend(loc="upper right")
+                    # ax[2*i,j].set_title((str(int(freq))+" Hz"))
+
+                elif k==1:
+                    for m, p1 in patdata.iterrows():                        
+                        ipsc1Peak = np.max(p1)
+                        p1 = p1/ipsc1Peak
+                        p1 = utils.filter_data(p1, filter_type='butter',high_cutoff=1000,sampling_freq=2e4)
+                        ax[2*i+1,j].plot( np.linspace(0,1000,20000), p1, color='#b35806',alpha=0.05 )
+                    ipsc1Peak_formean = np.max(patmean)
+                    patmean = patmean/ipsc1Peak_formean
+                    patmean = utils.filter_data(patmean, filter_type='butter',high_cutoff=1000,sampling_freq=2e4)
+                    I = ax[2*i+1,j].plot( np.linspace(0,1000,20000), patmean, color="#b35806")
+                
+                    ax[3,j].set_xlabel("Time (ms)") if i==1 else None
+                    ax[2*i+1,j].set_ylabel( "Normalized IPSC" ) if j==0 else None
+                    # ax[i,j].legend(loc="upper right")
+                    # ax[2*i+1,j].set_title((str(int(freq))+" Hz"))
+                    
+    fig.legend([E,I],labels=['E','I'],loc='right')
+    
 def figure3(df2):
     '''Histogram of normalized IPSC and EPSC values
     (df["Clamp"]=='VC') & (df["NumSquares"]!=1) & (df["ExptType"] != 'LTMRand') &\

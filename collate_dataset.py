@@ -10,7 +10,7 @@ from scipy import signal
 sns.set_context('talk')
 
 from eidynamics import utils, data_quality_checks, ephys_classes
-import analysis
+import parse_data
 import all_cells
 
 

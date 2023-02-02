@@ -6,7 +6,7 @@ from eidynamics import pattern_index
 from eidynamics import ephys_functions as ephysFunc
 
 
-def expt2df(expt,neuron,eP):
+def expt2df(expt, neuron, eP):
     '''Returns dataframe for FreqSweep type of experiments'''
     numSweeps       = len(expt.stimCoords)
     numRepeats      = eP.repeats
@@ -37,7 +37,11 @@ def expt2df(expt,neuron,eP):
         r = r+1
         df.loc[r,"Sweep"]      = int(r)
         df.loc[r,"NumSquares"] = int(len(co[3:]))  # numSquares
-        df.loc[r,"PatternID"]  = int(pattern_index.get_patternID(co[3:]))
+        try:
+            df.loc[r,"PatternID"]  = int(pattern_index.get_patternID(co[3:]))
+        except:
+            print(co[3:])
+            df.loc[r,"PatternID"]  = 99 #int(pattern_index.get_patternID(co[3:]))
 
     repeatSeq       = (np.concatenate([np.linspace(1, 1, int(numSweeps / numRepeats)),
                                        np.linspace(2, 2, int(numSweeps / numRepeats)),
@@ -56,7 +60,7 @@ def expt2df(expt,neuron,eP):
 
     # Add analysed data columns
     '''IR'''
-    df["IR"],df["IRFlag"],IRflag = ephysFunc.IR_calc(expt.recordingData,eP.clamp,eP.IRBaselineEpoch,eP.IRsteadystatePeriod)
+    df["IR"],df["IRFlag"],IRflag = ephysFunc.IR_calc(expt.recordingData, eP.IRBaselineEpoch, eP.IRsteadystatePeriod, clamp=eP.clamp)
     expt.Flags.update({"IRFlag": IRflag})
 
     '''Ra'''

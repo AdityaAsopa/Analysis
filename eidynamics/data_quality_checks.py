@@ -28,24 +28,25 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
     '''
     global cell_location
     cell_location = cellDirectory
+    for protocol, protocol_data in cellObject.data.items():
+        if protocol_data is not None:
+            dataDF = protocol_data.copy()
+            dataDF = dataDF.iloc[:,:40]
+            dataDF = dataDF[dataDF['exptID'] != 0]
+            cellID = cellObject.cellID
 
-    dataDF = cellObject.data.copy()
-    dataDF = dataDF.iloc[:,:25]
-    dataDF = dataDF.loc[dataDF['exptID']!=0]
-    cellID = cellObject.cellID
+            
+            is_baseline_stable(dataDF)
+            is_IR_stable(      dataDF)
+            is_ChR2_stable(    dataDF)
+            # is_spiking_stable( dataDF, cellID, exptID_range)
+            
+            # if cellObject.properties.clamp == 'VC':
+            # is_Ra_stable(  dataDF, cellID, exptID_range)
+            # elif cellObject.properties.clamp == 'CC':
+            is_tau_stable(dataDF)
 
-    
-    is_baseline_stable(dataDF)
-    is_IR_stable(      dataDF)
-    is_ChR2_stable(    dataDF)
-    # is_spiking_stable( dataDF, cellID, exptID_range)
-    
-    # if cellObject.properties.clamp == 'VC':
-    # is_Ra_stable(  dataDF, cellID, exptID_range)
-    # elif cellObject.properties.clamp == 'CC':
-    is_tau_stable(dataDF)
-
-    print('Plots saved in {}'.format( (cell_location  ) ) ) #/ str(cellID)
+            print('Plots saved in {}'.format( (cell_location  ) ) ) #/ str(cellID)
         
 
 def is_baseline_stable(dataDf):

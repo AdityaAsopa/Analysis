@@ -15,77 +15,87 @@ from eidynamics.errors      import *
 from eidynamics.plot_maker  import dataframe_to_plots
 from eidynamics.utils       import show_experiment_table
 
-def analyse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=True, save_plots=True):
+
+def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=True, save_plots=True):
     cell_directory = pathlib.Path(cell_directory)
-    print(150*"=","\nAnalyzing New Cell from: ",cell_directory)
+    print(150 * "=", "\nAnalyzing New Cell from: ", cell_directory)
     _ = show_experiment_table(cell_directory)
-    
+
     if load_cell:
         cellID = cell_directory.stem
-        cell_pickle_file = cell_directory / str(cellID+".pkl")
+        cell_pickle_file = cell_directory / str(cellID + ".pkl")
     else:
         cell_pickle_file = ''
-    
+
     try:
         fileExt = "rec.abf"
-        recFiles = list( cell_directory.glob('*'+fileExt) )
+        recFiles = list(cell_directory.glob('*' + fileExt))
         for recFile in recFiles:
             print("#___ Now analysing: ", recFile.name)
-            cell,cell_pickle_file,cell_response_file = analyse_recording(recFile, cell_file=cell_pickle_file)
+            cell, cell_pickle_file, cell_response_file = parse_recording(recFile, cell_file=cell_pickle_file)
 
         print('##__ Now generating expected traces.')
-        cell.generate_expected_traces(method='sweep_fit')
+        cell.make_dataframe()
 
         print('###_ Running cell stability checks')
         data_quality_checks.run_qc(cell, cell_directory)
 
         if add_cell_to_database:
             cell.add_cell_to_xl_db(all_cell_response_db)
-            
+
         if export_training_set:
             print("#### Saving traces for training")
-            cell.save_training_set(cell_directory)
+            cell.save_full_dataset(cell_directory)
 
         if save_pickle:
-            del cell.trainingSetLong
-
-            cellFile            = cell_directory / str(str(cell.cellID) + ".pkl" )
+            cellFile            = cell_directory / str(str(cell.cellID) + ".pkl")
             cellFile_csv        = cell_directory / str(str(cell.cellID) + ".xlsx")
             ephys_classes.Neuron.saveCell(cell, cellFile)
             cell.response.to_excel(cellFile_csv)
         else:
             cellFile = ''
-        
+
     except UnboundLocalError as err:
         print(err)
         print("Check if there are '_rec' labeled .abf files in the directory.")
 
-    if save_plots:        
-        dataframe_to_plots(cell_pickle_file, ploty="PeakRes",  gridRow="NumSquares", plotby="EI",        clipSpikes=True)
-        dataframe_to_plots(cell_pickle_file, ploty="PeakRes",  gridRow="NumSquares", plotby="PatternID", clipSpikes=True)
-        dataframe_to_plots(cell_pickle_file, ploty="PeakRes",  gridRow="PatternID",  plotby="Repeat",    clipSpikes=True)
+    if save_plots:
+        dataframe_to_plots(cell_pickle_file, ploty="PeakRes",  gridRow="NumSquares",
+                                             plotby="EI",        clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="PeakRes",  gridRow="NumSquares",
+                                             plotby="PatternID", clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="PeakRes",  gridRow="PatternID",
+                                             plotby="Repeat",    clipSpikes=True)
 
-        dataframe_to_plots(cell_pickle_file, ploty="PeakTime", gridRow="NumSquares", plotby="EI",        clipSpikes=True)
-        dataframe_to_plots(cell_pickle_file, ploty="PeakTime", gridRow="NumSquares", plotby="PatternID", clipSpikes=True)
-        dataframe_to_plots(cell_pickle_file, ploty="PeakTime", gridRow="PatternID",  plotby="Repeat",    clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="PeakTime", gridRow="NumSquares",
+                                             plotby="EI",        clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="PeakTime", gridRow="NumSquares",
+                                             plotby="PatternID", clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="PeakTime", gridRow="PatternID",
+                                             plotby="Repeat",    clipSpikes=True)
 
-        dataframe_to_plots(cell_pickle_file, ploty="AUC",      gridRow="NumSquares", plotby="EI",        clipSpikes=True)
-        dataframe_to_plots(cell_pickle_file, ploty="AUC",      gridRow="NumSquares", plotby="PatternID", clipSpikes=True)
-        dataframe_to_plots(cell_pickle_file, ploty="AUC",      gridRow="PatternID",  plotby="Repeat",    clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="AUC",      gridRow="NumSquares",
+                                             plotby="EI",        clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="AUC",      gridRow="NumSquares",
+                                             plotby="PatternID", clipSpikes=True)
+        dataframe_to_plots(cell_pickle_file, ploty="AUC",      gridRow="PatternID",
+                                             plotby="Repeat",    clipSpikes=True)
 
-    os.remove(cell_pickle_file) # remove temporary pickle and excel file
-    os.remove(cell_response_file)    
+    os.remove(cell_pickle_file)  # remove temporary pickle and excel file
+    os.remove(cell_response_file)
     return cell, cellFile
 
-def analyse_recording(recording_file, load_cell=True, cell_file=''):
+
+def parse_recording(recording_file, load_cell=True, cell_file=''):
     datafile      = pathlib.Path(recording_file)
     exptDir       = datafile.parent
     exptFile      = datafile.name
     fileID        = exptFile[:15]
     parameterFilePath = exptDir / str(fileID + "_experiment_parameters.py")
     paramfileName = parameterFilePath.stem
-    parameterFilePath = str(parameterFilePath.parent) # putting a str() converts it from a pathlib windowspath object to a palin string
-    
+    # putting a str() converts it from a pathlib windowspath object to a palin string
+    parameterFilePath = str(parameterFilePath.parent)
+
     # Import Experiment Variables
     try:
         print("Looking for experiment parameters locally")
@@ -94,7 +104,7 @@ def analyse_recording(recording_file, load_cell=True, cell_file=''):
         if not exptParams.datafile == exptFile:
             raise FileMismatchError()
         print('Experiment parameters loaded from: ', parameterFilePath)
-    except (FileMismatchError,FileNotFoundError) as err:
+    except (FileMismatchError, FileNotFoundError) as err:
         print(err)
         print("No special instructions, using default variables.")
         import eidynamics.experiment_parameters_default as exptParams
@@ -121,7 +131,6 @@ def analyse_recording(recording_file, load_cell=True, cell_file=''):
         print(err)
         coordfile       = ''
 
-
     if (cell_file != '') & (load_cell == True):
         try:
             print('Loading local cell data')
@@ -143,11 +152,14 @@ def analyse_recording(recording_file, load_cell=True, cell_file=''):
 
     return cell, cell_file_pickle, cell_file_csv
 
+
 if __name__ == "__main__":
-    input_address = pathlib.Path(sys.argv[1]) 
+    input_address = pathlib.Path(sys.argv[1])
     if input_address.is_dir():
-        analyse_cell(input_address, load_cell=True, save_pickle=True, add_cell_to_database=False, export_training_set=False, save_plots=True)
+        parse_cell(input_address, load_cell=True, save_pickle=True,
+                                    add_cell_to_database=False, export_training_set=False,
+                                    save_plots=True)
     else:
-        analyse_recording(input_address, load_cell=True, cell_file='')
+        parse_recording(input_address, load_cell=True, cell_file='')
 else:
-    print("Analysis program imported")
+    print("Data parsing program imported")

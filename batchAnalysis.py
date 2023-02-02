@@ -7,14 +7,14 @@ import importlib
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from os import devnull
 
-import analysis
+import parse_data
 from eidynamics.plot_maker  import dataframe_to_plots
 from eidynamics             import ephys_classes
 import generate_screening_param_figures
 
 
 def batch_analysis(cellDirectory, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=False):
-    _,savedCellFile = analysis.analyse_cell(cellDirectory,
+    _,savedCellFile = parse_data.parse_cell(cellDirectory,
                                         load_cell=True,
                                         save_pickle=True,
                                         add_cell_to_database = add_cell_to_database,
@@ -62,15 +62,19 @@ def main(args):
             try:
                 savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
-            except:
+                # Batch plot
+                batch_plot(savedCellFile)
+            except Exception as err:
+                print(err)
                 print("@@@@@@  Some error with this cell. Moving on to the next one.")
                 failed_cells.append(cellDirectory)
         
+
+
         # make data quality plots for all_cells data
         generate_screening_param_figures.main()
 
         print("failed to process following cells: \n", failed_cells)
-
 
     elif args.test:
         test_cells = cell_list.test_cells
