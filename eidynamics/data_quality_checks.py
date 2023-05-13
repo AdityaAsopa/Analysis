@@ -38,7 +38,7 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
             
             is_baseline_stable(dataDF)
             is_IR_stable(      dataDF)
-            is_ChR2_stable(    dataDF)
+            # is_ChR2_stable(    dataDF) # commented out due to patternID being a list now, not a single number
             # is_spiking_stable( dataDF, cellID, exptID_range)
             
             # if cellObject.properties.clamp == 'VC':
@@ -54,16 +54,16 @@ def is_baseline_stable(dataDf):
     df.sort_values(by=['exptID','sweep'])
     cellID = str(dataDf["cellID"][0])
 
-    expt_seq = (np.min(np.unique(df["expt_seq"])) , np.max(np.unique(df["expt_seq"])))
+    expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
     plt.figure()
-    graph = sns.catplot(data=df, x='exptID', y='MeanBaseline', kind='box', dodge=False, height=6, aspect=1.33)
+    graph = sns.catplot(data=df, x='exptID', y='sweepBaseline', kind='box', dodge=False, height=6, aspect=1.33)
     graph.fig.suptitle(cellID)
     plt.savefig(cell_location / (cellID + '_baseline_trend_expt.png') )
 
     plt.figure()
     sns.set(rc={"figure.figsize":(12,5)})
-    graph = sns.lineplot(data=df, x='sweep', y='MeanBaseline', palette='flare', hue='exptID', hue_norm=expt_seq)
+    graph = sns.lineplot(data=df, x='sweep', y='sweepBaseline', palette='flare', hue='exptID', hue_norm=expt_seq)
     graph.set_title(cellID)
     
     figpath = cell_location / (cellID + '_baseline_trend_stacked_sweeps.png')
@@ -78,16 +78,16 @@ def is_IR_stable(dataDf):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
     cellID = str(dataDf["cellID"][0])
-    expt_seq = (np.min(np.unique(df["expt_seq"])) , np.max(np.unique(df["expt_seq"])))
+    expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
     plt.figure()
-    graph = sns.catplot(data=df, hue='exptID', y='InputRes', x='exptID', kind='box', dodge=False, height=6, aspect=1.33)
+    graph = sns.catplot(data=df, hue='exptID', y='IR', x='exptID', kind='box', dodge=False, height=6, aspect=1.33)
     graph.fig.suptitle(cellID)
     plt.savefig(cell_location / (cellID + '_IR_trend_expt.png') )
 
     plt.figure()
     sns.set(rc={"figure.figsize":(12,5)})
-    graph = sns.lineplot(data=df, x='sweep', y='InputRes', palette='flare', hue='exptID', hue_norm=expt_seq)
+    graph = sns.lineplot(data=df, x='sweep', y='IR', palette='flare', hue='exptID', hue_norm=expt_seq)
     graph.set_title(cellID)
     
     figpath = cell_location / (cellID + '_IR_trend_stacked_sweeps.png')
@@ -100,13 +100,13 @@ def is_IR_stable(dataDf):
 def is_ChR2_stable(dataDf):
     df = dataDf.loc[dataDf['numSq']>0]
     cellID = str(dataDf["cellID"][0])
-    expt_seq = (np.min(np.unique(df["expt_seq"])) , np.max(np.unique(df["expt_seq"])))
+    expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
-    df2 = df[['exptID', 'sweep', 'numSq', 'ClampingPotl', 'patternID', 'firstpulsetime', 'firstpeakres', 'firstpulse_peaktime']]
+    df2 = df[['exptID', 'sweep', 'numSq', 'clampPotential', 'patternID', 'firstpulsetime', 'firstpeakres', 'firstpulse_peaktime']]
     df2 = df2.sort_values(by=['exptID', 'sweep'])
 
     plt.figure()
-    graph = sns.catplot(data=df2, x='firstpeakres', y='exptID', hue='numSq', col='ClampingPotl', kind='swarm', dodge=False, orient="h", palette='mako', height=5, aspect=2.4)
+    graph = sns.catplot(data=df2, x='firstpeakres', y='exptID', hue='numSq', col='clampPotential', kind='swarm', dodge=False, orient="h", palette='mako', height=5, aspect=2.4)
     graph.fig.suptitle(cellID)
     
     figpath = cell_location / (cellID + '_firstpulse_response_trend_vs_exptID.png')
@@ -124,17 +124,17 @@ def is_tau_stable(dataDf):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
     cellID = str(dataDf["cellID"][0])
-    expt_seq = (np.min(np.unique(df["expt_seq"])) , np.max(np.unique(df["expt_seq"])))
+    expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
     plt.figure()
-    graph = sns.catplot(data=df, hue='exptID', y='Tau', x='exptID', kind='box', dodge=False, height=6, aspect=1.33)
+    graph = sns.catplot(data=df, hue='exptID', y='tau', x='exptID', kind='box', dodge=False, height=6, aspect=1.33)
     graph.fig.suptitle(cellID)
     
     plt.savefig(cell_location / (cellID + '_Tau_trend_expt.png') )
 
     plt.figure()
     sns.set(rc={"figure.figsize":(12,5)})
-    graph = sns.lineplot(data=df, x='sweep', y='Tau', palette='flare', hue='exptID', hue_norm=expt_seq)
+    graph = sns.lineplot(data=df, x='sweep', y='tau', palette='flare', hue='exptID', hue_norm=expt_seq)
     graph.set_title(cellID)
     
     figpath = cell_location / (cellID + '_Tau_trend_stacked_sweeps.png')

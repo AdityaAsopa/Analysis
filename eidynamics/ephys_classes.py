@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 from eidynamics                     import abf_to_data
 from eidynamics.expt_to_dataframe   import expt2df
 from eidynamics.spiketrain          import spiketrain_analysis
-from eidynamics.ephys_functions     import IR_calc, tau_calc
+from eidynamics.ephys_functions     import IR_calc, tau_calc, spike_detect
 from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _find_fpr, plot_abf_data
 from eidynamics                     import pattern_index
 from eidynamics                     import fit_PSC
@@ -52,6 +52,14 @@ class Neuron:
         self.spikeTrainSet      = []
         self.data               = {}
 
+    def info(self):
+        """
+        prints properties of the cell
+        """
+        print("Cell ID: ", self.cellID)
+        print("Experiment Details: ", self.animal)
+        _ = self.summarize_experiments()
+    
     def cell_params_parser(self, ep):
         """
         Stores the animal related details into Neuron attributes
@@ -70,14 +78,14 @@ class Neuron:
             self.device     = {"objMag": ep.objMag,              "polygonFrameSize": ep.frameSize,
                                "polygonGridSize": ep.gridSize,   "polygonSquareSize": ep.squareSize,
                                "DAQ": 'Digidata 1440',           "Amplifier": 'Multiclamp 700B',
-                               "ephysDataUnit": ep.unit}
+                               "cellChannelUnit": ep.unit}
         except Exception as err:
             raise ParameterMismatchError(message=err)
 
         return self
 
     def show_data_column_labels(self):
-        info = '''
+        column_labels = '''
         Field ordering:
              0  cellID
              1  Expt sequence
@@ -108,7 +116,7 @@ class Neuron:
             40038:60038:      Cell response
             60038:80038:      Field response
         '''
-        self.data_column_labels = info
+        self.data_column_labels = column_labels
         return info
 
     def addExperiment(self, datafile, coordfile, exptParams):
@@ -516,6 +524,113 @@ class Neuron:
         print(df)
         return df
 
+    def make_dataframe(self):
+        '''
+        Make a dataframe from an experiment object
+        '''
+
+        # List of parameters
+        parameters = ['cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'unit',
+                    'protocol','exptSeq','exptID','sweep', 'stimFreq', 'numSq', 'intensity',
+                    'pulseWidth', 'clampMode', 'clampPotential', 'condition', 'AP', 'IR', 'tau',
+                    'numPatterns','patternList', 'sweepBaseline']
+        
+        numParameters = len(parameters)
+
+        protocol_length = {'FreqSweep': 1.0,
+                            '1sq20Hz': 1.0,
+                            'LTMRand': 1.0,
+                            'SpikeTrain': 1.0,
+                            'surprise': 1.0,
+                            'convergence': 2.5}
+        
+        all_experiments_on_cell = list(self.experiments.keys())
+        expt_seq = utils.generate_expt_sequence(all_experiments_on_cell)
+        print(expt_seq)
+        self.data = {
+            'FreqSweep': [],
+            '1sq20Hz': [],
+            'LTMRand': [],
+            'SpikeTrain': [],
+            'surprise': [],
+            'convergence': []
+        }
+        
+        for exptID, expt in self.experiments.items():
+            print(f'Adding {exptID} to cell data')
+            exptObj  = expt[-1]
+            Fs       = exptObj.Fs
+            sweep_length = int(protocol_length[exptObj.protocol]*Fs)
+            numSweeps = exptObj.numSweeps
+            exptID = int(exptObj.dataFile[-12:-8])
+
+            exptdf = pd.DataFrame(columns=parameters)
+
+            exptdf['cellID']        = [self.cellID]             * numSweeps
+            exptdf['sex']           = [self.animal["sex"]] * numSweeps
+            exptdf['ageAtInj']      = [self.virus["ageatInj"]]  * numSweeps
+            exptdf['ageAtExpt']     = [self.virus["ageatExpt"]] * numSweeps
+            exptdf['incubation']    = [self.virus["incubation"]]* numSweeps
+            exptdf['unit']          = [self.device["cellChannelUnit"]]* numSweeps
+            exptdf['exptID']        = [exptID]                  * numSweeps
+            exptdf['protocol']      = [exptObj.protocol]        * numSweeps
+            exptdf['sweep']         = np.arange(numSweeps)      + 1
+            exptdf['stimFreq']      = [exptObj.stimFreq]        * numSweeps
+            exptdf['intensity']     = [exptObj.stimIntensity]   * numSweeps
+            exptdf['pulseWidth']    = [exptObj.pulseWidth]      * numSweeps
+            exptdf['clampMode']     = [exptObj.clamp]           * numSweeps
+            exptdf['clampPotential']= [exptObj.clampPotential]  * numSweeps
+            exptdf['condition']     = [exptObj.condition]       * numSweeps
+            exptdf['sweepBaseline'] = exptObj.baselineTrend[:,0]
+
+            sos     = signal.butter(N=2, Wn=1000, fs=Fs, output='sos')
+
+            # paramData      = np.zeros((exptObj.numSweeps, numParameters))
+            cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0]
+            exptdf['IR']  =  IR_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
+            exptdf['tau'] = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
+            exptdf['AP']  = spike_detect(cellData, exptObj.opticalStimEpoch, clampingPotential=exptObj.clampPotential, clamp=exptObj.clamp, Fs=Fs)[0]
+
+            cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0][:,:sweep_length]
+            frameData      = exptObj.extract_channelwise_data(exclude_channels=[0, 2, 3, 'Time', 'Cmd'])[1][:,:sweep_length]
+            pdData         = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 3, 'Time', 'Cmd'])[2][:,:sweep_length]
+            try:
+                fieldData  = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 2, 'Time', 'Cmd'])[3][:,:sweep_length]
+                fieldData  = signal.sosfiltfilt(sos, fieldData, axis=1)
+            except:
+                print('Field channel does not exist in the recording. Writing zeros.')
+                fieldData  = np.zeros((exptObj.numSweeps, sweep_length))
+            cellData  = signal.sosfiltfilt(sos, cellData,  axis=1)
+            fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
+
+            datadf = pd.DataFrame(data=np.concatenate((cellData, frameData, pdData, fieldData), axis=1))        
+            
+            
+            df = pd.DataFrame(columns=['patternList', 'numPatterns', 'numSq'])
+            for i in range(numSweeps):
+                x = np.array(exptObj.sweepwiseCoords[i][0], dtype='object')
+                y = len(x)
+                df.loc[i,'patternList'] = x
+                df.loc[i,'numPatterns'] = y
+                df.loc[i,'numSq']       = exptObj.sweepwiseCoords[i][1]
+            exptdf['patternList'] = df['patternList']
+            exptdf['numPatterns'] = df['numPatterns']
+            exptdf['numSq']       = df['numSq']
+
+            exptdf = pd.concat([exptdf, datadf], axis=1)
+
+            self.data[exptObj.protocol].append(exptdf)
+
+        # concatenate all dataframes within each protocol
+        for protocol, protocol_data in self.data.items():
+            if len(protocol_data) > 0:
+                self.data[protocol] = pd.concat(protocol_data, ignore_index=True)
+                self.data[protocol]['exptSeq'] = self.data[protocol]['exptID'].map(expt_seq)
+            else:
+                self.data[protocol] = None
+
+        return self.data
+    
     @staticmethod
     def saveCell(neuronObj, filename):
         directory       = os.path.dirname(filename)
@@ -529,13 +644,14 @@ class Neuron:
     def loadCell(filename):
         try:
             with open(filename, 'rb') as fin:
+                print("Cell object loaded from file")
                 return pickle.load(fin)
         except FileNotFoundError:
             print("File not found.")
             raise Exception
 
     @staticmethod
-    def load_datafrane(hdf_file):
+    def load_dataframe(hdf_file):
         try:
             dataframe = pd.read_hdf(hdf_file)
         except FileNotFoundError:
@@ -546,72 +662,68 @@ class Neuron:
     def __iter__(self):
         return self.experiments.iteritems()
 
+    """
     def make_dataframe(self):
         '''
         Make a pandas dataframe from all the recording data.
         '''
-        df_freqSweep   = pd.DataFrame(np.zeros((1,29+4*20000)) )
-        df_freqSweep.insert(1, 'Protocol', 'none', allow_duplicates=False)
-        df_freqSweep['Protocol'] = df_freqSweep['Protocol'].astype(str)
 
-        df_convergence = pd.DataFrame(np.zeros((1,29+4*50000)) )
-        df_convergence.insert(1, 'Protocol', 'none', allow_duplicates=False)
-        df_convergence['Protocol'] = df_convergence['Protocol'].astype(str)
+        protocol_length = {'FreqSweep': 20000,
+                           '1sq20Hz': 20000,
+                           'LTMRand': 20000,
+                           'spikeTrain': 20000,
+                           'surprise': 20000,
+                           'convergence': 50000}
 
         for exptID, expt in self.experiments.items():
             print('Adding {} to cell data.'.format(exptID))
-            exptObj = expt[-1]
-            if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
-                df_freqSweep   = self._add_exptdata_to_dataframe(exptObj, df_freqSweep)
-            elif 'convergence' in expt:
-                df_convergence = self._add_exptdata_to_dataframe(exptObj, df_convergence)
-        
-        print("Adding cell params to the dataframe for freqSweep")
-        if df_freqSweep.shape[0] > 1:
-            self.data['FreqSweep']   = self._add_cell_params_to_dataframe(df_freqSweep)
-        else:
-            self.data['FreqSweep'] = None
-        
-        print("Adding cell params to the dataframe for convergence")
-        if df_convergence.shape[0] > 1:
-            self.data['convergence'] = self._add_cell_params_to_dataframe(df_convergence)
-        else:
-            self.data['convergence'] = None
+            exptObj  = expt[-1]
+            protocol = expt[0]
+
+            df_exptdata   = pd.DataFrame(np.zeros((1,29+4*protocol_length[protocol])) )
+            df_exptdata.insert(1, 'Protocol', 'none', allow_duplicates=False)
+            df_exptdata['Protocol'] = df_exptdata['Protocol'].astype(str)
+
+            df_exptdata   = self._add_exptdata_to_dataframe(exptObj, df_exptdata, protocol=protocol)
+
+            if df_exptdata.shape[0] > 1:
+                self.data[protocol] = self._add_cell_params_to_dataframe(df_exptdata)
+            else:
+                self.data[protocol] = None
+
     
-    def _add_exptdata_to_dataframe(self, exptObj, df):
+    def _add_exptdata_to_dataframe(self, exptObj, df, protocol=''):
+        numParameters = 29
         exptID  = exptObj.dataFile[:15]
         Fs      = exptObj.Fs
-        IPI     = int(Fs * exptObj.IPI)
         sos     = signal.butter(N=2, Wn=1000, fs=Fs, output='sos')
 
-        if exptObj.exptType in ['FreqSweep', '1sq', 'LTMRand']:
-            tracelength = int(1.0 * Fs) # 1   second
-        elif exptObj.exptType == 'convergence':
-            tracelength = int(2.5 * Fs) # 2.5 seconds
-        else:
-            tracelength = int(1.0 * Fs) # default
+        tracelength = df.shape[1] - numParameters
 
-        paramData      = np.zeros((exptObj.numSweeps, 29))
-        pdData         = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 3, 'Time', 'Cmd'])[2][:,:tracelength]
-        frameData      = exptObj.extract_channelwise_data(exclude_channels=[0, 2, 3, 'Time', 'Cmd'])[1][:,:tracelength]
+        paramData      = np.zeros((exptObj.numSweeps, numParameters))
         cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0][:,:tracelength]
+        frameData      = exptObj.extract_channelwise_data(exclude_channels=[0, 2, 3, 'Time', 'Cmd'])[1][:,:tracelength]
+        pdData         = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 3, 'Time', 'Cmd'])[2][:,:tracelength]
         try:
             fieldData  = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 2, 'Time', 'Cmd'])[3][:,:tracelength]
             fieldData  = signal.sosfiltfilt(sos, fieldData, axis=1)
         except:
-            print('Field channel does not exist in the recording.')
+            print('Field channel does not exist in the recording. Writing zeros.')
             fieldData  = np.zeros((exptObj.numSweeps, tracelength))
         cellData  = signal.sosfiltfilt(sos, cellData,  axis=1)
         fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
 
-        pulse_start_times = get_pulse_times(exptObj.numPulses, exptObj.stimStart, exptObj.stimFreq)
-        pulse_start_times = (Fs * pulse_start_times).astype(int)
-
         IR  = IR_calc(exptObj.recordingData,  exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
         tau = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
 
+        pulse_start_times = get_pulse_times(exptObj.numPulses, exptObj.stimStart, exptObj.stimFreq)
+        pulse_start_times = (Fs * pulse_start_times).astype(int)
+        
+        IPI     = int(Fs * exptObj.IPI)
         for sweep in range(exptObj.numSweeps):
             cellTrace         = cellData[sweep, :tracelength]
+            frameTTL          = frameData[sweep, :tracelength]
+            # numFrameChange    = np.sum(np.diff(frameTTL) > 0)
             pulse_end_times   = pulse_start_times[-1] + IPI
             sqSet             = exptObj.stimCoords[sweep][3:]
             numSquares        = len(sqSet)
@@ -623,12 +735,9 @@ class Neuron:
             coord_array = np.zeros((15))
             coord_array[:numSquares] = sqSet
 
-            if exptObj.clamp == 'VC' and exptObj.EorI == 'E':
-                clampPotential = -70
-            elif exptObj.clamp == 'VC' and exptObj.EorI == 'I':
-                clampPotential = 0
-            elif exptObj.clamp == 'CC':
-                clampPotential = -70
+            
+            clampPotential = 0 if (exptObj.clamp == 'VC' and exptObj.EorI == 'I') else -70
+                
 
             Condition   = 1 if ( exptObj.condition == 'Gabazine' )                            else 0
             clamp       = 0 if ( exptObj.clamp == 'CC' )                                      else 1
@@ -729,7 +838,7 @@ class Neuron:
         df2.drop_duplicates(inplace=True)
 
         return df2
-
+    """
     
 class Experiment:
     '''All different kinds of experiments conducted on a patched
@@ -759,12 +868,15 @@ class Experiment:
         self.Flags["NoisyBaselineFlag"] = data[3]
         del data
 
+        self.coordfile          = coordfile
         if coordfile:
-            self.opticalStim    = Coords(coordfile)
+            self.opticalStim    = Coords(coordfile, repeats=exptParams.repeats)
             self.stimCoords     = self.opticalStim.coords
+            self.sweepwiseCoords= self.opticalStim.sweepwise_patterns
         else:
             self.opticalStim    = ''
             self.stimCoords     = ''
+            self.sweepwiseCoords= ''
 
         self.numSweeps      = len(self.recordingData.keys())
         self.sweepIndex     = 0  # start of the iterator over sweeps
@@ -830,7 +942,7 @@ class Experiment:
 
         return chMean
 
-    def analyze_experiment(self, neuron, exptParams):
+    def analyze_experiment(self, neuron, exptParams): 
 
         if self.exptType == 'sealTest':
             # Call a function to calculate access resistance from recording
@@ -838,9 +950,15 @@ class Experiment:
         elif self.exptType == 'IR':
             # Call a function to calculate cell input resistance from recording
             return self.inputRes(self, neuron)
-        elif self.exptType in ['1sq20Hz', 'FreqSweep', 'LTMRand', 'LTMSeq', 'convergence']:
+        elif self.exptType in ['1sq20Hz', 'FreqSweep']:
             # Call a function to analyze the freq dependent response
             return self.FreqResponse(neuron, exptParams)
+        elif self.exptType in ['LTMRand', 'LTMSeq']:
+            # Call a function to analyze the freq dependent response
+            return self.LTMResponse(neuron, exptParams)
+        elif self.exptType in ['convergence']:
+            # Call a function to analyze the freq dependent response
+            return self.convergenceResponse(neuron, exptParams)
         elif self.exptType in ['SpikeTrain']:
             # Call a function to analyze the freq dependent response
             return self.SpikeTrainResponse(neuron, exptParams)
@@ -858,10 +976,15 @@ class Experiment:
     def FreqResponse(self, neuron, exptParams):
         # there can be multiple kinds of freq based experiments and their responses.
         # return expt2df(self, neuron, exptParams)  # this function takes expt and converts to a dataframe of responses
-        None
+        return None
+
     def convergenceResponse(self, neuron, exptParams):
         '''code to integrate the convergence experiments in the pandas dataframe'''
-        return expt2df(self, neuron, exptParams)
+        return None #expt2df(self, neuron, exptParams)
+
+    def LTMResponse(self, neuron, exptParams):
+        '''code to integrate the convergence experiments in the pandas dataframe'''
+        return None
 
     def SpikeTrainResponse(self, neuron, exptParams):
         # Analysis of cell response to a invivo like poisson spike train
@@ -886,10 +1009,11 @@ class Experiment:
             self.stimStart          = ep.opticalStimEpoch[0]
             self.Fs                 = ep.Fs
             self.exptType           = ep.exptType
+            self.protocol           = ep.exptType
             self.condition          = ep.condition
 
             self.sweepDuration      = ep.sweepDuration
-            self.sweepBaselineEpoch = ep.sweepBaselineEpoch
+            self.MeanBaselineEpoch = ep.sweepBaselineEpoch
             self.opticalStimEpoch   = ep.opticalStimEpoch
 
             try:
@@ -907,6 +1031,11 @@ class Experiment:
 
             self.unit = 'pA' if self.clamp == 'VC' else 'mV' if self.clamp == 'CC' else 'a.u.'
 
+            # merging 'FreqSweep' and '1sq20Hz' protocol labels
+            if self.exptType == '1sq20Hz':
+                self.exptType = 'FreqSweep'
+                self.protocol = 'FreqSweep'
+
         except Exception as err:
             raise ParameterMismatchError(message=err)
 
@@ -920,10 +1049,14 @@ class Coords:
     currently class "Coords" is not being used except in generating
     a dict containing sweep wise coords
     '''
-    def __init__(self, coordFile):
+    def __init__(self, coordFile, repeats=3):
+        self.coordfile      = coordFile.stem
         self.gridSize       = []
-        self.numSweeps      = []
         self.coords         = self.coordParser(coordFile)
+        self.frames_per_sweep = pattern_index.polygon_protocol_sweep_division(self.coordfile)
+        self.repeats        = repeats
+        self.numSweeps      = repeats * int(len(self.coords) / self.frames_per_sweep)
+        self.sweepwise_patterns = self.get_sweepwise_patterns()
 
     def coordParser(self, coordFile):
         coords              = []
@@ -937,8 +1070,23 @@ class Coords:
                 frameID     = intline[0]
                 coords.append(intline)
         self.gridSize       = [intline[1], intline[2]]
-        # self.numSweeps      = len(coords)
         return coords
+
+    def get_sweepwise_patterns(self):
+        sweepdict = {}
+        start = 0
+        for s in range(self.numSweeps):
+            end = start + self.frames_per_sweep
+            c = []
+            for i in range(start,end):
+                c.append(pattern_index.get_patternID(self.coords[i][3:]))
+            if start + self.frames_per_sweep >= len(self.coords):
+                start = 0
+            else:
+                start = start + self.frames_per_sweep
+            sweepdict[s] = [c, len(self.coords[i][3:])]
+        return sweepdict
+
 
     def __iter__(self):
         return self

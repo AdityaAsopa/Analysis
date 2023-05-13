@@ -40,7 +40,7 @@ def expt2df(expt, neuron, eP):
         try:
             df.loc[r,"PatternID"]  = int(pattern_index.get_patternID(co[3:]))
         except:
-            print(co[3:])
+            # print(co[3:])
             df.loc[r,"PatternID"]  = 99 #int(pattern_index.get_patternID(co[3:]))
 
     repeatSeq       = (np.concatenate([np.linspace(1, 1, int(numSweeps / numRepeats)),

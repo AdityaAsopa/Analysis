@@ -262,4 +262,21 @@ def extract_pulse_response_features(response_trace, stim_trace, stim_start, eP, 
     return df
 
 
+def spike_detect(cellData, opticalStimEpoch, clamp='CC', clampingPotential=-70, spikeThreshold={'CC':0, 'VC':1000}, Fs=2e4):
+    ''' cellData is the data dictionary with sweeps numbers as keys.
+        Provide steadystateWindow values in seconds'''
+    
+    # cellSweep = cellData
+    spikeThreshold = spikeThreshold[clamp]
+    spikeTrend = np.zeros(len(cellData))
+    matrix = cellData[:, e2dp(opticalStimEpoch, Fs) ]
+    # print(e2dp(opticalStimEpoch, Fs))
+    if (clamp=='VC') & (clampingPotential== -70):
+        spikeTrend = np.max(-1*matrix, axis=0) > spikeThreshold
+    else:   
+        spikeTrend = np.max(   matrix, axis=0) > spikeThreshold
+
+    return spikeTrend
+
+
 # FIXME: remove hardcoded variables, fields, and values

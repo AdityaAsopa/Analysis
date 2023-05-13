@@ -10,6 +10,7 @@ from os import devnull
 import parse_data
 from eidynamics.plot_maker  import dataframe_to_plots
 from eidynamics             import ephys_classes
+from eidynamics.utils       import *
 import generate_screening_param_figures
 
 
@@ -49,16 +50,22 @@ def meta_plot(allCellsFile):
 def main(args):    
     all_cells_filename = pathlib.Path(args.file).stem
     all_cells_filepath = pathlib.Path(args.file)
-    cell_list = importlib.import_module(all_cells_filename, all_cells_filepath)
+    cell_list = importlib.import_module(all_cells_filename, all_cells_filepath) # type: ignore
     project_path_root = cell_list.project_path_root
     all_cell_response_file = project_path_root / cell_list.all_cells_response_file
+
+    make_plots = True if args.plot else False
+    print("Make Plots = ", make_plots)
+        
 
     if args.analyse:
         all_cells = cell_list.all_cells
         failed_cells = []
         project_path_root = cell_list.project_path_root
         print("Analysing all catalogued cells recordings...")
-        for cellDirectory in all_cells:
+        for i, cellDirectory in enumerate(all_cells):
+            msg = 'Analysing cell from: ' + cellDirectory
+            reset_and_print(i, len(all_cells), clear=True, message=msg)
             try:
                 savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
                 print("Data saved in cell file: ",savedCellFile)
@@ -80,7 +87,7 @@ def main(args):
         test_cells = cell_list.test_cells
         print("Checking if analysis pipeline is working...")
         for cellDirectory in test_cells:
-                savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_plots=True)
+                savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_plots=make_plots)
                 print(savedCellFile)
 
         # make data quality plots for all_cells data
@@ -114,7 +121,7 @@ group  = parser.add_mutually_exclusive_group()
 group.add_argument("-t", "--test",    action="store_true", help="Flag to run a code test")
 group.add_argument("-a", "--analyse", action="store_true", help="Flag to run batch analysis")
 
-parser.add_argument("-p", "--plot",    action="store_true", help="to display plots")
+parser.add_argument("-p", "--plot",   action="store_true", help="to display plots")
 
 args = parser.parse_args()
 
@@ -126,9 +133,10 @@ def suppress_stdout_stderr():
         with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
             yield (err, out)
 
+start_time = datetime.datetime.now()
+print("Start:", str(start_time))
+
 if not args.quiet:
-    start_time = datetime.datetime.now()
-    print("Start:", str(start_time))
     main(args)
 else:
     with suppress_stdout_stderr():

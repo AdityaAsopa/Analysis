@@ -501,6 +501,38 @@ def generate_optical_stim_waveform():
 def progress_bar(current, total, bar_length=80):
     filled_length = int(bar_length * current / total)
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
-    print(f'\rProgress: |{bar}| {100 * current / total:.2f}%', end='')
+    print(f'\rProgress: |{bar}| {100 * current / total:.2f}%', end='\n')
     if current == total:
         print()
+
+def reset_and_print(current, total, clear=False, message=''):
+    
+    if clear:
+        if(os.name == 'posix'):
+            os.system('clear')
+        else:
+            os.system('cls')
+    print(message)
+    progress_bar(current, total)
+
+def generate_expt_sequence(exptIDs):
+    '''
+    ['2022_06_01_0001',
+    '2022_06_01_0004',
+    '2022_06_01_0005',
+    '2022_06_01_0006',
+    '2022_06_01_0007',
+    '2022_06_01_0009',
+    '2022_06_01_0010',
+    '2022_06_01_0011']
+    '''
+    exptIDs = np.unique(exptIDs)
+    exptSeq = np.arange(len(exptIDs))
+    exptSeq_LUT = {}
+
+    for i, exptFullName in enumerate(exptIDs):
+        ID = int(exptFullName[11:15])
+        exptSeq_LUT[ID] = exptSeq[i]
+
+    return exptSeq_LUT    
+    

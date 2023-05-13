@@ -114,6 +114,15 @@ patternID = {1	:[101],
              101:[109,155,159,205,251,255,297,301,347,351,393,397,443,489,493],
              102:[113,117,163,209,213,259,305,309,355,401,405,447,451,497,501],
              103:[113,159,163,209,255,259,305,351,355,397,401,447,451,493,497],
+             104:[105, 163, 255, 347, 401],
+             105:[109, 201, 259, 351, 447],
+             106:[113, 205, 251, 297, 355],
+             107:[155, 209, 301, 393, 443],
+             108:[159, 251, 305, 397, 451],
+             109:[203, 257, 353, 395, 438],
+             110:[200, 230, 298, 306, 342],
+             111:[150, 201, 253, 271, 307],
+             112:[105, 163, 255, 347, 401],
              999:[101,105,109,113,117,147,151,155,159,163,197,201,205,209,213,
              243,247,251,255,259,293,297,301,305,309,339,343,347,351,355,389,393,
              397,401,405,435,439,443,447,451,485,489,493,497,501]}
@@ -150,10 +159,37 @@ polygon_frame_properties =  {
                             'top_right'     :[x1,y0],
                             'bottom_right'  :[x1,y1],
                             'bottom_left'   :[x0,y1],
-                            'width'         : round(x1-x0),
-                            'height'        : round(y1-y0),
+                            'width mm'      : round(x1-x0),
+                            'height mm'     : round(y1-y0),
                             'aspect_ratio'  :(x1-x0) / (y1-y0),
                             'scaling'       :[round((x1-x0)/gridSize), round((y1-y0)/gridSize)],
                             'offsetx'       : round(x0),
                             'offsety'       : round(y0),
                             }
+
+polygon_protocol_patterns_per_sweep_LUT = {
+                                        '2_210303_24hex_1sq_ExtFreq_3repeats_135frames' : 1,
+                                        '3_210303_24hex_5-15sq_ExtFreq_3repeats_30frames'   : 1,
+                                        '3_210331_24hex_5-15sq_ExtFreq_3repeats_24frames'   : 1,
+                                        '3_210428_24hex_7-15sq_LTM_rand_ExtFreq_24frames'   : 1,
+                                        '3_210428_24hex_7-15sq_LTM_rand_ExtFreq_3repeats_24frames'  : 1,
+                                        '3_210428_24hex_7-15sq_LTM_Seq_ExtFreq_24frames'    : 1,
+                                        '3_210428_24hex_7-15sq_LTM_Seq_ExtFreq_3repeats_24frames'   : 1,
+                                        '3_220117_24hex_7-15sq_LTM_rand_ExtFreq_3repeats_72frames'  : 1,
+                                        '5-210723_24hex_15sq_Convergence_IntFreqExtFrame_2ms_1repeat_18frames_3patternperSweep' : 3,
+                                        '5-210723_24hex_7-15sq_Convergence_IntFreqExtFrame_2ms_1repeat_36frames_3patternperSweep'  : 3,
+                                        '5-210723_24hex_7sq_Convergence_IntFreqExtFrame_2ms_1repeat_18frames_3patternperSweep'  : 3,
+                                        '6_221107_24hex_15sq_Convergence_ExtFreq_1repeat_24frames'  : 8,
+                                        '6_221107_24hex_7sq_Convergence_ExtFreq_1repeat_24frames'   : 8,
+                                        '7_221108_24hex_15sq_Convergence+PulseTrain_ExtFreq_1repeat_8sweeps'    : 20,
+                                        '7_221108_24hex_5sq_Convergence+PulseTrain_ExtFreq_1repeat_8sweeps' : 20}
+
+
+def polygon_protocol_sweep_division(coordfile):
+    pattern_per_sweep = polygon_protocol_patterns_per_sweep_LUT[coordfile]
+    return pattern_per_sweep
+
+
+if __name__ == "__main__":
+    for prop,prop_val in polygon_frame_properties.items():
+        print(f'{prop} : {prop_val}')

@@ -43,7 +43,8 @@ all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-03-04_G233\\2331\\"]
 
 #"Lab\\Projects\\EI_Dynamics\\Data\\22-06-03_GrikAA014\\141\\",
-test_cells = [".\\testExamples\\testCells\\5211\\",
+test_cells = [".\\testExamples\\testCells\\1981\\",
+              ".\\testExamples\\testCells\\5211\\",
               ".\\testExamples\\testCells\\3882\\",
               ".\\testExamples\\testCells\\111\\"]
               

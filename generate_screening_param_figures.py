@@ -45,7 +45,7 @@ def fig_gen(dataDF, cellID, cellDirectory, mode='cell'):
       
     is_baseline_stable(dataDF, cellID, expt_seq, ax1, ax4)
     is_IR_stable(      dataDF, cellID, expt_seq, ax2, ax5)
-    is_ChR2_stable(    dataDF, cellID, expt_seq, ax6)
+    # is_ChR2_stable(    dataDF, cellID, expt_seq, ax6) # commented out because patternID, firstpeakres etc are not present in dataframe anymore
     is_tau_stable(     dataDF, cellID, expt_seq, ax3)
     
     plt.tight_layout()
@@ -58,34 +58,34 @@ def is_tau_stable(dataDF, cellID, exptID_range, plot_axis):
     df = dataDF.copy()
     df.sort_values(by=['exptID','sweep'])
 
-    sns.boxplot(data=df, hue='exptID', y='Tau', x='exptID', palette='viridis', dodge=False, ax=plot_axis)
+    sns.boxplot(data=df, hue='exptID', y='tau', x='exptID', palette='viridis', dodge=False, ax=plot_axis)
     plot_axis.get_legend().remove()
 
 def is_ChR2_stable(dataDF, cellID, exptID_range, plot_axis):
     df = dataDF.copy()
     df = df.sort_values(by=['exptID', 'sweep'])
 
-    sns.stripplot(data=df, x='firstpeakres', y='exptID', hue='ClampingPotl', orient="h", palette='mako', ax=plot_axis)
+    sns.stripplot(data=df, x='firstpeakres', y='exptID', hue='clampPotential', orient="h", palette='mako', ax=plot_axis)
 
 def is_IR_stable(dataDf, cellID, exptID_range, plot1_axis, plot2_axis):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
 
-    sns.boxplot(data=df, hue='exptID', y='InputRes', x='exptID', palette='viridis', dodge=False, ax=plot1_axis)
+    sns.boxplot(data=df, hue='exptID', y='IR', x='exptID', palette='viridis', dodge=False, ax=plot1_axis)
     plot1_axis.get_legend().remove()
     # norm = plt.Normalize(0,10)
     # print(type(norm))
 
-    sns.lineplot(data=df, x='sweep', y='InputRes', palette='viridis', hue='exptID', hue_norm=exptID_range, ax=plot2_axis)
+    sns.lineplot(data=df, x='sweep', y='IR', palette='viridis', hue='exptID', hue_norm=exptID_range, ax=plot2_axis)
  
 def is_baseline_stable(datadf, cellID, exptID_range, plot1_axis, plot2_axis):
     df = datadf.copy()
     df.sort_values(by=['exptID','sweep'])
     
-    sns.boxplot(data=df, x='exptID', y='MeanBaseline', dodge=False, palette='viridis', ax=plot1_axis)
+    sns.boxplot(data=df, x='exptID', y='sweepBaseline', dodge=False, palette='viridis', ax=plot1_axis)
     # norm = plt.Normalize(0,10)
     # print(type(norm))
-    sns.lineplot(data=df, x='sweep', y='MeanBaseline', palette='viridis', hue='exptID', hue_norm=exptID_range, ax=plot2_axis)
+    sns.lineplot(data=df, x='sweep', y='sweepBaseline', palette='viridis', hue='exptID', hue_norm=exptID_range, ax=plot2_axis)
   
 def _signal_sign_cf(clampingPot, clamp):
     '''
