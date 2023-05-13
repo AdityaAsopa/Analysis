@@ -2,7 +2,13 @@ from pathlib import Path
 import sys
 
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981",
+all_cells = ['Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\',
+            'Lab\\Projects\\EI_Dynamics\\Data\\22-10-05_GrikAA154\\1541\\',
+            'Lab\\Projects\\EI_Dynamics\\Data\\21-09-07_G521\\5211\\',
+            'Lab\\Projects\\EI_Dynamics\\Data\\21-08-10_G378\\3781\\',
+            'Lab\\Projects\\EI_Dynamics\\Data\\21-05-18_G320\\3201\\',
+            'Lab\\Projects\\EI_Dynamics\\Data\\21-04-16_G294\\2941\\',
+            "Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-21_GrikAA194\\1941\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-13_GrikAA149\\1491\\",

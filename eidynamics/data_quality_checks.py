@@ -27,13 +27,15 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
     mode: ['cell', 'batch']
     '''
     global cell_location
+    global cellID
+    
     cell_location = cellDirectory
     for protocol, protocol_data in cellObject.data.items():
         if protocol_data is not None:
             dataDF = protocol_data.copy()
             dataDF = dataDF.iloc[:,:40]
             dataDF = dataDF[dataDF['exptID'] != 0]
-            cellID = cellObject.cellID
+            cellID = str(cellObject.cellID)
 
             
             is_baseline_stable(dataDF)
@@ -52,14 +54,13 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
 def is_baseline_stable(dataDf):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
-    cellID = str(dataDf["cellID"][0])
 
     expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
     plt.figure()
     graph = sns.catplot(data=df, x='exptID', y='sweepBaseline', kind='box', dodge=False, height=6, aspect=1.33)
     graph.fig.suptitle(cellID)
-    plt.savefig(cell_location / (cellID + '_baseline_trend_expt.png') )
+    plt.savefig(cell_location / (str(cellID) + '_baseline_trend_expt.png') )
 
     plt.figure()
     sns.set(rc={"figure.figsize":(12,5)})
@@ -77,7 +78,7 @@ def is_baseline_stable(dataDf):
 def is_IR_stable(dataDf):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
-    cellID = str(dataDf["cellID"][0])
+
     expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
     plt.figure()
@@ -99,7 +100,7 @@ def is_IR_stable(dataDf):
 
 def is_ChR2_stable(dataDf):
     df = dataDf.loc[dataDf['numSq']>0]
-    cellID = str(dataDf["cellID"][0])
+
     expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
     df2 = df[['exptID', 'sweep', 'numSq', 'clampPotential', 'patternID', 'firstpulsetime', 'firstpeakres', 'firstpulse_peaktime']]
@@ -123,7 +124,7 @@ def is_spiking_stable(dataDF):
 def is_tau_stable(dataDf):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
-    cellID = str(dataDf["cellID"][0])
+
     expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
     plt.figure()

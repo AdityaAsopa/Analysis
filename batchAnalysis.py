@@ -67,21 +67,22 @@ def main(args):
             msg = 'Analysing cell from: ' + cellDirectory
             reset_and_print(i, len(all_cells), clear=True, message=msg)
             try:
-                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
+                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=False)
                 print("Data saved in cell file: ",savedCellFile)
                 # Batch plot
-                batch_plot(savedCellFile)
+                #batch_plot(savedCellFile)
             except Exception as err:
                 print(err)
                 print("@@@@@@  Some error with this cell. Moving on to the next one.")
                 failed_cells.append(cellDirectory)
         
-
+        print('&'*180)
+        print("failed to process following cells: \n", failed_cells)
 
         # make data quality plots for all_cells data
-        generate_screening_param_figures.main()
+        #generate_screening_param_figures.main()
 
-        print("failed to process following cells: \n", failed_cells)
+        
 
     elif args.test:
         test_cells = cell_list.test_cells

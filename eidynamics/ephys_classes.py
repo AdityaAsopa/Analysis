@@ -546,7 +546,7 @@ class Neuron:
         
         all_experiments_on_cell = list(self.experiments.keys())
         expt_seq = utils.generate_expt_sequence(all_experiments_on_cell)
-        print(expt_seq)
+
         self.data = {
             'FreqSweep': [],
             '1sq20Hz': [],
