@@ -14,14 +14,15 @@ from eidynamics.utils       import *
 import generate_screening_param_figures
 
 
-def batch_analysis(cellDirectory, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=False):
+def batch_analysis(cellDirectory, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=False, user='Adi'):
     _,savedCellFile = parse_data.parse_cell(cellDirectory,
                                         load_cell=True,
                                         save_pickle=True,
                                         add_cell_to_database = add_cell_to_database,
                                         all_cell_response_db = all_cell_response_db,
                                         export_training_set = export_training_set,
-                                        save_plots = save_plots)
+                                        save_plots = save_plots,
+                                        user=user)
 
     return savedCellFile
 
@@ -57,6 +58,13 @@ def main(args):
     make_plots = True if args.plot else False
     print("Make Plots = ", make_plots)
         
+    # user
+    user = ''
+    if args.adi:
+        user = 'Adi'
+    elif args.sulu:
+        user = 'Sulu'
+
 
     if args.analyse:
         all_cells = cell_list.all_cells
@@ -67,7 +75,7 @@ def main(args):
             msg = 'Analysing cell from: ' + cellDirectory
             reset_and_print(i, len(all_cells), clear=True, message=msg)
             try:
-                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=False)
+                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=False, user=user)
                 print("Data saved in cell file: ",savedCellFile)
                 # Batch plot
                 #batch_plot(savedCellFile)
@@ -88,7 +96,7 @@ def main(args):
         test_cells = cell_list.test_cells
         print("Checking if analysis pipeline is working...")
         for cellDirectory in test_cells:
-                savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_plots=make_plots)
+                savedCellFile = batch_analysis(cellDirectory,add_cell_to_database=False, export_training_set=True, save_plots=make_plots, user=user)
                 print(savedCellFile)
 
         # make data quality plots for all_cells data
@@ -106,7 +114,7 @@ def main(args):
                 batch_plot(cf[0])
             except FileNotFoundError:
                 print("Cell pickle not found. Beginning analysis.")
-                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True)
+                savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=True, user=user)
                 print("Data saved in cell file: ",savedCellFile)
                 batch_plot(savedCellFile)
 
@@ -118,9 +126,13 @@ parser.add_argument("file",   help="Required, python file that has list of selec
 
 parser.add_argument( "-q", "--quiet", action="store_true", help="Flag to turn off printout to the terminal")
 
-group  = parser.add_mutually_exclusive_group()
-group.add_argument("-t", "--test",    action="store_true", help="Flag to run a code test")
-group.add_argument("-a", "--analyse", action="store_true", help="Flag to run batch analysis")
+process_group  = parser.add_mutually_exclusive_group()
+process_group.add_argument("-t", "--test",    action="store_true", help="Flag to run a code test")
+process_group.add_argument("-a", "--analyse", action="store_true", help="Flag to run batch analysis")
+
+user_group  = parser.add_mutually_exclusive_group()
+user_group.add_argument("-aa", "--adi",    action="store_true", help="Flag to run Aditya's parsing code")
+user_group.add_argument("-sm", "--sulu", action="store_true", help="Flag to run Sulu's parsing code")
 
 parser.add_argument("-p", "--plot",   action="store_true", help="to display plots")
 

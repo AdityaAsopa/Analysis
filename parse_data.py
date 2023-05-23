@@ -13,13 +13,13 @@ from eidynamics             import ephys_classes
 from eidynamics             import data_quality_checks
 from eidynamics.errors      import *
 from eidynamics.plot_maker  import dataframe_to_plots
-from eidynamics.utils       import show_experiment_table, reset_and_print
+from eidynamics.utils       import show_experiment_table, reset_and_print, parse_other_experiment_param_file
 
 
-def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=True, save_plots=True):
+def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=True, save_plots=True, user='Adi'):
     cell_directory = pathlib.Path(cell_directory)
     cell_response_file, cell_pickle_file, cellFile = "", "", ""
-    _ = show_experiment_table(cell_directory)
+    # _ = show_experiment_table(cell_directory)
 
     if load_cell:
         cellID = cell_directory.stem
@@ -34,20 +34,21 @@ def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_dat
         cell = None
 
     try:
-        fileExt = "rec.abf"
+        fileExt = "rec.abf" if user=='Adi' else '.abf'
         recFiles = list(cell_directory.glob('*' + fileExt))
         for i, recFile in enumerate(recFiles):
             msg = "Now analysing: " + recFile.name
             reset_and_print(i, len(recFiles), clear=False, message=msg)
-            cell, cell_pickle_file, cell_response_file = parse_recording(recFile, cell_file=cell_pickle_file)
+            cell, cell_pickle_file, cell_response_file = parse_recording(recFile, cell_file=cell_pickle_file, user=user)
 
         print('##__ Now generating expected traces.')
         cell.make_dataframe() # type: ignore
 
         print('###_ Running cell stability checks')
-        data_quality_checks.run_qc(cell, cell_directory)
+        #data_quality_checks.run_qc(cell, cell_directory)
 
         if add_cell_to_database:
+            print("#### Adding cell to database")
             cell.add_cell_to_xl_db(all_cell_response_db) # type: ignore
 
         if export_training_set:
@@ -55,6 +56,7 @@ def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_dat
             cell.save_full_dataset(cell_directory) # type: ignore
 
         if save_pickle:
+            print("#### Saving pickle and excel files")
             cellFile            = cell_directory / str(str(cell.cellID) + ".pkl") # type: ignore
             cellFile_csv        = cell_directory / str(str(cell.cellID) + ".xlsx") # type: ignore
             ephys_classes.Neuron.saveCell(cell, cellFile)
@@ -93,24 +95,38 @@ def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_dat
     return cell, cellFile
 
 
-def parse_recording(recording_file, load_cell=True, cell_file=None):
+def parse_recording(recording_file, load_cell=True, cell_file=None, user='Adi'):
     datafile      = pathlib.Path(recording_file)
     exptDir       = datafile.parent
     exptFile      = datafile.name
     fileID        = exptFile[:15]
-    parameterFilePath = exptDir / str(fileID + "_experiment_parameters.py")
-    paramfileName = parameterFilePath.stem
-    # putting a str() converts it from a pathlib windowspath object to a palin string
-    parameterFilePath = str(parameterFilePath.parent)
 
+    parameterFilePath = ''
+    paramfileName = ''
+    if user=='Adi':
+        parameterFilePath = exptDir / str(fileID + "_experiment_parameters.py")
+        paramfileName = parameterFilePath.stem
+        parameterFilePath = str(parameterFilePath.parent) # str() to convert pathlib path --> plain string
+    elif user=='Sulu':
+        parameterFilePath = exptDir / str("PPFExpt_protocol_params_March06_23_" + datafile.stem + ".py")
+    
+    print("ParameterFilePath: ", parameterFilePath)    
+    
     # Import Experiment Variables
     try:
         print("Looking for experiment parameters locally")
         sys.path.append(parameterFilePath)
-        exptParams = importlib.import_module(paramfileName, parameterFilePath)
-        if not exptParams.datafile == exptFile:
+        
+        if user=='Adi':
+            exptParams = importlib.import_module(paramfileName, parameterFilePath)
+        elif user=='Sulu':
+            exptParams = parse_other_experiment_param_file(parameterFilePath, user=user)
+
+        datafile_according_to_epfile = exptParams.datafile
+        if not datafile_according_to_epfile == exptFile:
             raise FileMismatchError()
         print('Experiment parameters loaded from: ', parameterFilePath)
+
     except (FileMismatchError, FileNotFoundError) as err:
         print(err)
         print("No special instructions, using default variables.")
@@ -167,11 +183,12 @@ def parse_recording(recording_file, load_cell=True, cell_file=None):
 
 if __name__ == "__main__":
     input_address = pathlib.Path(sys.argv[1])
+    user = sys.argv[2]
     if input_address.is_dir():
         parse_cell(input_address, load_cell=True, save_pickle=True,
-                                    add_cell_to_database=False, export_training_set=False,
-                                    save_plots=True)
+                                    add_cell_to_database=True, export_training_set=True,
+                                    save_plots=False, user=user)
     else:
-        parse_recording(input_address, load_cell=True, cell_file='')
+        parse_recording(input_address, load_cell=True, cell_file='', user=user)
 else:
     print("Data parsing program imported")

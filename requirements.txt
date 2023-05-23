@@ -16,5 +16,6 @@ ipympl      # required for matplotlib widget in jupyterlab notebooks
 tables      # required for pandas module
 
 #Optional for interactive plots for notebooks
-altair
 plotly
+jupyter-dash
+kaleido

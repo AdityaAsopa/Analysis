@@ -1,7 +1,9 @@
 import sys
 import os
+import datetime
 import importlib
 import pathlib
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -531,8 +533,76 @@ def generate_expt_sequence(exptIDs):
     exptSeq_LUT = {}
 
     for i, exptFullName in enumerate(exptIDs):
-        ID = int(exptFullName[11:15])
+        x = exptFullName.split('.')[0].split('_rec')[0][-3:]
+        ID = int(x)
         exptSeq_LUT[ID] = exptSeq[i]
 
-    return exptSeq_LUT    
+    return exptSeq_LUT
+
+def parse_other_experiment_param_file(parameterFilePath, user='Sulu'):
+    
+    parameterFilePath = Path(parameterFilePath)
+    paramfileName = parameterFilePath.stem
+    parameterFilePath = str(parameterFilePath.parent)
+
+    print("parameterFilePath: ", parameterFilePath, '\n', "paramfileName: ", paramfileName)
+    sys.path.append(parameterFilePath)
+    ep = importlib.import_module(paramfileName, parameterFilePath)
+
+
+    # Fill in the missing parametes
+
+    '''
+    Required parameters:
+    'cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'unit',
+    'protocol','exptSeq','exptID','sweep', 'stimFreq', 'numSq', 'intensity',
+    'pulseWidth', 'clampMode', 'clampPotential', 'condition', 'AP', 'IR', 'tau',
+    'numPatterns','patternList', 'sweepBaseline'
+    '''
+    ep.datafile = Path(ep.datafilepath).stem + Path(ep.datafilepath).suffix
+
+    if not 'cellID' in dir(ep):
+        ep.cellID = str(ep.animalID)[1:] + str(1)
+
+    ep.clampPotential = int(ep.clampPotential)
+    ep.repeats = ep.NUM_TRIALS
+    ep.Fs = ep.SAMPLING_RATE
+
+    ep.dateofExpt = ep.dateofExpt.today()
+    ep.bathTemp = ''
+    ep.sex = 'X'
+    ep.location = 'CA1'
+    ep.dateofBirth = datetime.date(2021, 1, 1)
+    ep.dateofInj = datetime.date(2021, 2, 1)
+    ep.ageAtInj        = (ep.dateofInj	- ep.dateofBirth)
+    ep.ageAtExp        = (ep.dateofExpt	- ep.dateofBirth)
+    ep.incubation      = (ep.ageAtExp	- ep.ageAtInj)
+    
+    ep.numPulses= 2
+    ep.opticalStimEpoch = [0, ep.PRE_STIM_DURATION]
+    ep.sweepDuration = 1.0
+    ep.sweepBaselineEpoch = [0, 0.2]
+
+    ep.IRBaselineEpoch = [0, 0.2]
+    ep.IRpulseEpoch = [0.765, 0.815]
+    ep.IRchargingPeriod = [0.765, 0.775]
+    ep.IRsteadystatePeriod = [0.790, 0.835]
+
+    ep.unit = 'pA' if ep.clamp == 'VC' else 'mV' if ep.clamp == 'CC' else 'a.u.'
+
+    ep.site = {'RC':1.9, 'ML':2.0, 'DV':1.5}
+    ep.injectionParams = {'Pressure':8, 'pulseWidth':28, 'duration':30}
+    
+    ep.virus = 'ChR2'
+    ep.virusTitre = 6e12
+    
+    ep.volumeInj = 5e-4
+    
+    ep.objMag = 40
+    ep.frameSize = [0, 0]
+    
+    ep.gridSize = [ ep.GRID_SIZE[0], ep.GRID_SIZE[1] ]
+    ep.squareSize = [0 , 0]
+
+    return ep    
     

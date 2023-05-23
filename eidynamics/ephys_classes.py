@@ -542,7 +542,8 @@ class Neuron:
                             'LTMRand': 1.0,
                             'SpikeTrain': 1.0,
                             'surprise': 1.0,
-                            'convergence': 2.5}
+                            'convergence': 2.5,
+                            'BG': 1.0}
         
         all_experiments_on_cell = list(self.experiments.keys())
         expt_seq = utils.generate_expt_sequence(all_experiments_on_cell)
@@ -553,7 +554,8 @@ class Neuron:
             'LTMRand': [],
             'SpikeTrain': [],
             'surprise': [],
-            'convergence': []
+            'convergence': [],
+            'BG': []
         }
         
         for exptID, expt in self.experiments.items():
@@ -608,11 +610,18 @@ class Neuron:
             
             df = pd.DataFrame(columns=['patternList', 'numPatterns', 'numSq'])
             for i in range(numSweeps):
-                x = np.array(exptObj.sweepwiseCoords[i][0], dtype='object')
-                y = len(x)
+                try:
+                    x = np.array(exptObj.sweepwiseCoords[i][0], dtype='object')
+                    y = len(x)
+                    df.loc[i,'numSq']       = exptObj.sweepwiseCoords[i][1]
+                except:
+                    x = 0
+                    y = 0
+                    df.loc[i,'numSq']       = 0
+                
                 df.loc[i,'patternList'] = x
                 df.loc[i,'numPatterns'] = y
-                df.loc[i,'numSq']       = exptObj.sweepwiseCoords[i][1]
+                
             exptdf['patternList'] = df['patternList']
             exptdf['numPatterns'] = df['numPatterns']
             exptdf['numSq']       = df['numSq']
