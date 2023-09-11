@@ -137,6 +137,18 @@ def get_patternID(sqSet):
 calibration_mapping_file = "\\Lab\\Projects\\EI_Dynamics\\Protocols\\Configurations\\21-12-24_Polygon_Calibration_Map_40x.map"
 # 40xWI objective, glass slide, 0.5x camera magnification, polygon numbered grid calibration
 
+'''
+Data from 24 Dec 2021 Calibration
+    Polygon Frame Fraction		Camera Pixel Number	
+    x	    y	                cx	    cy
+    0.25	0.25	            285	    341
+    0.5	    0.5	                642	    535
+    0.75	0.75	            1002	730
+    0.125	0.125	            106	    244
+    0.625	0.25	            822	    632
+    0.375	0.375	            464	    439
+    0.875	0.875	            1183	827
+'''
 map = {
         'x' : [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875], # fraction polygon frame X
         'y' : [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875], # fraction polygon frame Y
@@ -147,6 +159,7 @@ map = {
 def pixel_scaling(x,m,c):
     y = m*np.array(x) + c
     return y
+
     
 poptx,_  = curve_fit(pixel_scaling,map['x'],map['cx'])
 popty,_  = curve_fit(pixel_scaling,map['y'],map['cy'])
@@ -159,8 +172,8 @@ polygon_frame_properties =  {
                             'top_right'     :[x1,y0],
                             'bottom_right'  :[x1,y1],
                             'bottom_left'   :[x0,y1],
-                            'width mm'      : round(x1-x0),
-                            'height mm'     : round(y1-y0),
+                            'width um'      : round(x1-x0),
+                            'height um'     : round(y1-y0),
                             'aspect_ratio'  :(x1-x0) / (y1-y0),
                             'scaling'       :[round((x1-x0)/gridSize), round((y1-y0)/gridSize)],
                             'offsetx'       : round(x0),
@@ -182,13 +195,24 @@ polygon_protocol_patterns_per_sweep_LUT = {
                                         '6_221107_24hex_15sq_Convergence_ExtFreq_1repeat_24frames'  : 8,
                                         '6_221107_24hex_7sq_Convergence_ExtFreq_1repeat_24frames'   : 8,
                                         '7_221108_24hex_15sq_Convergence+PulseTrain_ExtFreq_1repeat_8sweeps'    : 20,
-                                        '7_221108_24hex_5sq_Convergence+PulseTrain_ExtFreq_1repeat_8sweeps' : 20}
+                                        '7_221108_24hex_5sq_Convergence+PulseTrain_ExtFreq_1repeat_8sweeps' : 20,
+                                        '9_230414_24hex_3sq_Surprise_ExtFreq_10repeats_33frames' :33,
+                                        '9_230203_24hex_5sq_Surprise_ExtFreq_10repeats_33frames' :33,
+                                        '9_230203_24hex_15sq_Surprise_ExtFreq_10repeats_33frames' :33,
+                                        'all_24hex_grid_squares' : 1}
 
 
 def polygon_protocol_sweep_division(coordfile):
+    print(f'coordfile: {coordfile}')
     pattern_per_sweep = polygon_protocol_patterns_per_sweep_LUT[coordfile]
     return pattern_per_sweep
 
+blackfly_camera_pixel_size_um = {'4x': 2.33, '40x': 0.233} # um/pixel
+blackfly_camera_resolution_px_per_um = {'4x': 0.429, '40x': 4.29} # pixel/um
+
+polygon_frame_width_px = {'40x': polygon_frame_properties['width um'] * blackfly_camera_resolution_px_per_um['40x'],
+                            '4x': polygon_frame_properties['width um'] * blackfly_camera_resolution_px_per_um['4x']
+                        }
 
 if __name__ == "__main__":
     for prop,prop_val in polygon_frame_properties.items():

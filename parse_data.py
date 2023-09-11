@@ -19,40 +19,50 @@ from eidynamics.utils       import show_experiment_table, reset_and_print, parse
 def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_database=False, all_cell_response_db='', export_training_set=True, save_plots=True, user='Adi'):
     cell_directory = pathlib.Path(cell_directory)
     cell_response_file, cell_pickle_file, cellFile = "", "", ""
+    cellID = cell_directory.stem
+    cell = None
     # _ = show_experiment_table(cell_directory)
 
     if load_cell:
-        cellID = cell_directory.stem
         cell_pickle_file = cell_directory / str(cellID + ".pkl")
         try:
+            print("#___ Loading cell from: ", cell_pickle_file)
             cell = ephys_classes.Neuron.loadCell(cell_pickle_file)
         except:
+            print(f"#___ Error in loading cell from {cell_pickle_file}. Creating new cell.")
             cell_pickle_file = ''
             cell = None
-    else:
-        cell_pickle_file = ''
-        cell = None
 
     try:
-        fileExt = "rec.abf" if user=='Adi' else '.abf'
-        recFiles = list(cell_directory.glob('*' + fileExt))
-        for i, recFile in enumerate(recFiles):
-            msg = "Now analysing: " + recFile.name
-            reset_and_print(i, len(recFiles), clear=False, message=msg)
-            cell, cell_pickle_file, cell_response_file = parse_recording(recFile, cell_file=cell_pickle_file, user=user)
+        file_ext = "rec.abf" if user=='Adi' else '.abf'
+        rec_files = list(cell_directory.glob('*' + file_ext))
+        # print all rec files one by one
+        print("Following are the recordings in the directory: ")
+        print(rec_files)
 
-        print('##__ Now generating expected traces.')
+        for i, rec_file in enumerate(rec_files):
+            msg = "Now parsing: " + rec_file.name
+            reset_and_print(i, len(rec_files), clear=False, message=msg)
+            cell, cell_pickle_file, cell_response_file = parse_recording(rec_file, cell_file=cell_pickle_file, user=user)
+        print(f"Following is the summary of all experiments on the cell {cellID} ")
+        _ = cell.summarize_experiments()
+
+        print('##__ Making Dataframe.')
         cell.make_dataframe() # type: ignore
 
         print('###_ Running cell stability checks')
-        #data_quality_checks.run_qc(cell, cell_directory)
-
+        data_quality_checks.run_qc(cell, cell_directory)
+        '''
         if add_cell_to_database:
-            print("#### Adding cell to database")
+            if all_cell_response_db == '':
+                # create a new database file
+                all_cell_response_db = cell_directory / "all_cells_response.xlsx"
+                
+            print("#### Adding cell to database file: ", all_cell_response_db)
             cell.add_cell_to_xl_db(all_cell_response_db) # type: ignore
-
+        '''
         if export_training_set:
-            print("#### Saving traces for training")
+            print("#### Saving traces for training for each protocol")
             cell.save_full_dataset(cell_directory) # type: ignore
 
         if save_pickle:
@@ -183,7 +193,9 @@ def parse_recording(recording_file, load_cell=True, cell_file=None, user='Adi'):
 
 if __name__ == "__main__":
     input_address = pathlib.Path(sys.argv[1])
+    
     user = sys.argv[2]
+    print(user, "Input address: ", input_address)
     if input_address.is_dir():
         parse_cell(input_address, load_cell=True, save_pickle=True,
                                     add_cell_to_database=True, export_training_set=True,

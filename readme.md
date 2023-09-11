@@ -43,8 +43,37 @@ Required: Python 3.7+
 
 ## Structure of the Pipeline
 
-![Analysis Pipeline](/notes_figures/new_pipeline_structure_Jan2023.png)  
+```mermaid
+  graph LR;
+    batch_analysis  --> parse_cell
+    rd((recordingData)) --> dt{data type}
+    dt  --  if abf file --> parse_recording
+    dt  --  if directory--> parse_cell
 
+        parse_cell  --> parse_recording
+        parse_cell  --> make_dataframe
+        parse_cell  --> data_quality_checks
+        parse_cell  --> add_cell_to_xl_db
+        parse_cell  --> save_training_set
+        parse_cell  --> save_cell
+
+        parse_recording --> load_cell
+        parse_recording --> initNeuronObj[init Neuron]
+            initNeuronObj   --> cell_param_parser
+        parse_recording --> addExperiment
+            addExperiment   --> initExptObj[init Experiment]
+                initExptObj --> exptParamParser
+                initExptObj --> abf_to_data
+            addExperiment   --> analyse_experiment
+                analyse_experiment  --> if{if protocol}
+                    if  -->  FreqSweep  
+                    if  -->  SpikeTrain 
+                    if  -->  Convergence
+                    if  -->  LTMRand  
+                    if  -->  Surprise  
+            addExperiment   --> update_experiment  
+        parse_recording --> saveCell
+```
 -------------  
 
 ## Examples  

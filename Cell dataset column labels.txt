@@ -1,31 +1,35 @@
-# Cell dataset column headings
-
-#           1: 	    'expt_seq', 
-#           2: 	    'cellID',   
-#           3: 	    'age',
-#           4: 	    'ageInj',   
-#           5: 	    'incubation',     
-#           6: 	    'firstpulsetime',
-#           7: 	    'firstpulse_peaktime',  
-#           8: 	    'firstpeakres',    
-#           9: 	    'Unit',
-#          10: 	'exptID',   
-#          11: 	'sweep',     
-#          12: 	'StimFreq',
-#          13: 	'numSq',
-#          14: 	'intensity',  
-#          15: 	'pulseWidth',
-#          16: 	'MeanBaseline', 
-#          17: 	'ClampingPotl',   
-#          18: 	'Clamp',
-#          19: 	'signalUnit',   
-#          20: 	'GABAzineFlag',     
-#          21: 	'AP',
-#          22: 	'InputRes', 
-#          23: 	'Tau',   
-#          24: 	'patternID'
-#    25-   40:   Pattern coordinates
-#    41-20041: Photodiode data
-# 20041-40041: Cell response data
-# 40041-60041: Cell response fitted data
-# 60041-80041: Field electrode data (if available, otherwise zeros)  
+cellID 
+sex 
+ageAtInj 
+ageAtExpt 
+incubation 
+unit 
+location 
+protocol 
+exptSeq 
+exptID 
+sweep 
+stimFreq 
+numSq 
+intensity 
+pulseWidth 
+clampMode 
+clampPotential 
+condition 
+AP 
+IR 
+tau 
+numPatterns 
+patternList 
+sweepBaseline 
+pulseTrainStart 
+probePulseStart 
+frameChangeTimes 
+pulseTimes 
+sweepLength 
+baselineFlag 
+IRFlag 
+RaFlag 
+spikingFlag 
+ChR2Flag 
+fieldData     

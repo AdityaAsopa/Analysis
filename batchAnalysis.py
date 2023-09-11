@@ -67,25 +67,34 @@ def main(args):
 
 
     if args.analyse:
-        all_cells = cell_list.all_cells
+        all_cells = cell_list.other_cells
         failed_cells = []
+        parsed_cells = []
         project_path_root = cell_list.project_path_root
         print("Analysing all catalogued cells recordings...")
         for i, cellDirectory in enumerate(all_cells):
             msg = 'Analysing cell from: ' + cellDirectory
-            reset_and_print(i, len(all_cells), clear=True, message=msg)
+            # reset_and_print(i, len(all_cells), clear=True, message=msg)
             try:
                 savedCellFile = batch_analysis((project_path_root / cellDirectory),add_cell_to_database=True, all_cell_response_db=all_cell_response_file, export_training_set=True, save_plots=False, user=user)
                 print("Data saved in cell file: ",savedCellFile)
                 # Batch plot
                 #batch_plot(savedCellFile)
+                parsed_cells.append(cellDirectory)
             except Exception as err:
                 print(err)
                 print("@@@@@@  Some error with this cell. Moving on to the next one.")
                 failed_cells.append(cellDirectory)
         
         print('&'*180)
-        print("failed to process following cells: \n", failed_cells)
+        print("failed to process following cells: ")
+        print(failed_cells)
+
+        # print parsed cells from the list one by one, with each cell in a new line
+        print('$'*180)
+        print("successfully processed following cells: ")
+        print(parsed_cells)
+
 
         # make data quality plots for all_cells data
         #generate_screening_param_figures.main()

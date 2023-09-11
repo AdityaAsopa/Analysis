@@ -52,7 +52,15 @@ def squareSizeCalc(gridSize,objMag,frameSz=frameSize):
     return ss
 
 
-def filter_data(x, filter_type='butter',high_cutoff=500,sampling_freq=2e4):
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    sos = butter(order, [low, high], analog=False, btype='band', output='sos')
+    return sos
+
+
+def filter_data(x, filter_type='butter', low_cutoff=0.1, high_cutoff=500,sampling_freq=2e4):
     if filter_type == 'butter':
         sos = butter(N=2, Wn=high_cutoff, fs=sampling_freq, output='sos')
         y = sosfiltfilt(sos,x)
@@ -61,9 +69,17 @@ def filter_data(x, filter_type='butter',high_cutoff=500,sampling_freq=2e4):
         y = sosfiltfilt(sos,x)
     elif filter_type == 'decimate':
         y = decimate(x, 10, n=4)
+    elif filter_type == 'butter_bandpass':
+        sos = butter_bandpass(lowcut=low_cutoff, highcut=high_cutoff, fs=sampling_freq, order=5)
+        y = sosfiltfilt(sos, x)
     else:
         y = x
     return y
+
+
+# map one range of values to another
+def map_range( input_signal, in_min, in_max, out_min, out_max ):
+    return (input_signal - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
 def moving_average(x, w):
@@ -75,34 +91,62 @@ def baseline(x):
     return x - np.mean(x[:baselineWindow])
 
 
-def plot_abf_data(dataDict, label=""):
-    numChannels = len(dataDict[0])
-    chLabels    = list(dataDict[0].keys())
-    sweepLength = len(dataDict[0][chLabels[0]])
+def binarize_trace(trace, max_value='signal_max', method='derivative', threshold=0.5):
+    '''
+    max_value:    'signal_max' or 1
+    method: 'derivative' or 'threshold' or '3std_dev'
+    threshold: as a fraction of max value of the trace
+    '''
+    # baseline subtract using first 100 points as baseline
+    trace = trace - np.mean(trace[:100])
+    std_dev = np.std(trace[:100])
+    trace = np.where(trace > 3*std_dev, trace, 0)
 
-    if 'Time' in chLabels:    
-        timeSignal = dataDict[0]['Time']
-        chLabels.remove('Time')
+    if max_value == 'signal_max':
+        max_trace = np.max(trace)
     else:
-        timeSignal = np.arange(0,sweepLength/2e4,1/2e4)
+        max_trace = 1
     
-    numPlots = len(chLabels)
-    fig,axs     = plt.subplots(numPlots,1,sharex=True)
-    
-    for sweepData in dataDict.values():
-        for i,ch in enumerate(chLabels):
-            if ch == 'Cmd':
-                axs[i].plot(timeSignal[::5],sweepData[ch][::5],'r')
-                axs[i].set_ylabel('Ch#0 Command')
-            else:
-                axs[i].plot(timeSignal[::5],sweepData[ch][::5],'b')
-                axs[i].set_ylabel('Ch# '+str(ch))
+    if method == 'derivative':
+        # find derivative of the trace and filter it
+        d_trace = np.diff(trace)
+        d_trace[:10] = 0
+        d_trace[-10:] = 0
+        d_trace = filter_data(d_trace, filter_type='butter', high_cutoff=1000, sampling_freq=2e4)
+        
+        # get positive peaks
+        max_of_d_trace = np.max(d_trace)
+        # get location of the peaks
+        pos_peaks, _ = find_peaks(d_trace, height=0.25*max_of_d_trace, distance=100)
+        
+        # get negative peaks
+        d_trace = -1*d_trace
+        min_of_d_trace = np.max(d_trace)
+        # get location of the peaks
+        neg_peaks, _ = find_peaks(d_trace, height=0.25*min_of_d_trace, distance=100)
+        # assert  that the peaks are equal in number otherwise pass assertion error
+        
+        assert len(pos_peaks) == len(neg_peaks), "Error in photodiode signal. pos_peaks and neg_peaks are not of the same length. Peak detection fault."
 
-    axs[-1].set_xlabel('Time (s)')
-    axs[-1].annotate('* Data undersampled for plotting', xy=(1.0, -0.5), xycoords='axes fraction',ha='right',va="center",fontsize=6)
-    fig.suptitle(label + ' - ABF Data*')
-    plt.show()
+        
+        peak_locs = {'left': pos_peaks, 'right': neg_peaks}
 
+        y = np.zeros(len(trace))
+        # change y value between pos_peaks and neg_peaks
+        
+        for start,end in zip(pos_peaks, neg_peaks):
+            y[start:end] = max_trace
+
+        return y, peak_locs
+
+    elif method == 'threshold':
+        y = np.where(led_trace > threshold*max_led_trace, max_led_trace, 0)
+        return y
+
+    elif method == '3std_dev':
+        std_dev = np.std(led_trace[:100])
+        y = np.where(led_trace > 3*std_dev, max_led_trace, 0)
+        return y
 
 def extract_channelwise_data(sweepwise_dict,exclude_channels=[]):
     '''
@@ -125,7 +169,7 @@ def extract_channelwise_data(sweepwise_dict,exclude_channels=[]):
     return channelDict
 
 
-def find_resposne_start(x, method='stdDev'):
+def find_response_start(x, method='stdDev'):
     '''
     Standard deviation method works on all photodiode traces, but the slope method only works for
     the photodiode traces after installation of OPT101. For recordings from Jan 2022 onwards, use slope method.
@@ -174,7 +218,16 @@ def alpha_synapse(t,Vmax,tau):
     return y
 
 
-def PSP_start_time(response_array,clamp,EorI,stimStartTime=0.231,Fs=2e4):
+def delayed_alpha_function(t,A,tau,delta):
+    tdel = np.zeros(int(2e4*delta))
+    T   = np.append(tdel,t)
+    T = T[:len(t)]
+    a   = 1/tau
+    y   = A*(a*T)*np.exp(1-a*T)
+    return y
+
+
+def PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4):
     '''
     Input: nxm array where n is number of frames, m is datapoints per sweep
     '''
@@ -216,15 +269,6 @@ def PSP_start_time(response_array,clamp,EorI,stimStartTime=0.231,Fs=2e4):
 
     
     return synDelay_ms,valueAtPSPstart,responseSign
-
-
-def delayed_alpha_function(t,A,tau,delta):
-    tdel = np.zeros(int(2e4*delta))
-    T   = np.append(tdel,t)
-    T = T[:len(t)]
-    a   = 1/tau
-    y   = A*(a*T)*np.exp(1-a*T)
-    return y
 
 
 def rolling_variance_baseline(vector,window=500,slide=50):
@@ -439,6 +483,10 @@ def get_event_times(spike_matrix, Fs=2e4):
 
 
 def _find_fpr(stimFreq_array, res_window_matrix, clamp_pot_array, clamp_array):
+    '''
+    'clamp_pot_array' is the array of clamp potentials for each trial
+    clamp_array = 'VC' or 'CC'
+    '''
     stimFreq_array = stimFreq_array.to_numpy(copy=True)
     clamp_pot_array = clamp_pot_array.to_numpy(copy=True)
     clamp_array = clamp_array.to_numpy(copy=True)
@@ -500,12 +548,14 @@ def generate_optical_stim_waveform():
 
     np.savetxt("spike_train_12s_5sweeps.txt", output_trace)
 
+
 def progress_bar(current, total, bar_length=80):
     filled_length = int(bar_length * current / total)
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
     print(f'\rProgress: |{bar}| {100 * current / total:.2f}%', end='\n')
     if current == total:
         print()
+
 
 def reset_and_print(current, total, clear=False, message=''):
     
@@ -516,6 +566,7 @@ def reset_and_print(current, total, clear=False, message=''):
             os.system('cls')
     print(message)
     progress_bar(current, total)
+
 
 def generate_expt_sequence(exptIDs):
     '''
@@ -538,6 +589,7 @@ def generate_expt_sequence(exptIDs):
         exptSeq_LUT[ID] = exptSeq[i]
 
     return exptSeq_LUT
+
 
 def parse_other_experiment_param_file(parameterFilePath, user='Sulu'):
     
@@ -605,4 +657,79 @@ def parse_other_experiment_param_file(parameterFilePath, user='Sulu'):
     ep.squareSize = [0 , 0]
 
     return ep    
+
+
+def get_pulse_response(x, start_time, end_time, Fs, prop='auc'):
+    '''
+    This function returns the response value of the signal
+    x: 1D array
+    start_time: in seconds
+    end_time: in seconds
+    Fs: sampling rate
+    prop:   'auc'=area under the response,
+            'peak' = max,
+            'slope' = 10-90% of the peak
+            'onset_delay' = time to reach 10% of the peak
+            'peak_time' = time to reach the peak
+            'p2p' = peak to peak amplitude
+            'abs_auc' = absolute area under the response
+    '''
+    start_index = int(start_time*Fs)
+    end_index = int(end_time*Fs)
+
+    if prop == 'auc':
+        return np.trapz(x[start_index:end_index], dx=1/Fs)
     
+    elif prop == 'peak':
+        return np.max(x[start_index:end_index])
+    
+    elif prop == 'slope':
+        # get 10% and 90% of the peak
+        peak = np.max(x[start_index:end_index])
+        peak_index = np.argmax(x[start_index:end_index])
+        peak_10 = peak*0.1
+        peak_90 = peak*0.9
+
+        # use np.where to get the index of the first value that is greater than peak_10 and peak_90
+        peak_10_index = np.where(x[start_index:end_index] > peak_10)[0][0]
+        peak_90_index = np.where(x[start_index:end_index] > peak_90)[0][0]
+
+        # convert index to time
+        dy = peak_90 - peak_10
+        dx = (peak_90_index - peak_10_index) / (Fs/1000) # divide Fs by 1000 to get time in ms
+
+        # get slope
+        slope = dy/dx #mV/ms
+        return slope
+    
+    elif prop == 'onset_delay':
+        # find time point where response suddenly changes
+        flick_time = np.argmax( np.diff(x[start_index:end_index], 2) )
+
+        # find the index of the time point
+        # print(flick_time, start_index)
+        # onset_delay = flick_time
+
+        return flick_time / Fs
+    
+    elif prop == 'time_to_peak':
+        peak_time = np.argmax(x[start_index:end_index])
+        return peak_time / Fs
+
+    elif prop == 'p2p':
+        # get peak to peak amplitude
+        # first get the minimum value and maximum value
+        min_x = np.min(x[start_index:end_index])
+        max_x = np.max(x[start_index:end_index])
+        return max_x - min_x
+
+    elif prop == 'abs_auc':
+        # get absolute area under the curve
+        return np.trapz(np.abs(x[start_index:end_index]), dx=1/Fs)
+
+
+def add_row_to_df(df, row):
+    # write a function to add a row to the dataframe
+    df.loc[-1] = row
+    df.index = df.index + 1
+    return df.sort_index()

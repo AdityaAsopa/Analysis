@@ -8,14 +8,17 @@ import h5py
 from scipy.optimize  import curve_fit
 from scipy import signal
 from PIL import Image, ImageOps
+import matplotlib.pyplot as plt
 
 # EI Dynamics module
 from eidynamics                     import abf_to_data
 from eidynamics.expt_to_dataframe   import expt2df
 from eidynamics.spiketrain          import spiketrain_analysis
 from eidynamics.ephys_functions     import IR_calc, tau_calc, spike_detect
-from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _find_fpr, plot_abf_data
+from eidynamics.utils               import filter_data, delayed_alpha_function, PSP_start_time, get_pulse_times, _find_fpr
+from eidynamics.plot_tools          import plot_abf_data
 from eidynamics                     import pattern_index
+from eidynamics                     import generate_camera_image
 from eidynamics                     import fit_PSC
 from eidynamics                     import utils
 from eidynamics.errors              import *
@@ -85,39 +88,7 @@ class Neuron:
         return self
 
     def show_data_column_labels(self):
-        column_labels = '''
-        Field ordering:
-             0  cellID
-             1  Expt sequence
-             2  Age
-             3  Age at Injection
-             4  Incubation
-             5  first pulse time
-             6  first pulse peak time
-             7  first pulse response
-             8  Unit  
-             9  datafile index (expt No., last 2 digits, 0-99. For ex. 32 for 2022_04_18_0032_rec.abf)
-            10  sweep No.
-            11  Stim Freq:    10, 20, 30, 40, 50, 100 Hz
-            12  numSquares:   1, 5, 7, 15 sq
-            13  intensity:    100 or 50%
-            14  pulse width:  2 or 5 ms
-            15  meanBaseline: mV
-            16  clamp pot:    -70 or 0 mV
-            17  CC or VC:     CC = 0, VC = 1
-            18  Condition:    Control = 0, Gabazine = 1
-            19  AP:           Action Potential flag, yes = 1, No = 0
-            20  IR:           MOhm
-            21  Tau:          Membrane time constant (ms, for CC) & Ra_effective (MOhm, for VC)
-            22  Pattern ID:   refer to pattern ID in pattern index
-                  23:37:      coords of spots [23,24,25,26,27,28,29,30,31,32,33,34,35,36,37]
-               38:20038:      Frame TTL signal
-            20038:40038:      photodiode signal
-            40038:60038:      Cell response
-            60038:80038:      Field response
-        '''
-        self.data_column_labels = column_labels
-        return info
+        return self.metadata_columns
 
     def addExperiment(self, datafile, coordfile, exptParams):
         """
@@ -141,86 +112,231 @@ class Neuron:
 
         return exptDict
 
-    """
-    def to_dataframe(self, method='1sq'):
-        # Step 2: Take the expected response dict and make a training set for the whole neuron
-        # if len(self.spotExpected)>0:
+    def add_cell_to_xl_db(self, excel_file):
+        print('Adding cell experiment data to {}'.format(excel_file))
+        try:
+            tempDF  = pd.read_excel(excel_file)
+            print('excel file read as tempDF')
+        except Exception as err:
+            print(err)
+            tempDF  = pd.DataFrame()
+        outDF       = pd.concat([self.response, tempDF], ignore_index=True)
+        # outDF       = pd.concat([cell.response,tempDF],axis=1)
+        outDF       = outDF.drop_duplicates()
+        outDF.to_excel(excel_file)  # (all_cells_response_file)
+        print("Cell experiment data has been added to {}".format(excel_file))
+
+    def save_full_dataset(self, directory):
+        '''
+        save protocol wise hdf5 files containing the dataframe for each protocol
+        '''
+        for protocol, protocol_data in self.data.items():
+            if protocol_data is not None:
+                filename = "cell" + str(self.cellID) + '_' + str(protocol) + "_dataset.h5"
+                datasetFile = os.path.join(directory, filename)
+                protocol_data.to_hdf(datasetFile, format='fixed', key=protocol, mode='w')
+                print(f'Cell Data for {protocol} exported to {datasetFile}')
+
+    def summarize_experiments(self):
+        df = pd.DataFrame(columns=['Polygon Protocol', 'Expt Type', 'Condition', 'Stim Freq',
+                          'Stim Intensity', 'Pulse Width', 'Clamp', 'Clamping Potential'])
         for exptID, expt in self.experiments.items():
-            if 'FreqSweep' in expt or 'LTMRand' in expt or '1sq20Hz' in expt:
-                exptObj = expt[-1]
-                print('Adding {} to training set.'.format(exptID))
-                self.add_expt_training_set_long(exptObj)
+            df.loc[exptID] = {
+                'Polygon Protocol': expt[-1].polygonProtocolFile,
+                'Expt Type': expt[-1].exptType,
+                'Condition': expt[-1].condition,
+                'Stim Freq': expt[-1].stimFreq,
+                'Stim Intensity': expt[-1].stimIntensity,
+                'Pulse Width': expt[-1].pulseWidth,
+                'Clamp': expt[-1].clamp,
+                'Clamping Potential': expt[-1].clampPotential
+            }
+        print(df)
+        self.summary = df
+        return df
 
-        df = pd.DataFrame(data=self.trainingSetLong)
-        df.rename(columns={0:  "exptID",
-                           1:  "sweep",
-                           2:  "StimFreq",
-                           3:  "numSq",
-                           4:  "intensity",
-                           5:  "pulseWidth",
-                           6:  "MeanBaseline",
-                           7:  "ClampingPotl",
-                           8:  "Clamp",
-                           9:  "Condition",
-                           10: "AP",
-                           11: "InputRes",
-                           12: "Tau",
-                           13: "patternID"
-                           }, inplace=True)
-        df = df.astype({"exptID": 'int32', "sweep": "int32", "StimFreq": "int32", "numSq": 'int32'}, errors='ignore')
-        df = df.loc[df["StimFreq"] != 0]
-        df.replace({'Clamp': {0.0:   'CC', 1.0: 'VC'}}, inplace=True)
-        df.replace({'Condition': {0.0: 'CTRL', 1.0: 'GABA'}}, inplace=True)
-        total_sweeps = df.shape[0]
+    def make_dataframe(self):
+        '''
+        Make a dataframe from an experiment object
+        '''
 
-        expt_ids = np.unique(df['exptID'])
-        expt_idxs = range(len(expt_ids))
+        # List of parameters
+        parameters = ['cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'unit', 'location',
+                    'protocol','exptSeq','exptID','sweep', 'stimFreq', 'numSq', 'intensity',
+                    'pulseWidth', 'clampMode', 'clampPotential', 'condition', 'AP', 'IR', 'tau',
+                    'numPatterns','patternList', 'sweepBaseline',
+                    'pulseTrainStart', 'probePulseStart', 'frameChangeTimes', 'pulseTimes', 'sweepLength',
+                    'baselineFlag', 'IRFlag', 'RaFlag', 'spikingFlag','ChR2Flag', 'fieldData']
+        
+        self.metadata_columns = parameters
 
-        expt_seq = np.array([0] * (total_sweeps))
-        cellID   = np.array([self.cellID] * (total_sweeps))
-        sigUnit  = np.array([self.device["ephysDataUnit"]] * (total_sweeps))
+        protocol_length = {'FreqSweep': 1.0,
+                            '1sq20Hz': 1.0,
+                            'LTMRand': 1.0,
+                            'SpikeTrain': 11.0,
+                            'surprise': 2.5,
+                            'convergence': 2.5,
+                            'BG': 1.0}
+        
+        all_experiments_on_cell = list(self.experiments.keys())
+        expt_seq = utils.generate_expt_sequence(all_experiments_on_cell)
 
-        age      = np.array([((self.animal["dateofExpt"]      - self.animal["dateofBirth"]).days)] * (total_sweeps))
-        ageInj   = np.array([((self.animal["dateofInjection"] - self.animal["dateofBirth"]).days)] * (total_sweeps))
-        inc      = np.array([((self.animal["dateofExpt"]      - self.animal["dateofInjection"]).days)] * (total_sweeps))
+        self.data = {
+            'FreqSweep': [],
+            '1sq20Hz': [],
+            'LTMRand': [],
+            'SpikeTrain': [],
+            'surprise': [],
+            'convergence': [],
+            'BG': []
+        }
+        
+        
 
-        # print(df.index)
-        # ---------------------
-        led = df.iloc[1, 29:20029]
-        led = np.where(led >= 0.1 * np.max(led), np.max(led), 0)
-        _, peak_props = signal.find_peaks(led, height=0.9 * np.max(led), width=30)
-        first_pulse_start = (peak_props['left_ips'][0]) / 2e4
-        first_pulse_start_datapoint = int(first_pulse_start * 2e4) + 20029
+        for exptID, expt in self.experiments.items():
+            print(f'Adding {exptID} to cell data')
+            exptObj  = expt[-1]
+            Fs       = exptObj.Fs
+            sos     = signal.butter(N=2, Wn=1000, fs=Fs, output='sos')
+            sweep_length = int(protocol_length[exptObj.protocol]*Fs)
+            numSweeps = exptObj.numSweeps
+            exptID = int(exptObj.dataFile[-12:-8])
 
-        fpt = np.array([first_pulse_start] * (total_sweeps))
+            exptdf = pd.DataFrame(columns=parameters)
 
-        # _ss = _signal_sign_cf(df.iloc[:,7], df.iloc[:,8])
-        # res_traces = (df.iloc[:, first_pulse_start_datapoint: first_pulse_start_datapoint+1000]).multiply(_ss, axis=0)
+            exptdf['cellID']        = [self.cellID]             * numSweeps
+            exptdf['sex']           = [self.animal["sex"]] * numSweeps
+            exptdf['ageAtInj']      = [self.virus["ageatInj"]]  * numSweeps
+            exptdf['ageAtExpt']     = [self.virus["ageatExpt"]] * numSweeps
+            exptdf['incubation']    = [self.virus["incubation"]]* numSweeps
+            exptdf['unit']          = [self.device["cellChannelUnit"]]* numSweeps
+            exptdf['location']      = [exptObj.location[0]]     * numSweeps
+            exptdf['exptID']        = [exptID]                  * numSweeps
+            exptdf['protocol']      = [exptObj.protocol]        * numSweeps
+            exptdf['sweep']         = np.arange(numSweeps)      + 1
+            exptdf['stimFreq']      = [exptObj.stimFreq]        * numSweeps
+            exptdf['intensity']     = [exptObj.stimIntensity]   * numSweeps
+            exptdf['pulseWidth']    = [exptObj.pulseWidth]      * numSweeps
+            exptdf['clampMode']     = [exptObj.clamp]           * numSweeps
+            exptdf['clampPotential']= [exptObj.clampPotential]  * numSweeps
+            exptdf['condition']     = [exptObj.condition]       * numSweeps
+            exptdf['sweepBaseline'] = exptObj.baselineTrend[:,0]
+            exptdf['probePulseStart'] = exptObj.probePulseEpoch[0]
+            exptdf['pulseTrainStart'] = exptObj.pulseTrainEpoch[0]
+            exptdf['sweepLength']   = [protocol_length[exptObj.protocol]]  * numSweeps
+            # make the frameChangeTimes column an object type
+            exptdf['frameChangeTimes'] = ''
+            exptdf['pulseTimes']       = ''
+            exptdf['baselineFlag']  = False
+            exptdf[ 'IRFlag']       = False
+            exptdf[ 'RaFlag']       = False
+            exptdf[ 'spikingFlag']  = False
+            exptdf['ChR2Flag']      = False
+            exptdf['fieldData']     = False
 
-        res_traces = (df.iloc[:, first_pulse_start_datapoint: first_pulse_start_datapoint + 1000])
-        stimFreq_array  = df.iloc[:, 2]
-        clamp_pot_array = df.iloc[:, 7]
-        clamp_array     = df.iloc[:, 8]
+            cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0]
+            exptdf['IR']  =  IR_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
+            exptdf['tau'] = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
+            exptdf['AP']  = spike_detect(cellData, exptObj.opticalStimEpoch, clampingPotential=exptObj.clampPotential, clamp=exptObj.clamp, Fs=Fs)[0]
 
-        peakres, peakres_time = _find_fpr(stimFreq_array, res_traces, clamp_pot_array, clamp_array,)
-        peakres_time = peakres_time + first_pulse_start
+            cellData       = cellData[:,:sweep_length]
+            frameData      = exptObj.extract_channelwise_data(exclude_channels=[0, 2, 3, 'Time', 'Cmd'])[1][:,:sweep_length]
+            pdData         = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 3, 'Time', 'Cmd'])[2][:,:sweep_length]
+            try:
+                fieldData  = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 2, 'Time', 'Cmd'])[3][:,:sweep_length]
+                exptdf['fieldData'] = True
+            except:
+                print('Field channel does not exist in the recording. Writing zeros.')
+                fieldData  = np.zeros((exptObj.numSweeps, sweep_length))
+            
+            # filter cell and field data
+            cellData  = signal.sosfiltfilt(sos, cellData,  axis=1)
+            fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
 
-        # Assemble dataframe
-        # print(df_prop.index, peakres.index)
-        df_prop = pd.DataFrame(data={"cellID": cellID, "expt_seq": expt_seq, "age": age, "ageInj": ageInj, "incubation": inc,
-                               "firstpulsetime": fpt, "firstpulse_peaktime": peakres_time, "firstpeakres": peakres, "Unit": sigUnit})
+            # for some reason this is the only way i can store lists in a pandas dataframe element
+            df = pd.DataFrame(columns=['patternList', 'numPatterns', 'numSq', 'frameChangeTimes', 'pulseTimes'])
+            
+            for i in range(numSweeps):
+                # get frame change times
+                frameData[i,:], locs = utils.binarize_trace(frameData[i,:], max_value=1, method='derivative',)
+                frame_pulse_locs = np.array(locs['left'], dtype='object')
 
-        df2 = pd.concat([df_prop, df], ignore_index=False, axis=1)
+                try:
+                    pdData[i,:], locs = utils.binarize_trace(pdData[i,:], max_value='signal_max', method='derivative',)
+                    light_pulse_locs = np.array(locs['left'], dtype='object')
+                except AssertionError as err:
+                    print(err)
+                    light_pulse_locs = np.array([], dtype='object')
+                    exptdf.loc[i, 'fieldData'] = 'Fault'
 
-        for i, j in zip(expt_ids, expt_idxs):
-            df2.loc[df["exptID"] == i, "expt_seq"] = j
+                try:
+                    x = np.array(exptObj.sweepwiseCoords[i][0], dtype='object')
+                    y = len(x)
+                    df.loc[i,'numSq']       = exptObj.sweepwiseCoords[i][1]
+                except:
+                    x = 0
+                    y = 0
+                    df.loc[i,'numSq']       = 0
+                
+                df.at[i,'patternList'] = x
+                df.at[i,'numPatterns'] = y
+                df.at[i,'frameChangeTimes'] = frame_pulse_locs
+                df.at[i,'pulseTimes'] = light_pulse_locs
+                
+            exptdf['patternList'] = df['patternList']
+            exptdf['numPatterns'] = df['numPatterns']
+            exptdf['numSq']       = df['numSq']
+            exptdf['frameChangeTimes'] = df['frameChangeTimes']
+            exptdf['pulseTimes'] = df['pulseTimes']
 
-        # dataframe cleanup
+            datadf = pd.DataFrame(data=np.concatenate((cellData, frameData, pdData, fieldData), axis=1))
+            exptdf = pd.concat([exptdf, datadf], axis=1)
 
-        df2.drop_duplicates(inplace=True)
-        self.data = df2
-        print(self.data_column_labels)
+            self.data[exptObj.protocol].append(exptdf)
 
+        # concatenate all dataframes within each protocol
+        for protocol, protocol_data in self.data.items():
+            if len(protocol_data) > 0:
+                self.data[protocol] = pd.concat(protocol_data, ignore_index=True)
+                self.data[protocol]['exptSeq'] = self.data[protocol]['exptID'].map(expt_seq)
+            else:
+                self.data[protocol] = None
+
+        self.metadata_columns = exptdf.columns
+        return self.data
+    
+    @staticmethod
+    def saveCell(neuronObj, filename):
+        directory       = os.path.dirname(filename)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        with open(filename, 'wb') as fout:
+            print("Neuron object saved into pickle. Use loadCell to load back.")
+            pickle.dump(neuronObj, fout, pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def loadCell(filename):
+        try:
+            with open(filename, 'rb') as fin:
+                print("Cell object loaded from file: ", filename)
+                return pickle.load(fin)
+        except FileNotFoundError:
+            print("File not found.")
+            raise Exception
+
+    @staticmethod
+    def load_dataframe(hdf_file):
+        try:
+            dataframe = pd.read_hdf(hdf_file)
+        except FileNotFoundError:
+            print("File not found.")
+            raise Exception
+        return dataframe
+
+    def __iter__(self):
+        return self.experiments.iteritems()
+
+    """
     def add_expt_training_set_long(self, exptObj):
 
         tracelength    = 20000
@@ -321,7 +437,6 @@ class Neuron:
             self.trainingSetLong = newTrainingSet
 
         return self
-    
     
     def generate_expected_traces(self):
                 # Step 1: Generate frame expected traces and assign them to self.expectedResponse[exptID]
@@ -486,368 +601,6 @@ class Neuron:
 
         return sweepExpectedDict
     """
-
-    def add_cell_to_xl_db(self, excel_file):
-        # excel_file = os.path.join(project_path_root,all_cells_response_file)
-        try:
-            tempDF  = pd.read_excel(excel_file)
-        except FileNotFoundError:
-            tempDF  = pd.DataFrame()
-        outDF       = pd.concat([self.response, tempDF], ignore_index=True)
-        # outDF       = pd.concat([cell.response,tempDF],axis=1)
-        outDF       = outDF.drop_duplicates()
-        outDF.to_excel(excel_file)  # (all_cells_response_file)
-        print("Cell experiment data has been added to {}".format(excel_file))
-
-    def save_full_dataset(self, directory):
-        for protocol, protocol_data in self.data.items():
-            if protocol_data is not None:
-                filename = "cell" + str(self.cellID) + '_' + str(protocol) + "_dataset.h5"
-                datasetFile = os.path.join(directory, filename)
-                protocol_data.to_hdf(datasetFile, format='fixed', key=protocol, mode='w')
-                print('Cell Data exported to {}'.format(datasetFile))
-
-    def summarize_experiments(self):
-        df = pd.DataFrame(columns=['Polygon Protocol', 'Expt Type', 'Condition', 'Stim Freq',
-                          'Stim Intensity', 'Pulse Width', 'Clamp', 'Clamping Potential'])
-        for exptID, expt in self.experiments.items():
-            df.loc[exptID] = {
-                'Polygon Protocol': expt[-1].polygonProtocolFile,
-                'Expt Type': expt[-1].exptType,
-                'Condition': expt[-1].condition,
-                'Stim Freq': expt[-1].stimFreq,
-                'Stim Intensity': expt[-1].stimIntensity,
-                'Pulse Width': expt[-1].pulseWidth,
-                'Clamp': expt[-1].clamp,
-                'Clamping Potential': expt[-1].clampPotential
-            }
-        print(df)
-        return df
-
-    def make_dataframe(self):
-        '''
-        Make a dataframe from an experiment object
-        '''
-
-        # List of parameters
-        parameters = ['cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'unit',
-                    'protocol','exptSeq','exptID','sweep', 'stimFreq', 'numSq', 'intensity',
-                    'pulseWidth', 'clampMode', 'clampPotential', 'condition', 'AP', 'IR', 'tau',
-                    'numPatterns','patternList', 'sweepBaseline']
-        
-        numParameters = len(parameters)
-
-        protocol_length = {'FreqSweep': 1.0,
-                            '1sq20Hz': 1.0,
-                            'LTMRand': 1.0,
-                            'SpikeTrain': 1.0,
-                            'surprise': 1.0,
-                            'convergence': 2.5,
-                            'BG': 1.0}
-        
-        all_experiments_on_cell = list(self.experiments.keys())
-        expt_seq = utils.generate_expt_sequence(all_experiments_on_cell)
-
-        self.data = {
-            'FreqSweep': [],
-            '1sq20Hz': [],
-            'LTMRand': [],
-            'SpikeTrain': [],
-            'surprise': [],
-            'convergence': [],
-            'BG': []
-        }
-        
-        for exptID, expt in self.experiments.items():
-            print(f'Adding {exptID} to cell data')
-            exptObj  = expt[-1]
-            Fs       = exptObj.Fs
-            sweep_length = int(protocol_length[exptObj.protocol]*Fs)
-            numSweeps = exptObj.numSweeps
-            exptID = int(exptObj.dataFile[-12:-8])
-
-            exptdf = pd.DataFrame(columns=parameters)
-
-            exptdf['cellID']        = [self.cellID]             * numSweeps
-            exptdf['sex']           = [self.animal["sex"]] * numSweeps
-            exptdf['ageAtInj']      = [self.virus["ageatInj"]]  * numSweeps
-            exptdf['ageAtExpt']     = [self.virus["ageatExpt"]] * numSweeps
-            exptdf['incubation']    = [self.virus["incubation"]]* numSweeps
-            exptdf['unit']          = [self.device["cellChannelUnit"]]* numSweeps
-            exptdf['exptID']        = [exptID]                  * numSweeps
-            exptdf['protocol']      = [exptObj.protocol]        * numSweeps
-            exptdf['sweep']         = np.arange(numSweeps)      + 1
-            exptdf['stimFreq']      = [exptObj.stimFreq]        * numSweeps
-            exptdf['intensity']     = [exptObj.stimIntensity]   * numSweeps
-            exptdf['pulseWidth']    = [exptObj.pulseWidth]      * numSweeps
-            exptdf['clampMode']     = [exptObj.clamp]           * numSweeps
-            exptdf['clampPotential']= [exptObj.clampPotential]  * numSweeps
-            exptdf['condition']     = [exptObj.condition]       * numSweeps
-            exptdf['sweepBaseline'] = exptObj.baselineTrend[:,0]
-
-            sos     = signal.butter(N=2, Wn=1000, fs=Fs, output='sos')
-
-            # paramData      = np.zeros((exptObj.numSweeps, numParameters))
-            cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0]
-            exptdf['IR']  =  IR_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
-            exptdf['tau'] = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
-            exptdf['AP']  = spike_detect(cellData, exptObj.opticalStimEpoch, clampingPotential=exptObj.clampPotential, clamp=exptObj.clamp, Fs=Fs)[0]
-
-            cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0][:,:sweep_length]
-            frameData      = exptObj.extract_channelwise_data(exclude_channels=[0, 2, 3, 'Time', 'Cmd'])[1][:,:sweep_length]
-            pdData         = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 3, 'Time', 'Cmd'])[2][:,:sweep_length]
-            try:
-                fieldData  = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 2, 'Time', 'Cmd'])[3][:,:sweep_length]
-                fieldData  = signal.sosfiltfilt(sos, fieldData, axis=1)
-            except:
-                print('Field channel does not exist in the recording. Writing zeros.')
-                fieldData  = np.zeros((exptObj.numSweeps, sweep_length))
-            cellData  = signal.sosfiltfilt(sos, cellData,  axis=1)
-            fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
-
-            datadf = pd.DataFrame(data=np.concatenate((cellData, frameData, pdData, fieldData), axis=1))        
-            
-            
-            df = pd.DataFrame(columns=['patternList', 'numPatterns', 'numSq'])
-            for i in range(numSweeps):
-                try:
-                    x = np.array(exptObj.sweepwiseCoords[i][0], dtype='object')
-                    y = len(x)
-                    df.loc[i,'numSq']       = exptObj.sweepwiseCoords[i][1]
-                except:
-                    x = 0
-                    y = 0
-                    df.loc[i,'numSq']       = 0
-                
-                df.loc[i,'patternList'] = x
-                df.loc[i,'numPatterns'] = y
-                
-            exptdf['patternList'] = df['patternList']
-            exptdf['numPatterns'] = df['numPatterns']
-            exptdf['numSq']       = df['numSq']
-
-            exptdf = pd.concat([exptdf, datadf], axis=1)
-
-            self.data[exptObj.protocol].append(exptdf)
-
-        # concatenate all dataframes within each protocol
-        for protocol, protocol_data in self.data.items():
-            if len(protocol_data) > 0:
-                self.data[protocol] = pd.concat(protocol_data, ignore_index=True)
-                self.data[protocol]['exptSeq'] = self.data[protocol]['exptID'].map(expt_seq)
-            else:
-                self.data[protocol] = None
-
-        return self.data
-    
-    @staticmethod
-    def saveCell(neuronObj, filename):
-        directory       = os.path.dirname(filename)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        with open(filename, 'wb') as fout:
-            print("Neuron object saved into pickle. Use loadCell to load back.")
-            pickle.dump(neuronObj, fout, pickle.HIGHEST_PROTOCOL)
-
-    @staticmethod
-    def loadCell(filename):
-        try:
-            with open(filename, 'rb') as fin:
-                print("Cell object loaded from file")
-                return pickle.load(fin)
-        except FileNotFoundError:
-            print("File not found.")
-            raise Exception
-
-    @staticmethod
-    def load_dataframe(hdf_file):
-        try:
-            dataframe = pd.read_hdf(hdf_file)
-        except FileNotFoundError:
-            print("File not found.")
-            raise Exception
-        return dataframe
-
-    def __iter__(self):
-        return self.experiments.iteritems()
-
-    """
-    def make_dataframe(self):
-        '''
-        Make a pandas dataframe from all the recording data.
-        '''
-
-        protocol_length = {'FreqSweep': 20000,
-                           '1sq20Hz': 20000,
-                           'LTMRand': 20000,
-                           'spikeTrain': 20000,
-                           'surprise': 20000,
-                           'convergence': 50000}
-
-        for exptID, expt in self.experiments.items():
-            print('Adding {} to cell data.'.format(exptID))
-            exptObj  = expt[-1]
-            protocol = expt[0]
-
-            df_exptdata   = pd.DataFrame(np.zeros((1,29+4*protocol_length[protocol])) )
-            df_exptdata.insert(1, 'Protocol', 'none', allow_duplicates=False)
-            df_exptdata['Protocol'] = df_exptdata['Protocol'].astype(str)
-
-            df_exptdata   = self._add_exptdata_to_dataframe(exptObj, df_exptdata, protocol=protocol)
-
-            if df_exptdata.shape[0] > 1:
-                self.data[protocol] = self._add_cell_params_to_dataframe(df_exptdata)
-            else:
-                self.data[protocol] = None
-
-    
-    def _add_exptdata_to_dataframe(self, exptObj, df, protocol=''):
-        numParameters = 29
-        exptID  = exptObj.dataFile[:15]
-        Fs      = exptObj.Fs
-        sos     = signal.butter(N=2, Wn=1000, fs=Fs, output='sos')
-
-        tracelength = df.shape[1] - numParameters
-
-        paramData      = np.zeros((exptObj.numSweeps, numParameters))
-        cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0][:,:tracelength]
-        frameData      = exptObj.extract_channelwise_data(exclude_channels=[0, 2, 3, 'Time', 'Cmd'])[1][:,:tracelength]
-        pdData         = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 3, 'Time', 'Cmd'])[2][:,:tracelength]
-        try:
-            fieldData  = exptObj.extract_channelwise_data(exclude_channels=[0, 1, 2, 'Time', 'Cmd'])[3][:,:tracelength]
-            fieldData  = signal.sosfiltfilt(sos, fieldData, axis=1)
-        except:
-            print('Field channel does not exist in the recording. Writing zeros.')
-            fieldData  = np.zeros((exptObj.numSweeps, tracelength))
-        cellData  = signal.sosfiltfilt(sos, cellData,  axis=1)
-        fieldData = signal.sosfiltfilt(sos, fieldData, axis=1)
-
-        IR  = IR_calc(exptObj.recordingData,  exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
-        tau = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
-
-        pulse_start_times = get_pulse_times(exptObj.numPulses, exptObj.stimStart, exptObj.stimFreq)
-        pulse_start_times = (Fs * pulse_start_times).astype(int)
-        
-        IPI     = int(Fs * exptObj.IPI)
-        for sweep in range(exptObj.numSweeps):
-            cellTrace         = cellData[sweep, :tracelength]
-            frameTTL          = frameData[sweep, :tracelength]
-            # numFrameChange    = np.sum(np.diff(frameTTL) > 0)
-            pulse_end_times   = pulse_start_times[-1] + IPI
-            sqSet             = exptObj.stimCoords[sweep][3:]
-            numSquares        = len(sqSet)
-            patternID         = pattern_index.get_patternID(sqSet)
-
-            pstimes = (pulse_start_times).astype(int)
-            stimEnd = pstimes[-1] + IPI
-
-            coord_array = np.zeros((15))
-            coord_array[:numSquares] = sqSet
-
-            
-            clampPotential = 0 if (exptObj.clamp == 'VC' and exptObj.EorI == 'I') else -70
-                
-
-            Condition   = 1 if ( exptObj.condition == 'Gabazine' )                            else 0
-            clamp       = 0 if ( exptObj.clamp == 'CC' )                                      else 1
-            ap          = 1 if ( exptObj.clamp == 'CC' and np.max(cellTrace[pstimes[0]:stimEnd])>30 ) else 0
-
-
-            parameters  = np.array([int(exptObj.dataFile[-12:-8]),
-                                    int(sweep + 1), # true non-pythonic sweep number
-                                    exptObj.stimFreq,
-                                    numSquares,
-                                    exptObj.stimIntensity,
-                                    exptObj.pulseWidth,
-                                    np.round(exptObj.baselineTrend[sweep][0], 1),
-                                    clampPotential,
-                                    clamp,
-                                    Condition,
-                                    ap,
-                                    np.round(IR[sweep], 1),
-                                    np.round(tau[sweep], 3),
-                                    patternID])
-            
-            parameters_with_coords = np.concatenate((parameters, coord_array))
-            paramData[sweep, :] = parameters_with_coords
-
-        data      = np.concatenate((paramData, pdData, frameData, cellData, fieldData), axis=1)
-        df2       = pd.DataFrame(data=data)
-        df2.insert(1, 'Protocol', [exptObj.exptType]*exptObj.numSweeps, allow_duplicates=False)
-        df2['Protocol'] = df2['Protocol'].astype(str)
-
-        old_dataframe = df
-        dataframe = pd.concat((df, df2), axis=0)
-
-        return dataframe
-
-    def _add_cell_params_to_dataframe(self, df):  
-        Fs = 2e4
-
-        df.rename(columns={0:  "exptID",
-                            1:  "sweep",
-                            2:  "StimFreq",
-                            3:  "numSq",
-                            4:  "intensity",
-                            5:  "pulseWidth",
-                            6:  "MeanBaseline",
-                            7:  "ClampingPotl",
-                            8:  "Clamp",
-                            9:  "Condition",
-                            10: "AP",
-                            11: "InputRes",
-                            12: "Tau",
-                            13: "patternID"
-                            }, inplace=True)
-        df = df.astype({"exptID": 'int32', "sweep": "int32", "StimFreq": "int32", "numSq": 'int32'}, errors='ignore')
-        df.replace({'Clamp': {0.0:   'CC', 1.0: 'VC'}}, inplace=True)
-        df.replace({'Condition': {0.0: 'CTRL', 1.0: 'GABA'}}, inplace=True)
-
-        df = df[df['exptID'] != 0]
-        total_sweeps = df.shape[0]
-
-        expt_ids = np.unique(df['exptID'])
-        expt_idxs= range(len(expt_ids))
-
-        expt_seq = np.array([0] * (total_sweeps))
-        cellID   = np.array([self.cellID] * (total_sweeps))
-        sigUnit  = np.array([self.device["ephysDataUnit"]] * (total_sweeps))
-
-        age      = np.array([((self.animal["dateofExpt"]      - self.animal["dateofBirth"]).days)] * (total_sweeps))
-        ageInj   = np.array([((self.animal["dateofInjection"] - self.animal["dateofBirth"]).days)] * (total_sweeps))
-        inc      = np.array([((self.animal["dateofExpt"]      - self.animal["dateofInjection"]).days)] * (total_sweeps))
-
-        led = df.iloc[1, 30:20030]
-        led = np.where(led >= 0.1 * np.max(led), np.max(led), 0)
-        _, peak_props = signal.find_peaks(led, height=0.9 * np.max(led), width=30)
-        first_pulse_start = (peak_props['left_ips'][0]) / Fs
-        first_pulse_start_datapoint = int(first_pulse_start * Fs) + 20030
-
-        fpt = np.array([first_pulse_start] * (total_sweeps))
-
-        res_traces = (df.iloc[:, first_pulse_start_datapoint: first_pulse_start_datapoint + 1000])
-        stimFreq_array  = df.iloc[:, 3]
-        clamp_pot_array = df.iloc[:, 8]
-        clamp_array     = df.iloc[:, 9]
-
-        peakres, peakres_time = _find_fpr(stimFreq_array, res_traces, clamp_pot_array, clamp_array,)
-        peakres_time = peakres_time + first_pulse_start
-
-        # Assemble dataframe
-        df_prop = pd.DataFrame(data={"cellID": cellID, "expt_seq": expt_seq, "age": age, "ageInj": ageInj, "incubation": inc,
-                                "firstpulsetime": fpt, "firstpulse_peaktime": peakres_time, "firstpeakres": peakres, "Unit": sigUnit})
-        df_prop.reset_index(inplace=True, drop=True)
-        df.reset_index(inplace=True, drop=True)
-
-        df2 = pd.concat([df_prop, df], axis=1)
-        for i, j in zip(expt_ids, expt_idxs):
-            df2.loc[df["exptID"] == i, "expt_seq"] = j
-        
-        # dataframe cleanup
-        df2.drop_duplicates(inplace=True)
-
-        return df2
-    """
     
 class Experiment:
     '''All different kinds of experiments conducted on a patched
@@ -951,7 +704,8 @@ class Experiment:
 
         return chMean
 
-    def analyze_experiment(self, neuron, exptParams): 
+    def analyze_experiment(self, neuron, exptParams):
+        print("Analyzing experiment: ", self.dataFile) 
 
         if self.exptType == 'sealTest':
             # Call a function to calculate access resistance from recording
@@ -971,6 +725,9 @@ class Experiment:
         elif self.exptType in ['SpikeTrain']:
             # Call a function to analyze the freq dependent response
             return self.SpikeTrainResponse(neuron, exptParams)
+        elif self.exptType in ['Surprise']:
+            # Call a function to analyze the freq dependent response
+            return self.SurpriseResponse(neuron, exptParams)
 
     def sealTest(self):
         # calculate access resistance from data, currently not implemented
@@ -999,6 +756,10 @@ class Experiment:
         # Analysis of cell response to a invivo like poisson spike train
         return spiketrain_analysis(self, neuron, exptParams)
 
+    def SurpriseResponse(self, neuron, exptParams):
+        # Analysis of cell response to a invivo like poisson spike train
+        return None
+
     def exptParamsParser(self, ep):
         try:
             self.dataFile           = ep.datafile
@@ -1011,7 +772,7 @@ class Experiment:
             self.clamp              = ep.clamp
             self.EorI               = ep.EorI
             self.clampPotential     = ep.clampPotential
-            self.polygonProtocolFile = ep.polygonProtocol
+            self.polygonProtocolFile= ep.polygonProtocol
             self.numRepeats         = ep.repeats
             self.numPulses          = ep.numPulses
             self.IPI                = 1 / ep.stimFreq
@@ -1022,20 +783,20 @@ class Experiment:
             self.condition          = ep.condition
 
             self.sweepDuration      = ep.sweepDuration
-            self.MeanBaselineEpoch = ep.sweepBaselineEpoch
+            self.MeanBaselineEpoch  = ep.sweepBaselineEpoch
             self.opticalStimEpoch   = ep.opticalStimEpoch
 
             try:
-                self.probePulseEpoch    = ep.singlePulseEpoch
-                self.pulseTrainEpoch    = ep.pulseTrainEpoch
+                self.probePulseEpoch= ep.singlePulseEpoch
+                self.pulseTrainEpoch= ep.pulseTrainEpoch
             except:
-                self.probePulseEpoch    = [ep.opticalStimEpoch[0], ep.opticalStimEpoch[0] + self.IPI]
-                self.pulseTrainEpoch    = ep.opticalStimEpoch
+                self.probePulseEpoch= [ep.opticalStimEpoch[0], ep.opticalStimEpoch[0] + self.IPI]
+                self.pulseTrainEpoch= ep.opticalStimEpoch
 
             self.IRBaselineEpoch    = ep.IRBaselineEpoch
             self.IRpulseEpoch       = ep.IRpulseEpoch
             self.IRchargingPeriod   = ep.IRchargingPeriod
-            self.IRsteadystatePeriod = ep.IRsteadystatePeriod
+            self.IRsteadystatePeriod= ep.IRsteadystatePeriod
             self.interSweepInterval = ep.interSweepInterval
 
             self.unit = 'pA' if self.clamp == 'VC' else 'mV' if self.clamp == 'CC' else 'a.u.'
@@ -1049,6 +810,36 @@ class Experiment:
             raise ParameterMismatchError(message=err)
 
         return self
+
+    def plot_data(self):
+        label = self.exptID
+        dataDict    = self.recordingData
+        numChannels = len(dataDict[0])
+        chLabels    = list(dataDict[0].keys())
+        sweepLength = len(dataDict[0][chLabels[0]])
+
+        if 'Time' in chLabels:    
+            timeSignal = dataDict[0]['Time']
+            chLabels.remove('Time')
+        else:
+            timeSignal = np.arange(0,sweepLength/2e4,1/2e4)
+        
+        numPlots = len(chLabels)
+        fig,axs     = plt.subplots(numPlots,1,sharex=True)
+        
+        for sweepData in dataDict.values():
+            for i,ch in enumerate(chLabels):
+                if ch == 'Cmd':
+                    axs[i].plot(timeSignal[::5],sweepData[ch][::5],'r')
+                    axs[i].set_ylabel('Ch#0 Command')
+                else:
+                    axs[i].plot(timeSignal[::5],sweepData[ch][::5],'b')
+                    axs[i].set_ylabel('Ch# '+str(ch))
+
+        axs[-1].set_xlabel('Time (s)')
+        axs[-1].annotate('* Data undersampled for plotting', xy=(1.0, -0.5), xycoords='axes fraction',ha='right',va="center",fontsize=6)
+        fig.suptitle(label + ' - ABF Data*')
+        plt.show()
 
 
 class Coords:
@@ -1065,7 +856,8 @@ class Coords:
         self.frames_per_sweep = pattern_index.polygon_protocol_sweep_division(self.coordfile)
         self.repeats        = repeats
         self.numSweeps      = repeats * int(len(self.coords) / self.frames_per_sweep)
-        self.sweepwise_patterns = self.get_sweepwise_patterns()
+        # A dict containing sweep wise [patternID of all frames in that sweep, numSquares per pattern, coordinates of all squares in that pattern]
+        self.sweepwise_patterns = self.get_sweepwise_patterns() 
 
     def coordParser(self, coordFile):
         coords              = []
@@ -1093,7 +885,7 @@ class Coords:
                 start = 0
             else:
                 start = start + self.frames_per_sweep
-            sweepdict[s] = [c, len(self.coords[i][3:])]
+            sweepdict[s] = [c, len(self.coords[i][3:]), self.coords[i][3:]]
         return sweepdict
 
 
@@ -1107,6 +899,62 @@ class Coords:
         currentSweepIndex   = self.sweepIndex
         self.sweepIndex += 1
         return self.coords[currentSweepIndex]
+
+
+# TODO : make a class for storing the image information
+class Frame():
+    def __init__(self, image='', mag='', offset=[0,0], fluor_channel='tdTomato'):
+        self.LUT = {'tdTomato':(255,174,127,255),
+                    'eYFP'   :(234,255,127,255),
+                    'GFP'    :(127,255,127,255),
+                    'IR'     :(200,200,200,255),
+                    'grey'   :(200,200,200,255)}
+
+        self.channel=fluor_channel
+        self.channel_color = self.LUT[fluor_channel][:3]
+        self.offset = offset
+        self.mode   = ''
+        self.alpha  = 1.0
+        self.mask   = []
+
+        if image:
+            self.set_image(image)
+
+    def set_image(self, image):
+        self.image  = image
+        self.size   = self.image.size
+        self.height,self.width = self.size
+        self.mode   = self.image.mode
+
+    def add_layer(self, new_layer_image, offsetx, offsety):
+        im1 = self.image
+        im2 = new_layer_image
+        new_image = im1.paste(im2, (offsetx, offsety), mask=im2)
+        return new_image
+
+    def make_background_transparent(self, input_image, background_color=(0,0,0)):
+        image = input_image.convert('RGBA')
+        bgR,bgG,bgB = background_color
+        # Transparency
+        newImage = []
+        for item in image.getdata():
+            if item[:3] == background_color:
+                new_color = (bgR,bgG,bgB,0)
+                newImage.append(new_color)
+            else:
+                newImage.append(item)
+
+        image.putdata(newImage)
+
+        return image
+
+    def apply_LUT(self,channel_color):
+        im1 = self.image.convert('L')
+        im2 = ImageOps.colorize(im1,black=(0,0,0),white=(255,255,255),mid=channel_color)
+        return im2
+
+    def set_mask():
+        pass
 
 
 # TODO

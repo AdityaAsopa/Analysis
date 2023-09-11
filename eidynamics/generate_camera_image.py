@@ -35,10 +35,11 @@ def main(brightfield_file, fluor_file='', fluor_channel='tdTomato', patternID_to
         bf_composite_image2 = bf_composite_image.copy()
 
     # make main canvas
+    print(pattern_index.polygon_frame_properties)
     x0 = int(pattern_index.polygon_frame_properties['offsetx'])
     y0 = int(pattern_index.polygon_frame_properties['offsety'])
-    w  = int(pattern_index.polygon_frame_properties['width'  ])
-    h  = int(pattern_index.polygon_frame_properties['height' ])
+    w  = int(pattern_index.polygon_frame_properties['width m'  ])
+    h  = int(pattern_index.polygon_frame_properties['height m' ])
 
     left   = abs( min (x0,                    0) )
     right  = abs( max (x0+w-bf_image.size[0], 0) )

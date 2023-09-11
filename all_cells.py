@@ -1,14 +1,10 @@
 from pathlib import Path
+import os
 import sys
 
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-all_cells = ['Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\',
-            'Lab\\Projects\\EI_Dynamics\\Data\\22-10-05_GrikAA154\\1541\\',
-            'Lab\\Projects\\EI_Dynamics\\Data\\21-09-07_G521\\5211\\',
-            'Lab\\Projects\\EI_Dynamics\\Data\\21-08-10_G378\\3781\\',
-            'Lab\\Projects\\EI_Dynamics\\Data\\21-05-18_G320\\3201\\',
-            'Lab\\Projects\\EI_Dynamics\\Data\\21-04-16_G294\\2941\\',
-            "Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981",
+all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981",
+            "Lab\\Projects\\EI_Dynamics\\Data\\22-11-07_GrikAA191\\1911\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-21_GrikAA194\\1941\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-13_GrikAA149\\1491\\",
@@ -30,6 +26,7 @@ all_cells = ['Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\',
             "Lab\\Projects\\EI_Dynamics\\Data\\21-09-23_G529\\5291\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-09-07_G521\\5212\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-09-07_G521\\5211\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3882\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-07-30_G387\\3872\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\21-07-30_G387\\3871\\",
@@ -54,27 +51,28 @@ test_cells = [".\\testExamples\\testCells\\1981\\",
               ".\\testExamples\\testCells\\3882\\",
               ".\\testExamples\\testCells\\111\\"]
               
-# convergence expt, not yet explored
-other_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\21-07-29_G388\\3881\\",
-               "Lab\\Projects\\EI_Dynamics\\Data\\22-11-07_GrikAA191\\1911\\",]
-
 all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
 
 ##############################################################################
 NCBS_data_path  = Path( r"\\storage.ncbs.res.in\adityaa\\" )
-cloud_data_path = Path( "C:\\Users\\adity\\OneDrive\\NCBS\\" )
+myPC_data_path = Path( "C:\\Users\\adity\\OneDrive\\NCBS\\" )
 rig_data_path   = Path( "C:\\Users\\aditya\\OneDrive\\NCBS\\" )
-laddu_data_path = Path( "C:\\Users\\user\\OneDrive\\NCBS\\")
+laddu_data_path = Path( "D:\\\Aditya\\")
+xutuli_data_path = Path( "/home1/bhalla/adityaa/")
 test_data_path  = Path( '.\\' )
 
-if NCBS_data_path.exists():
-    project_path_root = NCBS_data_path
+# preference of analysis path: myPC > laddu > NCBS > rig
+
+if myPC_data_path.exists():
+    project_path_root = myPC_data_path
 elif laddu_data_path.exists():
     project_path_root = laddu_data_path
+elif NCBS_data_path.exists():
+    project_path_root = NCBS_data_path
 elif rig_data_path.exists():
     project_path_root = rig_data_path
-elif cloud_data_path.exists():
-    project_path_root = cloud_data_path
+elif xutuli_data_path.exists():
+    project_path_root = xutuli_data_path
 else:
     print('Data path error. Testing code on test cells.')
     raise FileNotFoundError

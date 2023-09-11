@@ -8,12 +8,12 @@ import pyabf
 # if the module is imported 
 try: 
     from eidynamics.utils import (epoch_to_datapoints,
-                                  extract_channelwise_data, filter_data,
-                                  plot_abf_data)
+                                  extract_channelwise_data, filter_data)
 # when the module is run from command line
 except ModuleNotFoundError:
     from utils import (epoch_to_datapoints, extract_channelwise_data,
-                       filter_data, plot_abf_data)
+                       filter_data)
+from eidynamics.plot_tools import plot_abf_data
 
 def abf_to_data(abf_file,exclude_channels=[],
                 baseline_criterion=0.1, sweep_baseline_epoch=[0, 0.2], baseline_subtraction=False,

@@ -57,7 +57,7 @@ stimFreq		= 20 												# in Hz
 repeats			= 3
 numPulses		= 8													# a fixed number for all frequencies
 
-exptTypes		= ['GapFree','IR','CurrentStep','1sq20Hz','FreqSweep','LTMSeq','LTMRand','convergence']
+exptTypes		= ['GapFree','IR','CurrentStep','1sq20Hz','FreqSweep','LTMSeq','LTMRand','convergence', 'surprise', 'SpikeTrain']
 exptType		= exptTypes[4]
 
 conditions		= ['Control','Gabazine']

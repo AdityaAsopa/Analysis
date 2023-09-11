@@ -5,6 +5,8 @@ testScripts
 .vscode
 __pycache__
 .ipynb_checkpoints
+venv-ephys
+paper_figure_matter
 
 # files
 *temp*.*
@@ -12,4 +14,5 @@ __pycache__
 *test*.*
 *.h5
 *.xlsx
+*.csv
 *.cpython*

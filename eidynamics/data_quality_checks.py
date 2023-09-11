@@ -28,12 +28,12 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
     '''
     global cell_location
     global cellID
-    
+    numParams = len(cellObject.metadata_columns)
     cell_location = cellDirectory
     for protocol, protocol_data in cellObject.data.items():
         if protocol_data is not None:
             dataDF = protocol_data.copy()
-            dataDF = dataDF.iloc[:,:40]
+            dataDF = dataDF.iloc[:,:numParams]
             dataDF = dataDF[dataDF['exptID'] != 0]
             cellID = str(cellObject.cellID)
 
@@ -48,7 +48,7 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
             # elif cellObject.properties.clamp == 'CC':
             is_tau_stable(dataDF)
 
-            print('Plots saved in {}'.format( (cell_location  ) ) ) #/ str(cellID)
+            print(f'Plots saved in {cell_location}')
         
 
 def is_baseline_stable(dataDf):
