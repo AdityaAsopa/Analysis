@@ -1,0 +1,216 @@
+Cell list =  [7492. 1621. 1531. 1524. 1522. 1541.] 6
+NUM PROCESSES =  12
+cell=7492 exc=0 numSq=5
+cell=7492 exc=0 numSq=15
+cell=7492 exc=1 numSq=5
+cell=7492 exc=1 numSq=15
+cell=1621 exc=0 numSq=5
+cell=1621 exc=0 numSq=15
+cell=1621 exc=1 numSq=5
+cell=1621 exc=1 numSq=15
+cell=1531 exc=0 numSq=5
+cell=1531 exc=0 numSq=15
+cell=1531 exc=1 numSq=5
+cell=1531 exc=1 numSq=15
+cell=1524 exc=0 numSq=5
+cell=1524 exc=0 numSq=15
+cell=1524 exc=1 numSq=5
+cell=1524 exc=1 numSq=15
+cell=1522 exc=0 numSq=5
+cell=1522 exc=0 numSq=15
+cell=1522 exc=1 numSq=5
+cell=1522 exc=1 numSq=15
+cell=1541 exc=0 numSq=5
+cell=1541 exc=0 numSq=15
+cell=1541 exc=1 numSq=5
+cell=1541 exc=1 numSq=15
+.Written to file ./Results/opt7492_0_15_53.g
+./Results/opt7492_0_15_53.g: HOSS opt: Init Score = 0.363, Final = 0.113, Time=50.906s
+.Written to file ./Results/opt7492_0_15_55.g
+./Results/opt7492_0_15_55.g: HOSS opt: Init Score = 0.397, Final = 0.126, Time=61.389s
+.Written to file ./Results/opt7492_0_5_47.g
+./Results/opt7492_0_5_47.g: HOSS opt: Init Score = 0.351, Final = 0.114, Time=76.084s
+.Written to file ./Results/opt7492_0_5_50.g
+./Results/opt7492_0_5_50.g: HOSS opt: Init Score = 0.336, Final = 0.137, Time=98.599s
+.Written to file ./Results/opt7492_0_5_49.g
+./Results/opt7492_0_5_49.g: HOSS opt: Init Score = 0.353, Final = 0.116, Time=100.495s
+.Written to file ./Results/opt7492_0_5_48.g
+./Results/opt7492_0_5_48.g: HOSS opt: Init Score = 0.330, Final = 0.138, Time=104.024s
+.Written to file ./Results/opt7492_0_15_52.g
+./Results/opt7492_0_15_52.g: HOSS opt: Init Score = 0.356, Final = 0.143, Time=107.590s
+.Written to file ./Results/opt7492_1_15_52.g
+./Results/opt7492_1_15_52.g: HOSS opt: Init Score = 0.207, Final = 0.100, Time=69.635s
+.Written to file ./Results/opt7492_1_15_53.g
+./Results/opt7492_1_15_53.g: HOSS opt: Init Score = 0.199, Final = 0.100, Time=86.556s
+.Written to file ./Results/opt7492_1_5_49.g
+./Results/opt7492_1_5_49.g: HOSS opt: Init Score = 0.190, Final = 0.095, Time=189.333s
+.Written to file ./Results/opt7492_1_5_50.g
+./Results/opt7492_1_5_50.g: HOSS opt: Init Score = 0.206, Final = 0.130, Time=140.099s
+.Written to file ./Results/opt1621_0_5_48.g
+./Results/opt1621_0_5_48.g: HOSS opt: Init Score = 0.279, Final = 0.161, Time=101.040s
+.Written to file ./Results/opt7492_1_15_55.g
+./Results/opt7492_1_15_55.g: HOSS opt: Init Score = 0.211, Final = 0.113, Time=143.662s
+.Written to file ./Results/opt1621_0_15_52.g
+./Results/opt1621_0_15_52.g: HOSS opt: Init Score = 0.210, Final = 0.139, Time=45.460s
+.Written to file ./Results/opt1621_1_5_48.g
+./Results/opt1621_1_5_48.g: HOSS opt: Init Score = 0.384, Final = 0.130, Time=56.759s
+.Written to file ./Results/opt7492_0_5_46.g
+./Results/opt7492_0_5_46.g: HOSS opt: Init Score = 0.350, Final = 0.129, Time=305.121s
+.Written to file ./Results/opt1621_1_5_49.g
+./Results/opt1621_1_5_49.g: HOSS opt: Init Score = 0.343, Final = 0.156, Time=74.995s
+.Written to file ./Results/opt7492_1_5_46.g
+./Results/opt7492_1_5_46.g: HOSS opt: Init Score = 0.184, Final = 0.105, Time=354.327s
+.Written to file ./Results/opt1621_1_5_47.g
+./Results/opt1621_1_5_47.g: HOSS opt: Init Score = 0.345, Final = 0.156, Time=95.677s
+.Written to file ./Results/opt1621_1_5_50.g
+./Results/opt1621_1_5_50.g: HOSS opt: Init Score = 0.379, Final = 0.150, Time=66.745s
+.Written to file ./Results/opt1621_0_15_55.g
+./Results/opt1621_0_15_55.g: HOSS opt: Init Score = 0.215, Final = 0.150, Time=189.741s
+.Written to file ./Results/opt1621_0_5_50.g
+./Results/opt1621_0_5_50.g: HOSS opt: Init Score = 0.228, Final = 0.140, Time=208.412s
+.Written to file ./Results/opt1621_0_15_53.g
+./Results/opt1621_0_15_53.g: HOSS opt: Init Score = 0.211, Final = 0.147, Time=198.692s
+.Written to file ./Results/opt1621_1_5_46.g
+./Results/opt1621_1_5_46.g: HOSS opt: Init Score = 0.348, Final = 0.107, Time=109.896s
+.Written to file ./Results/opt1621_0_5_46.g
+./Results/opt1621_0_5_46.g: HOSS opt: Init Score = 0.242, Final = 0.153, Time=291.415s
+.Written to file ./Results/opt1621_0_5_47.g
+./Results/opt1621_0_5_47.g: HOSS opt: Init Score = 0.235, Final = 0.136, Time=333.513s
+.Written to file ./Results/opt1621_1_15_55.g
+./Results/opt1621_1_15_55.g: HOSS opt: Init Score = 0.396, Final = 0.186, Time=91.490s
+.Written to file ./Results/opt1531_0_5_47.g
+./Results/opt1531_0_5_47.g: HOSS opt: Init Score = 0.165, Final = 0.137, Time=51.213s
+.Written to file ./Results/opt1621_1_15_52.g
+./Results/opt1621_1_15_52.g: HOSS opt: Init Score = 0.422, Final = 0.164, Time=98.112s
+.Written to file ./Results/opt1531_0_5_46.g
+./Results/opt1531_0_5_46.g: HOSS opt: Init Score = 0.246, Final = 0.137, Time=45.208s
+.Written to file ./Results/opt1621_1_15_53.g
+./Results/opt1621_1_15_53.g: HOSS opt: Init Score = 0.373, Final = 0.172, Time=96.881s
+.Written to file ./Results/opt1531_0_15_55.g
+./Results/opt1531_0_15_55.g: HOSS opt: Init Score = 0.242, Final = 0.136, Time=37.273s
+.Written to file ./Results/opt1531_0_15_52.g
+./Results/opt1531_0_15_52.g: HOSS opt: Init Score = 0.228, Final = 0.138, Time=33.987s
+.Written to file ./Results/opt1531_1_5_48.g
+./Results/opt1531_1_5_48.g: HOSS opt: Init Score = 0.257, Final = 0.234, Time=31.683s
+.Written to file ./Results/opt1531_0_5_49.g
+./Results/opt1531_0_5_49.g: HOSS opt: Init Score = 0.222, Final = 0.145, Time=102.572s
+.Written to file ./Results/opt1531_1_5_49.g
+./Results/opt1531_1_5_49.g: HOSS opt: Init Score = 0.233, Final = 0.189, Time=38.790s
+.Written to file ./Results/opt1531_0_5_50.g
+./Results/opt1531_0_5_50.g: HOSS opt: Init Score = 0.190, Final = 0.171, Time=70.370s
+.Written to file ./Results/opt1531_1_5_46.g
+./Results/opt1531_1_5_46.g: HOSS opt: Init Score = 0.412, Final = 0.353, Time=40.040s
+.Written to file ./Results/opt1531_1_5_50.g
+./Results/opt1531_1_5_50.g: HOSS opt: Init Score = 0.288, Final = 0.183, Time=50.374s
+.Written to file ./Results/opt1531_0_5_48.g
+./Results/opt1531_0_5_48.g: HOSS opt: Init Score = 0.220, Final = 0.108, Time=166.011s
+.Written to file ./Results/opt1531_1_15_53.g
+./Results/opt1531_1_15_53.g: HOSS opt: Init Score = 0.329, Final = 0.141, Time=51.880s
+.Written to file ./Results/opt1531_1_15_52.g
+./Results/opt1531_1_15_52.g: HOSS opt: Init Score = 0.315, Final = 0.113, Time=55.932s
+.Written to file ./Results/opt1531_1_15_55.g
+./Results/opt1531_1_15_55.g: HOSS opt: Init Score = 0.326, Final = 0.152, Time=67.692s
+.Written to file ./Results/opt1524_0_5_47.g
+./Results/opt1524_0_5_47.g: HOSS opt: Init Score = 0.204, Final = 0.119, Time=46.236s
+.Written to file ./Results/opt1524_0_5_48.g
+./Results/opt1524_0_5_48.g: HOSS opt: Init Score = 0.190, Final = 0.124, Time=73.257s
+.Written to file ./Results/opt1531_1_5_47.g
+./Results/opt1531_1_5_47.g: HOSS opt: Init Score = 0.332, Final = 0.185, Time=117.956s
+.Written to file ./Results/opt1524_0_5_46.g
+./Results/opt1524_0_5_46.g: HOSS opt: Init Score = 0.223, Final = 0.104, Time=49.376s
+.Written to file ./Results/opt1531_0_15_53.g
+./Results/opt1531_0_15_53.g: HOSS opt: Init Score = 0.231, Final = 0.081, Time=153.670s
+.Written to file ./Results/opt1524_0_5_49.g
+./Results/opt1524_0_5_49.g: HOSS opt: Init Score = 0.220, Final = 0.125, Time=89.403s
+.Written to file ./Results/opt1524_0_15_52.g
+./Results/opt1524_0_15_52.g: HOSS opt: Init Score = 0.234, Final = 0.120, Time=56.140s
+.Written to file ./Results/opt1524_1_5_48.g
+./Results/opt1524_1_5_48.g: HOSS opt: Init Score = 0.305, Final = 0.175, Time=32.379s
+.Written to file ./Results/opt1524_0_5_50.g
+./Results/opt1524_0_5_50.g: HOSS opt: Init Score = 0.205, Final = 0.098, Time=81.950s
+.Written to file ./Results/opt1524_0_15_53.g
+./Results/opt1524_0_15_53.g: HOSS opt: Init Score = 0.249, Final = 0.128, Time=75.577s
+.Written to file ./Results/opt1524_1_5_49.g
+./Results/opt1524_1_5_49.g: HOSS opt: Init Score = 0.295, Final = 0.117, Time=61.503s
+.Written to file ./Results/opt1524_1_5_47.g
+./Results/opt1524_1_5_47.g: HOSS opt: Init Score = 0.291, Final = 0.099, Time=61.280s
+.Written to file ./Results/opt1524_1_15_55.g
+./Results/opt1524_1_15_55.g: HOSS opt: Init Score = 0.279, Final = 0.105, Time=49.342s
+.Written to file ./Results/opt1524_0_15_55.g
+./Results/opt1524_0_15_55.g: HOSS opt: Init Score = 0.232, Final = 0.114, Time=112.850s
+.Written to file ./Results/opt1524_1_5_46.g
+./Results/opt1524_1_5_46.g: HOSS opt: Init Score = 0.298, Final = 0.117, Time=61.928s
+.Written to file ./Results/opt1524_1_15_52.g
+./Results/opt1524_1_15_52.g: HOSS opt: Init Score = 0.298, Final = 0.140, Time=58.908s
+.Written to file ./Results/opt1524_1_5_50.g
+./Results/opt1524_1_5_50.g: HOSS opt: Init Score = 0.298, Final = 0.168, Time=71.121s
+.Written to file ./Results/opt1522_0_5_50.g
+./Results/opt1522_0_5_50.g: HOSS opt: Init Score = 0.232, Final = 0.112, Time=28.223s
+.Written to file ./Results/opt1522_0_5_46.g
+./Results/opt1522_0_5_46.g: HOSS opt: Init Score = 0.241, Final = 0.117, Time=41.446s
+.Written to file ./Results/opt1522_0_5_49.g
+./Results/opt1522_0_5_49.g: HOSS opt: Init Score = 0.264, Final = 0.097, Time=57.199s
+.Written to file ./Results/opt1522_0_5_47.g
+./Results/opt1522_0_5_47.g: HOSS opt: Init Score = 0.242, Final = 0.094, Time=60.683s
+.Written to file ./Results/opt1522_0_15_53.g
+./Results/opt1522_0_15_53.g: HOSS opt: Init Score = 0.247, Final = 0.106, Time=47.411s
+.Written to file ./Results/opt1524_1_15_53.g
+./Results/opt1524_1_15_53.g: HOSS opt: Init Score = 0.289, Final = 0.115, Time=101.435s
+.Written to file ./Results/opt1522_0_15_55.g
+./Results/opt1522_0_15_55.g: HOSS opt: Init Score = 0.278, Final = 0.137, Time=80.511s
+.Written to file ./Results/opt1621_0_5_49.g
+./Results/opt1621_0_5_49.g: HOSS opt: Init Score = 0.263, Final = 0.141, Time=647.915s
+.Written to file ./Results/opt1522_0_15_52.g
+./Results/opt1522_0_15_52.g: HOSS opt: Init Score = 0.254, Final = 0.119, Time=90.782s
+.Written to file ./Results/opt1522_1_5_48.g
+./Results/opt1522_1_5_48.g: HOSS opt: Init Score = 0.322, Final = 0.137, Time=71.295s
+.Written to file ./Results/opt1522_1_5_46.g
+./Results/opt1522_1_5_46.g: HOSS opt: Init Score = 0.331, Final = 0.070, Time=55.211s
+.Written to file ./Results/opt1522_0_5_48.g
+./Results/opt1522_0_5_48.g: HOSS opt: Init Score = 0.250, Final = 0.123, Time=146.438s
+.Written to file ./Results/opt1522_1_15_53.g
+./Results/opt1522_1_15_53.g: HOSS opt: Init Score = 0.323, Final = 0.150, Time=56.953s
+.Written to file ./Results/opt1522_1_15_52.g
+./Results/opt1522_1_15_52.g: HOSS opt: Init Score = 0.315, Final = 0.112, Time=69.325s
+.Written to file ./Results/opt1522_1_15_55.g
+./Results/opt1522_1_15_55.g: HOSS opt: Init Score = 0.293, Final = 0.094, Time=87.683s
+.Written to file ./Results/opt1541_0_5_48.g
+./Results/opt1541_0_5_48.g: HOSS opt: Init Score = 0.240, Final = 0.129, Time=107.004s
+.Written to file ./Results/opt1522_1_5_47.g
+./Results/opt1522_1_5_47.g: HOSS opt: Init Score = 0.285, Final = 0.091, Time=165.243s
+.Written to file ./Results/opt1541_0_5_46.g
+./Results/opt1541_0_5_46.g: HOSS opt: Init Score = 0.224, Final = 0.201, Time=87.407s
+.Written to file ./Results/opt1541_1_5_49.g
+./Results/opt1541_1_5_49.g: HOSS opt: Init Score = 0.361, Final = 0.148, Time=49.662s
+.Written to file ./Results/opt1541_0_5_50.g
+./Results/opt1541_0_5_50.g: HOSS opt: Init Score = 0.241, Final = 0.187, Time=134.763s
+.Written to file ./Results/opt1522_1_5_49.g
+./Results/opt1522_1_5_49.g: HOSS opt: Init Score = 0.321, Final = 0.132, Time=249.891s
+.Written to file ./Results/opt1541_0_15_53.g
+./Results/opt1541_0_15_53.g: HOSS opt: Init Score = 0.227, Final = 0.156, Time=84.614s
+.Written to file ./Results/opt1522_1_5_50.g
+./Results/opt1522_1_5_50.g: HOSS opt: Init Score = 0.326, Final = 0.095, Time=233.567s
+.Written to file ./Results/opt7492_1_5_47.g
+./Results/opt7492_1_5_47.g: HOSS opt: Init Score = 0.187, Final = 0.125, Time=968.794s
+............<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 96 entries, 0 to 95
+Data columns (total 15 columns):
+ #   Column                 Non-Null Count  Dtype  
+---  ------                 --------------  -----  
+ 0   cell                   96 non-null     int64  
+ 1   exc                    96 non-null     int64  
+ 2   numSq                  96 non-null     int64  
+ 3   pattern                96 non-null     int64  
+ 4   initScore              96 non-null     float64
+ 5   finalScore             96 non-null     float64
+ 6   Ca_bind_RR.Kd          96 non-null     float64
+ 7   Ca_bind_RR.tau         96 non-null     float64
+ 8   docking.Kf             96 non-null     float64
+ 9   vesicle_release.Kf     96 non-null     float64
+ 10  remove.Kf              96 non-null     float64
+ 11  replenish_vesicle.tau  96 non-null     float64
+ 12  vesicle_pool.concInit  96 non-null     float64
+ 13  ligand_binding.tau     96 non-null     float64
+ 14  ligand_binding.Kd      96 non-null     float64
+dtypes: float64(11), int64(4)
+memory usage: 11.4 KB

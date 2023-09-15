@@ -1,0 +1,34 @@
+{
+    "FileType":"Hoss",
+    "Version":"1.0",
+    "author": "TabPresyn program",
+    "model": "Models/ExcPresyn75.g",
+    "map":"Maps/mapPresyn.json",
+    "exptDir": "./Expts",
+    "scoreFunc": "NRMS",
+    "tolerance": 0.0001,
+    "algorithm": "COBYLA",
+    "comment": "Program-generated HOSS config for presynaptic release.",
+        "HOSS": [
+            {
+            "name": "IndividualPathways", 
+            "hierarchyLevel": 1,
+            "presyn": {
+                "comment": "This is the only block at present",
+                "expt": {
+                    "fs_1541_1_5_50_50_pk.json": {"weight": 200 },
+                    "fs_1541_1_5_50_50_pp.json": {"weight": 200 },
+                    "fs_1541_1_5_50_20_pk.json": {"weight": 200 },
+                    "fs_1541_1_5_50_20_pp.json": {"weight": 200 }
+                },
+                "params": ["Ca_bind_RR.Kd", "Ca_bind_RR.tau", "docking.Kf", "vesicle_release.Kf", "remove.Kf", "replenish_vesicle.tau", "vesicle_pool.concInit", "ligand_binding.tau", "ligand_binding.Kd"],
+                "paramBounds": { "vesicle_pool.concInit":[0.3e-4,10.0e-3,0],
+                "docking.Kd":[1e-14, 0.00001,0]
+                },
+
+                "resultFile": "./Results/_opt1541_1_5_50result.txt",
+                "optModelFile": "./Results/opt1541_1_5_50.g"
+            }
+        }
+    ]
+}

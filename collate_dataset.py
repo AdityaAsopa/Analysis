@@ -53,7 +53,7 @@ def main(cell_set: list = None, protocols: list = ['FreqSweep']) -> None:
             # save  dfs
             save_df_to_h5(df_short, filename_suffix='short', protocol=protocol, save_combined_also=True)
             del df_short
-            save_df_to_h5(df_long, filename_suffix='long', protocol=protocol, save_combined_also=True)
+            # save_df_to_h5(df_long, filename_suffix='long', protocol=protocol, save_combined_also=False)
 
 
 def all_cell_plots(all_expt_df):

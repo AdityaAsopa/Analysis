@@ -1,0 +1,88 @@
+{
+    "FileType": "FindSim",
+    "Version": "1.0",
+    "Metadata": {
+        "transcriber": "Upi Bhalla",
+        "organization": "NCBS",
+        "email": "bhalla@ncbs.res.in",
+        "source": {
+            "sourceType": "other",
+            "PMID": 0,
+            "year": 2022,
+            "figure": ""
+        },
+        "testModel": "./Models/InhPresyn.g",
+        "testMap": "./Maps/mapPresyn.json"
+    },  
+    "Experiment": {
+        "design": "TimeSeries",
+        "species": "mouse",
+        "cellType": "CA1 pyramidal neuron",
+        "notes": "Data is from recording of IPSC to 5 or 15 sq optical stim by Aditya Asopa"
+    },  
+    "Stimuli": [
+        {
+            "timeUnits": "sec",
+            "quantityUnits": "uM",
+            "entity": "CaInput",
+            "field": "conc",
+            "data": [
+                [ 0, 0.08],
+                [1.0100, 50.000],
+                [1.0120, 0.080],
+                [1.3100, 50.000],
+                [1.3120, 0.080],
+                [1.3300, 50.000],
+                [1.3320, 0.080],
+                [1.3500, 50.000],
+                [1.3520, 0.080],
+                [1.3700, 50.000],
+                [1.3720, 0.080],
+                [1.3900, 50.000],
+                [1.3920, 0.080],
+                [1.4100, 50.000],
+                [1.4120, 0.080],
+                [1.4300, 50.000],
+                [1.4320, 0.080],
+                [1.4500, 50.000],
+                [1.4520, 0.080]
+            ]
+        }
+    ],  
+    "Readouts": {
+        "timeUnits": "sec",
+        "quantityUnits": "ratio",
+        "entities": [
+            "L_R"
+        ],
+        "field": "conc",
+        "window": {"startt": -0.01, "endt": 0.005, "dt": 0.001,
+            "operation": "oscPk"
+        },
+        "normalization": {
+            "entities": [
+                "L_R"
+            ],
+            "sampling": "start"
+        },
+        "data": [
+            [1.0204, 1.0000, 0],
+            [1.3098, 0.0530, 0],
+            [1.3196, 0.7569, 0],
+            [1.3297, 0.6375, 0],
+            [1.3408, 1.3068, 0],
+            [1.3511, 1.1575, 0],
+            [1.3561, 1.3117, 0],
+            [1.3711, 1.0099, 0],
+            [1.3770, 1.1515, 0],
+            [1.3913, 0.8951, 0],
+            [1.3991, 1.0902, 0],
+            [1.4122, 0.8403, 0],
+            [1.4171, 1.0054, 0],
+            [1.4333, 0.7789, 0],
+            [1.4383, 0.8931, 0],
+            [1.4527, 0.6860, 0],
+            [1.4592, 0.8509, 0]
+        ]
+  }
+}

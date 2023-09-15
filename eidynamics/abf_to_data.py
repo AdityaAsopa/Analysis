@@ -57,8 +57,13 @@ def abf_to_data(abf_file,exclude_channels=[],
         print('Please provide valid file')
 
     abf             = pyabf.ABF(abf_file)
+    units           = abf.adcUnits
     numSweeps       = abf.sweepCount
     numChannels     = abf.channelCount
+    print(f'Datafile has {numSweeps} sweeps in {numChannels} channels.')
+    if numChannels==4 and units[3]=='pA':
+        print('Field data recorded in pA, will convert to mV by scaling with 20')
+
 
     data            = {}
     sweepArray      = {}
@@ -76,17 +81,20 @@ def abf_to_data(abf_file,exclude_channels=[],
 
         for ch in range(numChannels):
             abf.setSweep(sweepNumber=sweep, channel=ch)
-            if ch==0 and not ch in exclude_channels:
+            if ch==0 and (not ch in exclude_channels):
                 filteredSweep               = filter_data(abf.sweepY,filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=sampling_freq)
                 parsedSweep,_swpBaseline    = baseline_subtractor(filteredSweep,sweep_baseline_epoch,sampling_freq,subtract_baseline=baseline_subtraction, method='percentile')
                 baselineValues[sweep]       = _swpBaseline/signal_scaling
                 
                 sweepArray.update({ch: parsedSweep/signal_scaling})
-            elif ch!=0 and not ch in exclude_channels:
+            elif ch!=0 and (not ch in exclude_channels):
                 parsedSweep,_               = baseline_subtractor(abf.sweepY,sweep_baseline_epoch,sampling_freq,subtract_baseline=True, method='percentile')
                 sweepArray.update({ch: parsedSweep/signal_scaling})
             else:
                 pass
+            if (ch==3) and (not ch in exclude_channels) and (units[3]=='pA'):
+                
+                sweepArray.update({ch: parsedSweep/signal_scaling/20})
 
         
         data[sweep] = sweepArray
@@ -97,7 +105,7 @@ def abf_to_data(abf_file,exclude_channels=[],
         baseline_fluctuation = abs( np.std(baselineValues,ddof=1) / np.mean(baselineValues) ) # coefficient of variation of the baseline values, in fraction
         baselineFlag         =  (baseline_fluctuation > baseline_criterion) # Baseline flag is set True if fluctuation > screening criterion
 
-    print(f'Datafile has {numSweeps} sweeps in {len(data[0])} channels.')
+    
 
     if plot_data:
         plot_abf_data(data)

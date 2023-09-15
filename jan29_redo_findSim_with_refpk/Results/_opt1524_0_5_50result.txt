@@ -1,0 +1,20 @@
+-------------------------------------------------------------
+scoreFunc = NRMS, Minimization runtime = 81.935 sec
+Parameter              Initial Value     Final Value          Ratio 
+Ca_bind_RR.Kd              1.059e-06       1.465e-06          1.3836
+Ca_bind_RR.tau              0.001328         0.02324         17.4982
+docking.Kf                     295.3            2017          6.8311
+vesicle_release.Kf         1.868e+06       1.343e+06          0.7188
+remove.Kf                  3.059e+04       3.411e+04          1.1150
+replenish_vesicle.tau          0.0814          0.1107          1.3595
+vesicle_pool.concInit        0.001019        0.000397          0.3895
+ligand_binding.tau          0.002747        0.005869          2.1362
+ligand_binding.Kd          0.0002133       9.472e-05          0.4440
+
+File                                       initScore  finalScore      weight
+fs_1524_0_5_50_20_pk.json                    0.16335     0.10798     200.000
+fs_1524_0_5_50_20_pp.json                    0.21351     0.11761     200.000
+fs_1524_0_5_50_50_pk.json                    0.21002     0.08694     200.000
+fs_1524_0_5_50_50_pp.json                    0.22585     0.07278     200.000
+
+Init score = 0.2046, final = 0.0979

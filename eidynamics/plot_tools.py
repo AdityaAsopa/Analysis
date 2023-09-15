@@ -15,6 +15,7 @@ from scipy.signal import find_peaks, peak_widths
 from scipy import stats
 
 from eidynamics import utils
+from eidynamics import pattern_index
 
 
 
@@ -293,5 +294,12 @@ def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, simplify=True
 
     # invert the y axis
     ax.invert_yaxis()
+
+    # add the colorbar
+    cbar = plt.colorbar(ax.imshow(grid_array, cmap=cmap, vmin=vmin, vmax=vmax), ax=ax, label='Depolarization (pA)',**kwargs)
+    # add colorbar label
+    # cbar.set_ylabel('Depolorization (pA)')
+    
+    ax.set_aspect(1/pattern_index.polygon_frame_properties['aspect_ratio'])
 
     return locx, locy, ax
