@@ -1,5 +1,3 @@
-# %%
-
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -10,53 +8,65 @@ from scipy import signal
 sns.set_context('talk')
 
 from eidynamics import utils, data_quality_checks, ephys_classes
+from eidynamics import expt_to_dataframe
 import parse_data
 import all_cells
 
 
-# Make a table of all experiments on all cells
-def main():
+def main(cell_set: list = None, protocols: list = ['FreqSweep']) -> None:
     all_cell_data = []
-    sweeps = []
 
-    cell_set = all_cells.all_cells
-    print(cell_set)
-    for cell in cell_set:
-        cellpath = all_cells.project_path_root / cell
-        cellID = cellpath.stem
-        cellpickle = cellpath / (str(cellID) + ".pkl")
-        print(cellpickle)
+    if cell_set is None:
+        cell_set = all_cells.all_cells
 
-        neuron = ephys_classes.Neuron.loadCell(cellpickle)
-        neuron_data = neuron.data
-        print(neuron_data.shape)
-        all_cell_data.append(neuron_data)
-        sweeps.append(neuron_data.shape[0])
-        
+    for protocol in protocols:
+        all_cell_data_ = []
+        x = 0
+        for cell in cell_set:
+            print(cell)
+            cellpath = all_cells.project_path_root / cell
+            cellID = cellpath.stem
+            cellpickle = cellpath / (str(cellID) + ".pkl")
+            print(cellpickle)
 
-    all_expt = pd.concat(all_cell_data, ignore_index=True, axis=0)
-    print(all_expt.shape) 
-    # del cell_set, cellID, cellpath, cellpickle, neuron_data, _ss, all_cell_data, sweeps, neuron, led, peak_props, first_pulse_start, res_traces, expt_ids, expt_idxs, i, j,    
-    all_expt.to_hdf('all_expt_data.h5', format='fixed', key='data', mode='w')
+            try:
+                neuron = ephys_classes.Neuron.loadCell(cellpickle)
+                neuron_data = neuron.data[protocol]
+                if neuron_data is None:
+                    continue
+            except Exception as err:
+                print(err)
+                print("Error loading cell: ", cellpickle)
+                continue
+            
+            all_cell_data_.append(neuron_data)
+            x += neuron_data.shape[0]
+            
+        if len(all_cell_data_) != 0:
+            print(f'{protocol} has {len(all_cell_data_)} cells with total {x} sweeps')
+            all_expt_ = pd.concat(all_cell_data_, ignore_index=True, axis=0)
 
-    all_cell_plots(all_expt)
+            # add analysis params to the df
+            df_short, df_long = expt_to_dataframe.add_analysed_params2(all_expt_)
+            del all_expt_
 
-    # %%
+            # save  dfs
+            save_df_to_h5(df_short, filename_suffix='short', protocol=protocol, save_combined_also=True)
+            del df_short
+            save_df_to_h5(df_long, filename_suffix='long', protocol=protocol, save_combined_also=True)
+
+
 def all_cell_plots(all_expt_df):
     df = all_expt_df.iloc[:,:29].copy()
 
-    # %% [markdown]
+ 
     # # CC Cells
 
-    # %% [markdown]
     # ### Fig 1: CC | [expt_seq vs first-pulse-response] X cell_ID
     # Does the first pulse response decrease during an experiment session on a cell?
-    # 
     # An experiment session consists of an array of experiments done on the cell with every experiment corresponding to one protocol (one stim frequency)
-    # 
     # Observation: Across all the patterns, as the session progresses, the EPSP response of the cell to the optical stimulation decreases.
 
-    # %%
     plt.close('all')
     plt.figure()
     df_subset = df.loc[ (df["Clamp"] == "CC")  & (df["AP"]== 0.0) & (df["intensity"]== 100.0) & (df["pulseWidth"]== 2.0) & (df["AP"]== 0.0) & (df["patternID"] < 56) & (df["Condition"]== "CTRL") & (df["numSq"]>= 1.0)].copy() 
@@ -70,14 +80,14 @@ def all_cell_plots(all_expt_df):
     figpath = all_cells.project_path_root / "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\all_cell_collate_qc\\"
     plt.savefig(figpath / 'CC_expt_seq_vs_first-pulse-response_X_cell_ID.png')
 
-    # %% [markdown]
+    # [markdown]
     # ### Fig 2: CC | [Expt sequence vs IR ] x Cell_ID
     # Does the input resistance of the cell change during an experiment session on a cell?
     # 
     # An experiment session consists of an array of experiments done on the cell with every experiment corresponding to one protocol (one stim frequency)
     # 
 
-    # %%
+    #
     plt.close('all')
     plt.figure()
     df_subset = df.loc[ (df["Clamp"] == "CC") & (df["Condition"]== "CTRL") & (df["intensity"]== 100.0) & (df["pulseWidth"]== 2.0)   & (df["patternID"] < 56) ].copy()
@@ -87,14 +97,14 @@ def all_cell_plots(all_expt_df):
     figpath = all_cells.project_path_root / "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\all_cell_collate_qc\\"
     plt.savefig(figpath / 'CC_expt_seq_vs_IR_X_cell_ID.png')
 
-    # %% [markdown]
+    # [markdown]
     # ### Fig 3: CC | [Expt sequence vs Tau ] x Cell_ID
     # Does the Tau of the cell change during an experiment session on a cell?
     # 
     # An experiment session consists of an array of experiments done on the cell with every experiment corresponding to one protocol (one stim frequency)
     # 
 
-    # %%
+    #
     plt.close('all')
     plt.figure()
     df_subset = df.loc[ (df["Clamp"] == "CC") & (df["Condition"]== "CTRL") & (df["intensity"]== 100.0) & (df["pulseWidth"]== 2.0)   & (df["patternID"] < 56) ].copy() 
@@ -105,14 +115,14 @@ def all_cell_plots(all_expt_df):
     figpath = all_cells.project_path_root / "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\all_cell_collate_qc\\"
     plt.savefig(figpath / 'CC_expt_seq_vs_Tau_X_cell_ID.png')
 
-    # %% [markdown]
+    # [markdown]
     # ### Fig 4: CC | [Expt sequence vs Baseline (mV) ] x Cell_ID
     # Does the Vm of the cell change during an experiment session on a cell?
     # 
     # An experiment session consists of an array of experiments done on the cell with every experiment corresponding to one protocol (one stim frequency)
     # 
 
-    # %%
+    #
     plt.close('all')
     plt.figure()
     df_subset = df.loc[ (df["Clamp"] == "CC") & (df["Condition"]== "CTRL") & (df["intensity"]== 100.0) & (df["pulseWidth"]== 2.0)   & (df["patternID"] < 56) ].copy() 
@@ -131,10 +141,10 @@ def all_cell_plots(all_expt_df):
     # =========================================================================================================
 
 
-    # %% [markdown]
+    # [markdown]
     # # VC Cells
 
-    # %% [markdown]
+    # [markdown]
     # ### Fig 5: VC | [Expt sequence vs first-pulse-response x EI ] x numSq x_cellID
     # Does the first pulse response decrease during an experiment session on a cell?
     # 
@@ -142,7 +152,7 @@ def all_cell_plots(all_expt_df):
     # 
     # Observation: Across all the patterns, as the session progresses, the EPSP response of the cell to the optical stimulation decreases.
 
-    # %%
+    #
     plt.close('all')
     plt.figure()
     df_subset = df.loc[ (df["Clamp"] == "VC")  & (df["intensity"]== 100.0) & (df["pulseWidth"]== 2.0) & (df["AP"]== 0.0) & (df["patternID"] < 56) & (df["Condition"]== "CTRL") & (df["numSq"]>= 1.0)].copy() 
@@ -152,14 +162,14 @@ def all_cell_plots(all_expt_df):
     figpath = all_cells.project_path_root / "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\all_cell_collate_qc\\"
     plt.savefig(figpath / 'VC_expt_seq_vs_first-pulse-response_X_EI_X_numSq_X_cell_ID.png')
 
-    # %% [markdown]
+    # [markdown]
     # ### Fig 6: VC | [Expt sequence vs series resistance x EI ] x numSq x_cellID
     # Does the input resistance of the cell change during an experiment session on a cell?
     # 
     # An experiment session consists of an array of experiments done on the cell with every experiment corresponding to one protocol (one stim frequency)
     # 
 
-    # %%
+    #
     plt.close('all')
     plt.figure()
     df_subset = df.loc[ (df["Clamp"] == "VC") & (df["Condition"]== "CTRL") & (df["intensity"]== 100.0) & (df["pulseWidth"]== 2.0)   & (df["patternID"] < 56) & (df["Tau"] < 100) & (df["Tau"] > 0.0)].copy()
@@ -169,14 +179,14 @@ def all_cell_plots(all_expt_df):
     figpath = all_cells.project_path_root / "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\all_cell_collate_qc\\"
     plt.savefig(figpath / 'VC_expt_seq_vs_Rs_X_EI_X_numSq_X_cell_ID.png')
 
-    # %% [markdown]
+    # [markdown]
     # ### Fig 7: VC | [Expt sequence vs Baseline (mV) ] x Cell_ID
     # Does the Vm of the cell change during an experiment session on a cell?
     # 
     # An experiment session consists of an array of experiments done on the cell with every experiment corresponding to one protocol (one stim frequency)
     # 
 
-    # %%
+    #
     plt.close('all')
     plt.figure()
     df_subset = df.loc[ (df["Clamp"] == "VC") & (df["Condition"]== "CTRL") & (df["intensity"]== 100.0) & (df["pulseWidth"]== 2.0)   & (df["patternID"] < 56) ].copy() 
@@ -188,6 +198,19 @@ def all_cell_plots(all_expt_df):
     figpath = all_cells.project_path_root / "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\all_cell_collate_qc\\"
     plt.savefig(figpath / 'VC_expt_seq_vs_Baseline_X_cell_ID.png')
 
-
-if __name__ == "__main__": 
-    main()
+def save_df_to_h5(df, filename_suffix, protocol='FreqSweep', save_combined_also=False):
+    if save_combined_also:
+        combineddata_filename = "parsed_data\\all_cells_" + protocol + '_combined_' + filename_suffix +'.h5'
+        df.to_hdf(combineddata_filename, format='fixed', key='data', mode='w')
+        
+    ccfilename = "parsed_data\\all_cells_" + protocol + '_CC_' + filename_suffix +'.h5'
+    df_save = df[ df['clampMode']=='CC']
+    df_save.to_hdf(ccfilename, format='fixed', key='data', mode='w')
+    
+    vcfilename = "parsed_data\\all_cells_" + protocol + '_VC_' + filename_suffix +'.h5'
+    df_save = df[ df['clampMode']=='VC']
+    df_save.to_hdf(vcfilename, format='fixed', key='data', mode='w')
+   
+if __name__ == "__main__":
+    protocols = ['grid',]#'FreqSweep','LTMRand','SpikeTrain','surprise','convergence', 'grid'] #'',
+    main(cell_set=None, protocols=protocols)

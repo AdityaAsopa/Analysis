@@ -163,8 +163,8 @@ class Neuron:
         # List of parameters
         parameters = ['cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'unit', 'location',
                     'protocol','exptSeq','exptID','sweep', 'stimFreq', 'numSq', 'intensity',
-                    'pulseWidth', 'clampMode', 'clampPotential', 'condition', 'AP', 'IR', 'tau',
-                    'numPatterns','patternList', 'sweepBaseline',
+                    'pulseWidth', 'clampMode', 'clampPotential', 'condition', 'AP', 'IR', 'tau', 'sweepBaseline',
+                    'numPatterns','patternList', 'numPulses',
                     'pulseTrainStart', 'probePulseStart', 'frameChangeTimes', 'pulseTimes', 'sweepLength',
                     'baselineFlag', 'IRFlag', 'RaFlag', 'spikingFlag','ChR2Flag', 'fieldData']
         
@@ -174,11 +174,13 @@ class Neuron:
                             '1sq20Hz': 1.0,
                             'LTMRand': 1.0,
                             'SpikeTrain': 11.0,
-                            'surprise': 2.5,
+                            'surprise': 5.0,
                             'convergence': 2.5,
+                            'grid': 1.0,
                             'BG': 1.0}
         
         all_experiments_on_cell = list(self.experiments.keys())
+        print(all_experiments_on_cell)
         expt_seq = utils.generate_expt_sequence(all_experiments_on_cell)
 
         self.data = {
@@ -188,6 +190,7 @@ class Neuron:
             'SpikeTrain': [],
             'surprise': [],
             'convergence': [],
+            'grid': [],
             'BG': []
         }
         
@@ -227,6 +230,7 @@ class Neuron:
             # make the frameChangeTimes column an object type
             exptdf['frameChangeTimes'] = ''
             exptdf['pulseTimes']       = ''
+            exptdf['numPulses']     = [exptObj.numPulses]       * numSweeps
             exptdf['baselineFlag']  = False
             exptdf[ 'IRFlag']       = False
             exptdf[ 'RaFlag']       = False
@@ -266,6 +270,7 @@ class Neuron:
                     light_pulse_locs = np.array(locs['left'], dtype='object')
                 except AssertionError as err:
                     print(err)
+                    print(f'AssertionError in cell: {self.cellID}, experiment: {exptID}, sweep: {i}')
                     light_pulse_locs = np.array([], dtype='object')
                     exptdf.loc[i, 'fieldData'] = 'Fault'
 
@@ -768,7 +773,11 @@ class Experiment:
             self.stimFreq           = ep.stimFreq
             self.pulseWidth         = ep.pulseWidth
             self.bathTemp           = ep.bathTemp
-            self.location           = ep.location
+            # check if location is a dict or a string
+            if isinstance(ep.location, dict):
+                self.location       = ep.location
+            elif isinstance(ep.location, str):
+                self.location       = {'stim':'CA3',0:ep.location,3:'CA3'}
             self.clamp              = ep.clamp
             self.EorI               = ep.EorI
             self.clampPotential     = ep.clampPotential

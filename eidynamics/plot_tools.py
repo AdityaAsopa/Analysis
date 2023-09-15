@@ -119,7 +119,7 @@ def plot_abf_data(dataDict, label=""):
     plt.show()
 
 
-def plot_data_from_df(df, data_start_column = 23, simplify=False, combine=False, fig=None, ax=None, exclude_from_simplification=[]):
+def plot_data_from_df(df, data_start_column = 35 , simplify=False, combine=False, fig=None, ax=None, exclude_from_simplification=[]):
     start = data_start_column
     Fs = 2e4
     sweeps = df.shape[0]
@@ -154,7 +154,7 @@ def plot_data_from_df(df, data_start_column = 23, simplify=False, combine=False,
 
 
         for i in range(sweeps):
-            start = 23
+            start = 35 
             trace = df.iloc[i, slice(start, start+width)]
             trace = utils.map_range(trace, 0, 5, 0,5)
             axs[0].plot(time, trace, 'black', linewidth=1, alpha=0.1)
@@ -179,10 +179,10 @@ def plot_data_from_df(df, data_start_column = 23, simplify=False, combine=False,
             axs[3].set_ylabel('Field')
         
         # plot average sweeps on respective axes
-        axs[0].plot(time, df.iloc[:,    23:20023].mean(axis=0), color='black', linewidth=1, label='Cell')
-        axs[1].plot(time, df.iloc[:, 20023:40023].mean(axis=0), color='red', linewidth=1, label='FrameTTL')
-        axs[2].plot(time, df.iloc[:,40023:60023].mean(axis=0), color='cyan', linewidth=1, label='PD')
-        axs[3].plot(time, df.iloc[:,60023:80023].mean(axis=0), color='orange', linewidth=1, label='Field')
+        axs[0].plot(time, df.iloc[:,    35:20035].mean(axis=0), color='black', linewidth=1, label='Cell')
+        axs[1].plot(time, df.iloc[:, 20035:40035].mean(axis=0), color='red', linewidth=1, label='FrameTTL')
+        axs[2].plot(time, df.iloc[:,40035:60035].mean(axis=0), color='cyan', linewidth=1, label='PD')
+        axs[3].plot(time, df.iloc[:,60035:80035].mean(axis=0), color='orange', linewidth=1, label='Field')
   
         axs[3].set_xlabel('Time (s)')
 
@@ -243,12 +243,12 @@ def plot_data_from_df(df, data_start_column = 23, simplify=False, combine=False,
         ax.plot(time, trace_average, color='red', linewidth=1, label='FrameTTL')
 
         start += width
-        trace_average = df.iloc[:,40023:60023].mean(axis=0)
+        trace_average = df.iloc[:,40035:60035].mean(axis=0)
         trace_average = utils.map_range(trace_average, 0, 1, 4, 5)
         ax.plot(time, trace_average, color='cyan', linewidth=1, label='PD')
         
         start += width
-        trace_average = df.iloc[:,60023:80023].mean(axis=0)
+        trace_average = df.iloc[:,60035:80035].mean(axis=0)
         trace_average = utils.map_range(trace_average, -0.5, 0.5, 0, 2)
         ax.plot(time, trace_average, color='orange', linewidth=1, label='Field')
         add_floating_scalebar(ax, scalebar_origin=[0.05, 1.2], xlength=0.1, ylength=0.5, labelx='', labely='', unitx='', unity='',

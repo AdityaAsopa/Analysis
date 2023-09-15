@@ -3,7 +3,15 @@ import os
 import sys
 
 # These cells have been passed through the data parsing pipeline by 6 Jan 2022
-all_cells = ["Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981",
+all_cells =["Lab\\Projects\\EI_Dynamics\\Data\\23-06-06_GrikAA316\\3161\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\23-06-07_GikeAA313\\3131\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\23-05-23_GrikAA310\\3101\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\23-02-13_GrikAA265\\2651\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\23-02-10_GrikAA268\\2681\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\23-02-10_GrikAA268\\2682\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\23-02-08_GrikAA282\\2821\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\23-02-08_GrikAA282\\2822\\",
+            "Lab\\Projects\\EI_Dynamics\\Data\\22-12-16_GrikAA198\\1981\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-11-07_GrikAA191\\1911\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-11-02_GrikAA193\\1931\\",
             "Lab\\Projects\\EI_Dynamics\\Data\\22-10-21_GrikAA194\\1941\\",
@@ -50,7 +58,7 @@ test_cells = [".\\testExamples\\testCells\\1981\\",
               ".\\testExamples\\testCells\\5211\\",
               ".\\testExamples\\testCells\\3882\\",
               ".\\testExamples\\testCells\\111\\"]
-              
+
 all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.xlsx"
 
 ##############################################################################

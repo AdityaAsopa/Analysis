@@ -44,7 +44,7 @@ Required: Python 3.7+
 ## Structure of the Pipeline
 
 ```mermaid
-  graph LR;
+  flowchart-elk LR;
     batch_analysis  --> parse_cell
     rd((recordingData)) --> dt{data type}
     dt  --  if abf file --> parse_recording

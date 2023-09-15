@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from eidynamics import pattern_index
 from eidynamics import ephys_functions as ephysFunc
 from eidynamics import utils
+n = len(utils.metadata_parameters)
 
 def expt2df(expt, neuron, eP):
     '''Returns dataframe for FreqSweep type of experiments'''
@@ -89,56 +90,49 @@ def expt2df(expt, neuron, eP):
 ## Code to add analysed parameters (peak, AUC, slope) columns to the dataframe
 # there are two codes, one of them is useful
 def add_analysed_params(df):
-    df2 = df.iloc[:, :23].copy()
+    df2 = df.iloc[:, :n].copy()
 
-    # make a list of new columns
-    new_columns = [
-        'pulse_locs',
-        'cell_response_peaks',
-        'field_response_peaks',
-        'cell_response_peak_norm',
-        'field_response_peak_norm',
-        'pulse_to_cell_response_peak_delay',
-        'pulse_to_field_response_peak_delay',
-        'cell_fpr',
-        'field_fpr',
-        'cell_ppr',
-        'cell_stpr',
-        'field_ppr',
-        'field_stpr'
-    ]
+    numPulses = len(df['pulseTimes'][0])
 
-    # add new columns to df2 and set them to object type
-    # for col in new_columns:
-        # df2[col] = None
-        # df2[col] = df2[col].astype('object')
-
-    params = np.zeros((df.shape[0], 69))
+    params = np.zeros((df.shape[0], 72))
 
     for i in range(df.shape[0]):
         Fs = 2e4
         row = df.iloc[i, :]
         ipi = int(Fs / row['stimFreq'])
         pw  = int(Fs * row['pulseWidth'] / 1000)
-        
+
+        cellID = int(row['cellID'])
+        exptID = int(row['exptID'])
+        sweepID = int(row['sweep'])
+
+        params[i, :3] = [cellID, exptID, sweepID]
 
         # convert a vector of length 80000 to a 2D array of shape (4, 20000)
-        [cell, framettl, led, field] = np.reshape(df.iloc[i,23:], (4, -1))
+        [cell, framettl, led, field] = np.reshape(df.iloc[i,n:], (4, -1))
+
+        # invert the cell signal if clampMode=='VC' and clampPotential==-70
+        if row['clampMode'] == 'VC' and row['clampPotential'] == -70:
+            cell = -1*cell
 
         # binarize the led signal where the led signal is above 3 standard deviations of the baseline (first 2000 points)
-        try:
-            led, peak_locs = utils.binarize_led_trace(led)
-        except AssertionError:
-            print('AssertionError: ', i, row['cellID'], row['exptID'], row['sweep'])
-            continue
-        peak_locs = peak_locs['left']
+        # try:
+        #     led, peak_locs = utils.binarize_trace(led)
+        # except AssertionError:
+        #     print('AssertionError: ', i, cellID, exptID, sweepID)
+        #     params[i, 3:] = np.zeros(69)
+        #     continue
+        # peak_locs = peak_locs['left']
 
-        # if there are 8 peaks add the first peak_loc value again at the beginning
-        if len(peak_locs) == 8:
-            peak_locs = np.insert(peak_locs, 0, peak_locs[0])
-        if len(peak_locs) != 9:
-            print('peak_locs not equal to 9:', i, len(peak_locs), row['cellID'], row['exptID'], row['sweep'])
-            continue
+        # # if there are 8 peaks add the first peak_loc value again at the beginning
+        # if len(peak_locs) == 8:
+        #     peak_locs = np.insert(peak_locs, 0, peak_locs[0])
+        # if len(peak_locs) != 9:
+        #     print('peak_locs not equal to 9:', i, len(peak_locs), cellID, exptID, sweepID)
+        #     params[i, 3:] = np.zeros(69)
+        #     continue
+        peak_locs = row['pulseTimes']
+        numPulses = len(peak_locs)
 
         # for every row in df, there is going to be several outputs lists:
         # 1. a list of cell response for all pulses
@@ -147,13 +141,13 @@ def add_analysed_params(df):
         # 4. a list of locations of peak of field responses w.r.t pulse start
         # 5. a list of all pulse start locations
 
-        sweep_pulse_locs = []
-        sweep_pulse_to_cell_response_peak_delay = []
-        sweep_pulse_to_field_response_peak_delay = []
-        sweep_cell_response_peaks = []
-        sweep_field_response_peaks = []
+        sweep_pulse_locs = np.zeros(len(peak_locs))
+        sweep_pulse_to_cell_response_peak_delay = np.zeros(len(peak_locs))
+        sweep_pulse_to_field_response_peak_delay = np.zeros(len(peak_locs))
+        sweep_cell_response_peaks = np.zeros(len(peak_locs))
+        sweep_field_response_peaks = np.zeros(len(peak_locs))
 
-        for loc in peak_locs:
+        for j, loc in enumerate(peak_locs):
             cellslice = cell[loc:loc+ipi]
             fieldslice = field[loc:loc+ipi]
 
@@ -162,58 +156,161 @@ def add_analysed_params(df):
             fieldpulsepeak = utils.get_pulse_response(field, loc, loc+ipi, 1, prop='p2p')
 
             # fill in lists:
-            sweep_pulse_locs.append(loc)
-            sweep_cell_response_peaks.append(cellpulsemax)
-            sweep_field_response_peaks.append(fieldpulsepeak)
-            sweep_pulse_to_cell_response_peak_delay.append(  np.argmax(cellslice)  - loc )
-            sweep_pulse_to_field_response_peak_delay.append( np.argmax(fieldslice) - loc )
-
-        # convert lists to numpy arrays
-        sweep_pulse_locs = np.array(sweep_pulse_locs)
-        sweep_cell_response_peaks = np.array(sweep_cell_response_peaks)     # to be stored in the df
-        sweep_field_response_peaks = np.array(sweep_field_response_peaks)       # to be stored in the df
-        sweep_pulse_to_cell_response_peak_delay = np.array(sweep_pulse_to_cell_response_peak_delay)
-        sweep_pulse_to_field_response_peak_delay = np.array(sweep_pulse_to_field_response_peak_delay)
-
-        # convert pulse locations to time
-        sweep_pulse_locs = sweep_pulse_locs / Fs        # to be stored in the df
-        sweep_pulse_to_cell_response_peak_delay = sweep_pulse_to_cell_response_peak_delay / Fs      # to be stored in the df
-        sweep_pulse_to_field_response_peak_delay = sweep_pulse_to_field_response_peak_delay / Fs        # to be stored in the df
+            sweep_pulse_locs[j] = loc / Fs
+            sweep_cell_response_peaks[j] = cellpulsemax
+            sweep_field_response_peaks[j] = fieldpulsepeak
+            sweep_pulse_to_cell_response_peak_delay[j] =   ( np.argmax(cellslice)  - loc ) / Fs
+            sweep_pulse_to_field_response_peak_delay[j] =  ( np.argmax(fieldslice) - loc ) / Fs
 
         # first pulse response
-        cell_fpr  = sweep_cell_response_peaks[0]        # to be stored in the df
-        field_fpr = sweep_field_response_peaks[0]       # to be stored in the df
-        cell_ppr  = sweep_cell_response_peaks[1] / cell_fpr     # to be stored in the df
-        field_ppr = sweep_field_response_peaks[1] / field_fpr       # to be stored in the df
+        cell_fpr  = sweep_cell_response_peaks[0]        
+        field_fpr = sweep_field_response_peaks[0]       
+        cell_ppr  = sweep_cell_response_peaks[1] / cell_fpr     
+        field_ppr = sweep_field_response_peaks[1] / field_fpr       
 
         # another array to store normalized cell and field responses
-        sweep_cell_response_peaks_norm = sweep_cell_response_peaks / cell_fpr       # to be stored in the df
-        sweep_field_response_peaks_norm = sweep_field_response_peaks / field_fpr    # normalize field response to first pulse response  # to be stored in the df
+        sweep_cell_response_peaks_norm = sweep_cell_response_peaks / cell_fpr       
+        sweep_field_response_peaks_norm = sweep_field_response_peaks / field_fpr    # normalize field response to first pulse response  
 
         # STPR is the ratio of sum of last three pulse responses to the first pulse response
-        cell_stpr  = np.sum(sweep_cell_response_peaks[-3:]) / cell_fpr       # to be stored in the df
-        field_stpr = np.sum(sweep_field_response_peaks[-3:]) / field_fpr     # to be stored in the df
+        cell_stpr  = np.sum(sweep_cell_response_peaks[-3:]) / cell_fpr       
+        field_stpr = np.sum(sweep_field_response_peaks[-3:]) / field_fpr     
 
         # make a list of all these values
         paramlist = np.concatenate([sweep_pulse_locs, sweep_cell_response_peaks, sweep_field_response_peaks, sweep_cell_response_peaks_norm, sweep_field_response_peaks_norm, sweep_pulse_to_cell_response_peak_delay,sweep_pulse_to_field_response_peak_delay,
                     [cell_fpr], [field_fpr], [cell_ppr], [field_ppr], [cell_stpr], [field_stpr] ])
         
-        params[i, :] = np.array(paramlist).flatten()
+        params[i, 3:] = np.array(paramlist).flatten()
 
-    # # append params array to df and df2
-    # df = pd.concat([df, pd.DataFrame(params)], axis=1)
-    # df2 = pd.concat([df2, pd.DataFrame(params)], axis=1)
 
-    metadata_columns = df2.columns.to_list()
-    metadata_cols = pd.MultiIndex.from_product([['metadata'],metadata_columns])
-    df2.columns = metadata_cols
+    fields, idx = ['locs', 'peaks_cell', 'peak_field', 'peak_cell_norm', 'peak_field_norm', 'delay_cell', 'delay_field'], range(numPulses)
+    col_names = []
+    for f in fields:
+        for id in idx:
+            col_names.append(f + '_'+ str(id))
+    for x in ['cell_fpr', 'field_fpr', 'cell_ppr', 'cell_stpr', 'field_ppr', 'field_stpr']:
+        col_names.append(x)
 
-    param_cols1 = pd.MultiIndex.from_product( [['locs', 'peaks_cell', 'peak_field', 'peak_cell_norm', 'peak_field_norm', 'delay_cell', 'delay_field'], [0,1,2,3,4,5,6,7,8] ])
-    paramsdf1 = pd.DataFrame(params[:,:63], columns=param_cols1)
+    # make dataframe from analysed_params and rename first 3 columns as cellID, exptID, sweep
+    analysed_params_df = pd.DataFrame(params)
 
-    param_cols2 = pd.MultiIndex.from_product( [['analysed_params'],['cell_fpr', 'field_fpr', 'cell_ppr', 'cell_stpr', 'field_ppr', 'field_stpr']] )
-    paramsdf2 = pd.DataFrame(params[:,63:69], columns=param_cols2)
+    analysed_params_df.columns = ['cellID', 'exptID', 'sweep'] + col_names
 
-    paramdf = pd.concat([df2, paramsdf1, paramsdf2], axis=1)
+    # make first three columns integers type
+    analysed_params_df[['cellID', 'exptID', 'sweep']] = analysed_params_df[['cellID', 'exptID', 'sweep']].astype(int)
 
-    return paramdf
+    df_short = pd.merge(df.iloc[:, :34], analysed_params_df, on=['cellID', 'exptID', 'sweep'])
+    df_all = pd.merge(df, analysed_params_df, on=['cellID', 'exptID', 'sweep'])
+
+    # shift last 69 columns of df_all after 34th column
+    df_all = pd.concat( [df_all.iloc[:,:34], df_all.iloc[:,-69:], df_all.iloc[:,34:-69]], axis=1 ) #[x[:34], x[-69:], x[34:-69]]
+
+    return df_short, df_all
+
+def add_analysed_params2(df):
+    df2 = df.iloc[:, :n]
+
+    # make a new analysed param df
+    df3 = pd.DataFrame(columns=['cellID', 'exptID', 'sweep', 'peaks_cell', 'peaks_cell_norm', 'auc_cell', 'slope_cell', 'delay_cell','peaks_field', 'peaks_field_norm', 'cell_fpr', 'field_fpr', 'cell_ppr', 'cell_stpr', 'field_ppr', 'field_stpr'])
+    df3.astype({'cellID': 'int32', 'exptID': 'int32', 'sweep': 'int32', 'peaks_cell': 'float32', 'peaks_field': 'float32', 'auc_cell': 'float32', 'slope_cell': 'float32', 'delay_cell': 'float32', 'cell_fpr': 'float32', 'field_fpr': 'float32'})
+
+
+    for i in range(df.shape[0]):
+        Fs = 2e4
+        row = df.iloc[i, :]
+        ipi = int(Fs / row['stimFreq'])
+        pw  = int(Fs * row['pulseWidth'] / 1000)
+        protocol = row['protocol']
+        numPulses = row['numPulses']
+        
+        # add cell ID to the row in df3
+        df3.loc[i, 'cellID'] = int(row['cellID'])
+        df3.loc[i, 'exptID']= int(row['exptID'])
+        df3.loc[i, 'sweep']= int(row['sweep'])
+
+        # convert a vector of length 80000 to a 2D array of shape (4, 20000)
+        [cell, framettl, led, field] = np.reshape(df.iloc[i,n:], (4, -1))
+
+        # invert the cell signal if clampMode=='VC' and clampPotential==-70
+        if row['clampMode'] == 'VC' and row['clampPotential'] == -70:
+            cell = -1*cell
+
+        # binarize the led signal where the led signal is above 3 standard deviations of the baseline (first 2000 points)
+        try:
+            led, peak_locs = utils.binarize_trace(led)
+        except AssertionError:
+            print('AssertionError: ', protocol, i, row['cellID'], row['exptID'], row['sweep'])
+            continue
+        peak_locs = peak_locs['left']
+
+        # if there are 8 peaks add the first peak_loc value again at the beginning
+        if (protocol=='FreqSweep') & (len(peak_locs) == 8):
+            peak_locs = np.insert(peak_locs, 0, peak_locs[0])
+        if (protocol=='FreqSweep') & (numPulses == 8):
+            numPulses = 9
+        if (protocol=='Surprise') & (numPulses == 32):
+            numPulses = 33
+        if (protocol=='grid') & (numPulses == 8):
+            numPulses = 9
+        if (protocol=='convergence') & (numPulses == 8):
+            numPulses = 9
+            
+        if len(peak_locs) != numPulses:
+            print(f'peak_locs not equal to {numPulses}:', protocol, i, len(peak_locs), row['cellID'], row['exptID'], row['sweep'])
+            continue
+
+        sweep_cell_response_peaks = np.zeros(len(peak_locs))
+        sweep_cell_response_aucs = np.zeros(len(peak_locs))
+        sweep_cell_response_slopes = np.zeros(len(peak_locs))
+        sweep_pulse_to_cell_response_peak_delay = np.zeros(len(peak_locs))
+        sweep_field_response_peaks = np.zeros(len(peak_locs))
+
+        for j, loc in enumerate(peak_locs):
+            cellslice = cell[loc:loc+ipi]
+            fieldslice = field[loc:loc+ipi]
+
+            # get max of cell slice
+            cellpulsemax = utils.get_pulse_response(cell, loc, loc+ipi, 1, prop='peak')
+            cellpulseauc = utils.get_pulse_response(cell, loc, loc+ipi, 1, prop='auc')
+            # cellpulseslope = utils.get_pulse_response(cell, loc, loc+ipi, 1, prop='slope')
+            fieldpulsepeak = utils.get_pulse_response(field, loc, loc+ipi, 1, prop='p2p')
+
+            # fill in lists:
+            sweep_cell_response_peaks[j] = cellpulsemax
+            sweep_cell_response_aucs[j] = cellpulseauc
+            # sweep_cell_response_slopes[j] = cellpulseslope
+            sweep_pulse_to_cell_response_peak_delay[j] =   ( np.argmax(cellslice)  - loc ) / Fs
+            sweep_field_response_peaks[j] = fieldpulsepeak
+
+        # start adding properties to df3
+        df3.at[i,'peaks_cell' ]= sweep_cell_response_peaks       
+        df3.at[i,'peaks_field'] = sweep_field_response_peaks      
+        df3.at[i,'auc_cell'   ]= sweep_cell_response_aucs        
+        df3.at[i,'slope_cell' ]= sweep_cell_response_slopes      
+        df3.at[i,'delay_cell' ]= sweep_pulse_to_cell_response_peak_delay      
+
+        # first pulse response
+        df3.at[i,'cell_fpr'  ]= sweep_cell_response_peaks[0]        
+        df3.at[i,'field_fpr' ]= sweep_field_response_peaks[0]       
+        df3.at[i,'cell_ppr'  ]= sweep_cell_response_peaks[1] / sweep_cell_response_peaks[0]     
+        df3.at[i,'field_ppr' ]= sweep_field_response_peaks[1] / sweep_field_response_peaks[0]       
+
+        # another array to store normalized cell and field responses
+        df3.at[i,'peaks_cell_norm' ]= sweep_cell_response_peaks / sweep_cell_response_peaks[0]       
+        df3.at[i,'peaks_field_norm'] = sweep_field_response_peaks / sweep_field_response_peaks[0]    # normalize field response to first pulse response  
+
+        # STPR is the ratio of sum of last three pulse responses to the first pulse response
+        df3.at[i,'cell_stpr' ] = np.sum(sweep_cell_response_peaks[-3:]) / sweep_cell_response_peaks[0]       
+        df3.at[i,'field_stpr'] = np.sum(sweep_field_response_peaks[-3:]) / sweep_field_response_peaks[0]     
+
+
+    # make first three columns integers type
+    df3[['cellID', 'exptID', 'sweep']] = df3[['cellID', 'exptID', 'sweep']].astype(int)
+
+    df_short = pd.merge(df.iloc[:, :n], df3, on=['cellID', 'exptID', 'sweep'])
+    df_all = pd.merge(df, df3, on=['cellID', 'exptID', 'sweep'])
+
+    # shift last 69 columns of df_all after 34th column
+    df_all = pd.concat( [df_all.iloc[:,:n], df_all.iloc[:,-13:], df_all.iloc[:,n:-13]], axis=1 ) #[x[:34], x[-69:], x[34:-69]]
+
+    return df_short, df_all

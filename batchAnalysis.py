@@ -12,7 +12,7 @@ from eidynamics.plot_maker  import dataframe_to_plots
 from eidynamics             import ephys_classes
 from eidynamics.utils       import *
 import generate_screening_param_figures
-
+import collate_dataset
 
 def batch_analysis(cellDirectory, add_cell_to_database=False, all_cell_response_db='', export_training_set=False, save_plots=False, user='Adi'):
     _,savedCellFile = parse_data.parse_cell(cellDirectory,
@@ -67,7 +67,7 @@ def main(args):
 
 
     if args.analyse:
-        all_cells = cell_list.other_cells
+        all_cells = cell_list.all_cells
         failed_cells = []
         parsed_cells = []
         project_path_root = cell_list.project_path_root
@@ -95,6 +95,9 @@ def main(args):
         print("successfully processed following cells: ")
         print(parsed_cells)
 
+        # collate all the data from the parsed cells into a single dataframe
+        protocols = ['FreqSweep','LTMRand','SpikeTrain','surprise','convergence', 'grid']
+        collate_dataset.main(cell_set = parsed_cells, protocols = protocols)
 
         # make data quality plots for all_cells data
         #generate_screening_param_figures.main()

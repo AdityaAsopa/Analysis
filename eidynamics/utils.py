@@ -15,7 +15,13 @@ from scipy.signal import find_peaks, peak_widths
 
 frameSize = [13032.25, 7419.2]  # Aug 2021 calibration
 
-
+metadata_parameters = ['cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'unit', 'location',
+                    'protocol','exptSeq','exptID','sweep', 'stimFreq', 'numSq', 'intensity',
+                    'pulseWidth', 'clampMode', 'clampPotential', 'condition', 'AP', 'IR', 'tau', 'sweepBaseline',
+                    'numPatterns','patternList', 'numPulses',
+                    'pulseTrainStart', 'probePulseStart', 'frameChangeTimes', 'pulseTimes', 'sweepLength',
+                    'baselineFlag', 'IRFlag', 'RaFlag', 'spikingFlag','ChR2Flag', 'fieldData']
+        
 def gridSizeCalc(sqSize,objMag,frameSz=frameSize):
 
     gridSize = np.array([1,1])
