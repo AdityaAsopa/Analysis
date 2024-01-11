@@ -132,10 +132,13 @@ class Neuron:
         '''
         for protocol, protocol_data in self.data.items():
             if protocol_data is not None:
-                filename = "cell" + str(self.cellID) + '_' + str(protocol) + "_dataset.h5"
-                datasetFile = os.path.join(directory, filename)
-                protocol_data.to_hdf(datasetFile, format='fixed', key=protocol, mode='w')
-                print(f'Cell Data for {protocol} exported to {datasetFile}')
+                # float64_cols = protocol_data.select_dtypes(include=[np.float64]).columns # df.select_dtypes(include=['float64'])
+                # protocol_data[float64_cols] = protocol_data[float64_cols].astype(np.float32)
+                if protocol_data is not None:
+                    filename = "cell" + str(self.cellID) + '_' + str(protocol) + "_dataset.h5"
+                    datasetFile = os.path.join(directory, filename)
+                    protocol_data.to_hdf(datasetFile, format='fixed', key=protocol, mode='w')
+                    print(f'Cell Data for {protocol} exported to {datasetFile}')
 
     def summarize_experiments(self):
         df = pd.DataFrame(columns=['Polygon Protocol', 'Expt Type', 'Condition', 'Stim Freq',
@@ -238,10 +241,16 @@ class Neuron:
             exptdf['ChR2Flag']      = False
             exptdf['fieldData']     = False
 
-            cellData       = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0]
-            exptdf['IR']  =  IR_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
-            exptdf['tau'] = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
+            cellData = exptObj.extract_channelwise_data(exclude_channels=[1, 2, 3, 'Time', 'Cmd'])[0].astype('float32')
+            print(cellData.shape, exptObj.opticalStimEpoch, exptObj.clampPotential, exptObj.clamp, Fs)
             exptdf['AP']  = spike_detect(cellData, exptObj.opticalStimEpoch, clampingPotential=exptObj.clampPotential, clamp=exptObj.clamp, Fs=Fs)[0]
+            if exptObj.IRBaselineEpoch is not None:
+                exptdf['IR']  =  IR_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
+                exptdf['tau'] = tau_calc(exptObj.recordingData, exptObj.IRBaselineEpoch, exptObj.IRchargingPeriod, exptObj.IRsteadystatePeriod, clamp=exptObj.clamp, Fs=Fs)[0]
+            else:
+                exptdf['IR']  = 0
+                exptdf['tau'] = 0
+            
 
             cellData       = cellData[:,:sweep_length]
             frameData      = exptObj.extract_channelwise_data(exclude_channels=[0, 2, 3, 'Time', 'Cmd'])[1][:,:sweep_length]
@@ -586,7 +595,8 @@ class Neuron:
                                       expectedResToPulses, fittedResToPulses, firstPulseFitted, firstPulseExpected]
 
         return frameExpected
-
+    """
+    
     def find_sweep_expected(self, exptObj):
         sweepExpectedDict = {}
         freq = exptObj.stimFreq
@@ -605,7 +615,7 @@ class Neuron:
             sweepExpectedDict[s] = ['numSq', freq, exptObj.stimIntensity, exptObj.pulseWidth, x, y]
 
         return sweepExpectedDict
-    """
+    
     
 class Experiment:
     '''All different kinds of experiments conducted on a patched
@@ -613,6 +623,7 @@ class Experiment:
 
     def __init__(self, exptParams, datafile, coordfile=None):
         try:
+            print("Initializing experiment: ", datafile)
             self.exptParamsParser(exptParams)
         except ParameterMismatchError as err:
             print(err)
@@ -637,6 +648,7 @@ class Experiment:
 
         self.coordfile          = coordfile
         if coordfile:
+            print("Loading stimulus coordinates from: ", coordfile)
             self.opticalStim    = Coords(coordfile, repeats=exptParams.repeats)
             self.stimCoords     = self.opticalStim.coords
             self.sweepwiseCoords= self.opticalStim.sweepwise_patterns
@@ -733,6 +745,9 @@ class Experiment:
         elif self.exptType in ['Surprise']:
             # Call a function to analyze the freq dependent response
             return self.SurpriseResponse(neuron, exptParams)
+        elif self.exptType in ['grid']:
+            # Call a function to analyze the freq dependent response
+            return self.gridResponse(neuron, exptParams)
 
     def sealTest(self):
         # calculate access resistance from data, currently not implemented
@@ -762,6 +777,10 @@ class Experiment:
         return spiketrain_analysis(self, neuron, exptParams)
 
     def SurpriseResponse(self, neuron, exptParams):
+        # Analysis of cell response to a invivo like poisson spike train
+        return None
+
+    def gridResponse(self, neuron, exptParams):
         # Analysis of cell response to a invivo like poisson spike train
         return None
 

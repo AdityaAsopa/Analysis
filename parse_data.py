@@ -8,6 +8,7 @@ import sys
 import os
 import pathlib
 import importlib
+import traceback
 
 from eidynamics             import ephys_classes
 from eidynamics             import data_quality_checks
@@ -50,8 +51,8 @@ def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_dat
         print('##__ Making Dataframe.')
         cell.make_dataframe() # type: ignore
 
-        print('###_ Running cell stability checks')
-        data_quality_checks.run_qc(cell, cell_directory)
+        
+        print('###_ Saving data into pickle and excel files')
         '''
         if add_cell_to_database:
             if all_cell_response_db == '':
@@ -62,11 +63,11 @@ def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_dat
             cell.add_cell_to_xl_db(all_cell_response_db) # type: ignore
         '''
         if export_training_set:
-            print("#### Saving traces for training for each protocol")
+            print("###_ Saving traces for training for each protocol")
             cell.save_full_dataset(cell_directory) # type: ignore
 
         if save_pickle:
-            print("#### Saving pickle and excel files")
+            print("###_ Saving pickle and excel files")
             cellFile            = cell_directory / str(str(cell.cellID) + ".pkl") # type: ignore
             cellFile_csv        = cell_directory / str(str(cell.cellID) + ".xlsx") # type: ignore
             ephys_classes.Neuron.saveCell(cell, cellFile)
@@ -74,9 +75,13 @@ def parse_cell(cell_directory, load_cell=True, save_pickle=True, add_cell_to_dat
         else:
             cellFile = ''
 
+        print('#### Running cell stability checks')
+        data_quality_checks.run_qc(cell, cell_directory)
+
     except UnboundLocalError as err:
         print(err)
-        print("Check if there are '_rec' labeled .abf files in the directory.")
+        traceback.print_exc()  # This will print the traceback
+        print("Check if there are '_rec' labeled .abf files in the directory. There can be other sources of error too.")
 
     if save_plots:
         dataframe_to_plots(cell_pickle_file, ploty="PeakRes",  gridRow="NumSquares",
@@ -148,7 +153,7 @@ def parse_recording(recording_file, load_cell=True, cell_file=None, user='Adi'):
     except Exception as err:
         print(err)
         print("Experiment Parameters error. Quitting!")
-        sys.exit()
+        # sys.exit() # Don't sys.exit(), hurts the batch runs.
 
     # Import stimulation coordinates
     try:
@@ -197,6 +202,7 @@ if __name__ == "__main__":
     user = sys.argv[2]
     print(user, "Input address: ", input_address)
     if input_address.is_dir():
+        print('parsing the cell directory: ', input_address)
         parse_cell(input_address, load_cell=True, save_pickle=True,
                                     add_cell_to_database=True, export_training_set=True,
                                     save_plots=False, user=user)

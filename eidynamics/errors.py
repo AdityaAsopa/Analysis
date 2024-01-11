@@ -14,7 +14,7 @@ class FileMismatchError(EIDynamicsModuleError):
         error = "Datafile mismatch!"
         super().__init__(message)
         self.error = error
-        print(error)
+        print("The following error was encountered: ", error)
 
 
 class ParameterMismatchError(EIDynamicsModuleError):
@@ -28,4 +28,4 @@ class ParameterMismatchError(EIDynamicsModuleError):
             error = "Parameter mismatch!"
         super().__init__(message)
         self.error = error
-        print(error)
+        print("The following error was encountered: ", error)

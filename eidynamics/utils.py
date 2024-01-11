@@ -21,6 +21,11 @@ metadata_parameters = ['cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'uni
                     'numPatterns','patternList', 'numPulses',
                     'pulseTrainStart', 'probePulseStart', 'frameChangeTimes', 'pulseTimes', 'sweepLength',
                     'baselineFlag', 'IRFlag', 'RaFlag', 'spikingFlag','ChR2Flag', 'fieldData']
+
+analysed_properties1 = [ 'peaks_cell','peaks_cell_norm','auc_cell','slope_cell','delay_cell','peaks_field','peaks_field_norm']
+analysed_properties2 = ['cell_fpr','field_fpr','cell_ppr','cell_stpr','field_ppr','field_stpr']
+
+analysed_properties1_abbreviations = ['pc','pcn','ac','sc','dc','pf','pfn']
         
 def gridSizeCalc(sqSize,objMag,frameSz=frameSize):
 
@@ -104,8 +109,8 @@ def binarize_trace(trace, max_value='signal_max', method='derivative', threshold
     threshold: as a fraction of max value of the trace
     '''
     # baseline subtract using first 100 points as baseline
-    trace = trace - np.mean(trace[:100])
-    std_dev = np.std(trace[:100])
+    trace = trace - np.mean(trace[:400])
+    std_dev = np.std(trace[:400])
     trace = np.where(trace > 3*std_dev, trace, 0)
 
     if max_value == 'signal_max':
@@ -146,13 +151,13 @@ def binarize_trace(trace, max_value='signal_max', method='derivative', threshold
         return y, peak_locs
 
     elif method == 'threshold':
-        y = np.where(led_trace > threshold*max_led_trace, max_led_trace, 0)
+        y = np.where(trace > threshold*np.max(trace), max_trace, 0)
         return y
 
     elif method == '3std_dev':
-        std_dev = np.std(led_trace[:100])
-        y = np.where(led_trace > 3*std_dev, max_led_trace, 0)
+        y = np.where(trace>0, max_trace, 0)
         return y
+
 
 def extract_channelwise_data(sweepwise_dict,exclude_channels=[]):
     '''
@@ -229,11 +234,19 @@ def delayed_alpha_function(t,A,tau,delta):
     T   = np.append(tdel,t)
     T = T[:len(t)]
     a   = 1/tau
-    y   = A*(a*T)*np.exp(1-a*T)
+    y   = A*(a*(T))*np.exp(1-a*(T))
     return y
 
 
-def PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4):
+def dual_alpha_function(t, A, B, tau1, tau2, delta1, delta2):
+    if t < 0:
+        return 0.0
+    if abs( tau1 - tau2 ) < 2e-5 or tau1 < 5e-4 or tau2 < 5e-4:
+        return alphaFunc( t, max(tau1, tau2) )
+    return (1.0/(tau1-tau2)) * (np.exp(-t/tau1) - np.exp(-t/tau2))
+    
+
+def _PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4, filter_type='butter', filter_cutoff=2000  ):
     '''
     Input: nxm array where n is number of frames, m is datapoints per sweep
     '''
@@ -253,28 +266,106 @@ def PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4):
 
     
     stimStart           = int(Fs*stimStartTime)
-    avgAllSpots         = filter_data(avgAllSpots, filter_type='butter',high_cutoff=300,sampling_freq=Fs)
+    if filter_type:
+        avgAllSpots         = filter_data(avgAllSpots, filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=Fs)
     movAvgAllSpots      = moving_average(np.append(avgAllSpots,np.zeros(19)),20)
     response            = movAvgAllSpots - avgAllSpots
     stdDevResponse      = np.std(response[:stimStart])
     responseSign        = np.sign(response-stdDevResponse)
     peaks               = find_peaks(responseSign[stimStart:],distance=100,width=w)
 
-    zeroCrossingPoint   = peaks[1]['left_ips']
+    zeroCrossingPoint   = peaks[1]['left_ips'][0]
+    first_peak_width    = peaks[1]['widths'][0]
 
-    PSPStartTime    = stimStart + zeroCrossingPoint + w
+    # PSPStartTime    = stimStart + zeroCrossingPoint + w - first_peak_width
+    PSPStartTime        = zeroCrossingPoint + first_peak_width/2
     
     PSPStartTime    = PSPStartTime/Fs
     
     try:
         synDelay_ms        = 1000*(PSPStartTime[0] - stimStartTime)
-        valueAtPSPstart    = avgAllSpots[int(PSPStartTime[0])]
+        valueAtPSPstart    = avgAllSpots[int(Fs*PSPStartTime[0])]
     except:
         synDelay_ms        = 0
         valueAtPSPstart    = avgAllSpots[stimStart]
 
+    print(synDelay_ms,valueAtPSPstart,responseSign, response, zeroCrossingPoint, PSPStartTime)
+    return synDelay_ms,valueAtPSPstart,responseSign, response,  zeroCrossingPoint, PSPStartTime
+
+
+
+def get_signal_inflection_time(signal, peaks_to_detect='all', width=20, movavg_window=40, baseline_time_sec=0.2, stim_start_sec=0.2, Fs=2e4, filter_type='butter', filter_cutoff=2000, mode='test'):
+    baseline = np.mean(signal[:int(Fs*baseline_time_sec)])
+    trace  = signal - baseline
+    stim_start= int(Fs*stim_start_sec)
+
+    if filter_type:
+        trace  = filter_data(trace, filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=Fs)
     
-    return synDelay_ms,valueAtPSPstart,responseSign
+    moving_avg          = moving_average(np.append(trace,np.zeros(movavg_window-1)), movavg_window)
+    fluctuations        = moving_avg - signal
+    fluctuations = filter_data(fluctuations, filter_type=filter_type,high_cutoff=filter_cutoff,sampling_freq=Fs)
+    stddev_fluctuations = np.std(fluctuations[:stim_start])
+    fluctuations_above_stddev = np.sign(fluctuations - stddev_fluctuations)
+    
+    # peak detection is started from the signal start time i.e. t=0, therefore no need to add stim_start to inflection point calc
+    _, peaks_properties = find_peaks(fluctuations_above_stddev, width=int(0.8*movavg_window)) #distance=100,
+    
+    if peaks_to_detect =='first':
+        first_wide_fluctuation_above_std_dev   = peaks_properties['left_ips'][0]
+        fluctuation_width    = peaks_properties['widths'][0]
+    
+        # inflection_point    = int(first_wide_fluctuation_above_std_dev) + w - fluctuation_width
+        inflection_point      = int(first_wide_fluctuation_above_std_dev + width )
+        inflection_point_sec  = (first_wide_fluctuation_above_std_dev + width )/Fs
+        response_delay        = 1000*(inflection_point_sec - stim_start_sec)
+        signal_value_at_inflection = signal[inflection_point]
+    elif peaks_to_detect =='all':
+        locs = peaks_properties['left_ips']
+        inflection_point_sec = locs/Fs
+        
+        # inflection_point_sec = []
+        # response_delay = []
+        # signal_value_at_inflection = []
+        # for i in range(len(peaks_properties['left_ips'])):
+        #     first_wide_fluctuation_above_std_dev   = peaks_properties['left_ips'][i]
+        #     fluctuation_width    = peaks_properties['widths'][i]
+        
+        #     # inflection_point    = int(first_wide_fluctuation_above_std_dev) + w - fluctuation_width
+        #     inflection_point      = int(first_wide_fluctuation_above_std_dev + width )
+        #     inflection_point_sec.append( (first_wide_fluctuation_above_std_dev + width )/Fs )
+        #     response_delay.append( 1000*(inflection_point_sec[i] - stim_start_sec) )
+        #     signal_value_at_inflection.append( signal[inflection_point] )
+    
+    if mode=='test':
+        return inflection_point_sec, response_delay, signal_value_at_inflection, moving_avg, fluctuations, fluctuations_above_stddev, peaks_properties
+    
+    return inflection_point_sec, response_delay, signal_value_at_inflection
+
+PSP_start_time = get_signal_inflection_time
+
+
+def quian_qiroga_threshold(signal):
+    return 5* np.median(np.abs(signal))/0.6745
+
+
+def get_threshold_crossing_time(signal, baseline_time=0.2, threshold_detection='quian', threshold_factor=3, Fs=2e4):
+    baseline = np.mean(signal[:int(baseline_time*Fs)])
+    signal -= baseline
+    sigma = np.std(signal[:int(baseline_time*Fs)])
+
+    if threshold_detection == 'quian':
+        threshold = quian_qiroga_threshold(signal[:int(baseline_time*Fs)])
+    elif threshold_detection == 'percentile':
+        threshold = np.percentile(signal[:int(baseline_time*Fs)], 99.9)
+    else:
+        threshold = threshold_factor*sigma
+
+
+    for i,value in enumerate(signal[4100:]):
+        if value > threshold:
+            return 0.205 + i/Fs
+    return None
 
 
 def rolling_variance_baseline(vector,window=500,slide=50):
@@ -682,7 +773,7 @@ def get_pulse_response(x, start_time, end_time, Fs, prop='auc'):
     '''
     start_index = int(start_time*Fs)
     end_index = int(end_time*Fs)
-
+    # print(start_index, end_index)
     if prop == 'auc':
         return np.trapz(x[start_index:end_index], dx=1/Fs)
     
@@ -739,3 +830,39 @@ def add_row_to_df(df, row):
     df.loc[-1] = row
     df.index = df.index + 1
     return df.sort_index()
+
+
+def convert_list_column_to_new_df(df, column_name: str, new_column_name_sequence:str, metadata_columns_to_keep: int = 35):
+    # get index of the df
+    idx = df.index
+
+    x = df[column_name].to_numpy()
+    y=[]
+    for xx in x:
+        y.append(xx)
+    y = np.array(y)
+    n = y.shape[1]
+    new_col_names = [f'{new_column_name_sequence}{i}' for i in range(n)]
+
+    new_df = pd.DataFrame(y, columns=new_col_names, index=idx)
+    new_df = pd.concat([df.iloc[:,:metadata_columns_to_keep], new_df], axis=1,)
+    
+    return new_df
+
+
+#TODO: transfer this function somewhere better Sept 2023
+def save_expanded_df(df):
+    # expand the param df fully, more handy for plotting
+    analysed_properties1 = utils.analysed_properties1
+    analysed_properties2 = utils.analysed_properties2
+    abbreviations = utils.analysed_properties1_abbreviations
+
+    df3 = df.copy()
+    keep = 49
+    for i, prop in enumerate(analysed_properties1):
+        df3 = convert_list_column_to_new_df(df3, prop, abbreviations[i], metadata_columns_to_keep=keep)
+        keep = df3.shape[1]
+
+    df3 = df3.drop(columns=analysed_properties1+analysed_properties2)
+    # save df3 as analysed params expanded
+    df3.to_hdf(r"parsed_data\all_cells_FreqSweep_combined_expanded.h5", key='data', mode='w')

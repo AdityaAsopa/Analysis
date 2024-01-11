@@ -35,23 +35,23 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
             dataDF = protocol_data.copy()
             dataDF = dataDF.iloc[:,:numParams]
             dataDF = dataDF[dataDF['exptID'] != 0]
-            cellID = str(cellObject.cellID)
+            cellID = str(cellObject.cellID) #
 
             
-            is_baseline_stable(dataDF)
-            is_IR_stable(      dataDF)
-            # is_ChR2_stable(    dataDF) # commented out due to patternID being a list now, not a single number
+            is_baseline_stable(dataDF, protocol)
+            is_IR_stable(      dataDF, protocol)
+            # is_ChR2_stable(    dataDF, protocol)
             # is_spiking_stable( dataDF, cellID, exptID_range)
             
             # if cellObject.properties.clamp == 'VC':
             # is_Ra_stable(  dataDF, cellID, exptID_range)
             # elif cellObject.properties.clamp == 'CC':
-            is_tau_stable(dataDF)
+            is_tau_stable(dataDF, protocol)
 
             print(f'Plots saved in {cell_location}')
         
 
-def is_baseline_stable(dataDf):
+def is_baseline_stable(dataDf, protocol_name):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
 
@@ -60,22 +60,22 @@ def is_baseline_stable(dataDf):
     plt.figure()
     graph = sns.catplot(data=df, x='exptID', y='sweepBaseline', kind='box', dodge=False, height=6, aspect=1.33)
     graph.fig.suptitle(cellID)
-    plt.savefig(cell_location / (str(cellID) + '_baseline_trend_expt.png') )
+    plt.savefig(cell_location / (str(cellID) + '_' + protocol_name + '_baseline_trend_expt.png') )
 
     plt.figure()
     sns.set(rc={"figure.figsize":(12,5)})
     graph = sns.lineplot(data=df, x='sweep', y='sweepBaseline', palette='flare', hue='exptID', hue_norm=expt_seq)
     graph.set_title(cellID)
     
-    figpath = cell_location / (cellID + '_baseline_trend_stacked_sweeps.png')
-    print(figpath)
+    figpath = cell_location / (cellID + '_' + protocol_name + '_baseline_trend_stacked_sweeps.png')
     plt.savefig(figpath)
+    print("saved figs in: ", figpath)
     
 
     plt.close('all')
     
 
-def is_IR_stable(dataDf):
+def is_IR_stable(dataDf, protocol_name):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
 
@@ -84,44 +84,45 @@ def is_IR_stable(dataDf):
     plt.figure()
     graph = sns.catplot(data=df, hue='exptID', y='IR', x='exptID', kind='box', dodge=False, height=6, aspect=1.33)
     graph.fig.suptitle(cellID)
-    plt.savefig(cell_location / (cellID + '_IR_trend_expt.png') )
+    plt.savefig(cell_location / (cellID + '_' + protocol_name + '_IR_trend_expt.png') )
 
     plt.figure()
     sns.set(rc={"figure.figsize":(12,5)})
     graph = sns.lineplot(data=df, x='sweep', y='IR', palette='flare', hue='exptID', hue_norm=expt_seq)
     graph.set_title(cellID)
     
-    figpath = cell_location / (cellID + '_IR_trend_stacked_sweeps.png')
-    print(figpath)
+    figpath = cell_location / (cellID + '_' + protocol_name + '_IR_trend_stacked_sweeps.png')
+    
     plt.savefig(figpath)
+    print("saved figs in: ", figpath)
 
     plt.close('all')
 
 
-def is_ChR2_stable(dataDf):
+def is_ChR2_stable(dataDf, protocol_name):
     df = dataDf.loc[dataDf['numSq']>0]
 
     expt_seq = (np.min(np.unique(df["exptSeq"])) , np.max(np.unique(df["exptSeq"])))
 
-    df2 = df[['exptID', 'sweep', 'numSq', 'clampPotential', 'patternID', 'firstpulsetime', 'firstpeakres', 'firstpulse_peaktime']]
+    df2 = df[['exptID', 'sweep', 'numSq', 'clampPotential', 'firstpulsetime', 'firstpeakres', 'firstpulse_peaktime']]
     df2 = df2.sort_values(by=['exptID', 'sweep'])
 
     plt.figure()
     graph = sns.catplot(data=df2, x='firstpeakres', y='exptID', hue='numSq', col='clampPotential', kind='swarm', dodge=False, orient="h", palette='mako', height=5, aspect=2.4)
     graph.fig.suptitle(cellID)
     
-    figpath = cell_location / (cellID + '_firstpulse_response_trend_vs_exptID.png')
+    figpath = cell_location / (cellID + protocol_name + '_firstpulse_response_trend_vs_exptID.png')
     print(figpath)
     plt.savefig(figpath )
 
     plt.close('all')
     
 
-def is_spiking_stable(dataDF):
+def is_spiking_stable(dataDF, protocol_name):
     pass
 
 
-def is_tau_stable(dataDf):
+def is_tau_stable(dataDf, protocol_name):
     df = dataDf.copy()
     df.sort_values(by=['exptID','sweep'])
 
@@ -131,21 +132,21 @@ def is_tau_stable(dataDf):
     graph = sns.catplot(data=df, hue='exptID', y='tau', x='exptID', kind='box', dodge=False, height=6, aspect=1.33)
     graph.fig.suptitle(cellID)
     
-    plt.savefig(cell_location / (cellID + '_Tau_trend_expt.png') )
+    plt.savefig(cell_location / (cellID + '_' + protocol_name + '_Tau_trend_expt.png') )
 
     plt.figure()
     sns.set(rc={"figure.figsize":(12,5)})
     graph = sns.lineplot(data=df, x='sweep', y='tau', palette='flare', hue='exptID', hue_norm=expt_seq)
     graph.set_title(cellID)
     
-    figpath = cell_location / (cellID + '_Tau_trend_stacked_sweeps.png')
-    print(figpath)
+    figpath = cell_location / (cellID + '_' + protocol_name + '_Tau_trend_stacked_sweeps.png')
     plt.savefig(figpath )
+    print("saved figs in: ", figpath)
 
     plt.close('all')
 
 
-def is_Ra_stable(dataDF, cellID, exptID_range):
+def is_Ra_stable(dataDF, protocol_name, cellID, exptID_range):
     '''
     find if the mean IR value changes by 20% during the course of expts.
     '''

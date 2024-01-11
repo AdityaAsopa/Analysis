@@ -1,4 +1,5 @@
 from pathlib import Path
+import traceback
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -13,52 +14,100 @@ import parse_data
 import all_cells
 
 
-def main(cell_set: list = None, protocols: list = ['FreqSweep']) -> None:
-    all_cell_data = []
+# def main(cell_set: list = None, protocols: list = ['FreqSweep']) -> None:
+#     all_cell_data = []
 
+#     if cell_set is None:
+#         cell_set = all_cells.all_cells
+
+#     for protocol in protocols:
+#         all_cell_data_ = []
+#         x = 0
+#         for cell in cell_set:
+#             print(cell)
+#             cellpath = all_cells.project_path_root / cell
+#             cellID = cellpath.stem
+#             cellpickle = cellpath / (str(cellID) + ".pkl")
+#             print(cellpickle)
+
+#             try:
+#                 neuron = ephys_classes.Neuron.loadCell(cellpickle)
+#                 neuron_data = neuron.data[protocol]
+#                 if neuron_data is None:
+#                     continue
+#             except Exception as err:
+#                 print(err)
+#                 print("Error loading cell: ", cellpickle)
+#                 continue
+            
+#             all_cell_data_.append(neuron_data)
+#             x += neuron_data.shape[0]
+            
+#         if len(all_cell_data_) != 0:
+#             print(f'{protocol} has {len(all_cell_data_)} cells with total {x} sweeps')
+#             all_expt_ = pd.concat(all_cell_data_, ignore_index=True, axis=0)
+
+#             # add analysis params to the df
+#             print("adding analysis params to the df")
+#             df_short, df_long = expt_to_dataframe.add_analysed_params2(all_expt_)
+#             del all_expt_
+
+#             # save  dfs
+#             print("return from expt_to_dataframe. Saving DFs")
+#             save_df_to_h5(df_short, filename_suffix='short', protocol=protocol, save_combined_also=True)
+#             del df_short
+#             print("Saving the large DF now")
+#             save_df_to_h5(df_long, filename_suffix='long', protocol=protocol, save_combined_also=False)
+
+### copilot version
+def main(cell_set: list = None, protocols: list = ['FreqSweep']) -> None:
     if cell_set is None:
         cell_set = all_cells.all_cells
 
     for protocol in protocols:
-        all_cell_data_ = []
+        all_expt_ = pd.DataFrame()
         x = 0
         for cell in cell_set:
             print(cell)
             cellpath = all_cells.project_path_root / cell
             cellID = cellpath.stem
             cellpickle = cellpath / (str(cellID) + ".pkl")
-            print(cellpickle)
 
             try:
                 neuron = ephys_classes.Neuron.loadCell(cellpickle)
                 neuron_data = neuron.data[protocol]
                 if neuron_data is None:
                     continue
+                # convert all columns from 37 and onwards to 'float32' type
+                neuron_data.iloc[:, 37:] = neuron_data.iloc[:, 37:].astype(np.float32)
             except Exception as err:
                 print(err)
+                # traceback of the error
+                traceback.print_exc()
                 print("Error loading cell: ", cellpickle)
                 continue
             
-            all_cell_data_.append(neuron_data)
+            all_expt_ = pd.concat([all_expt_, neuron_data], ignore_index=True, axis=0)
             x += neuron_data.shape[0]
-            
-        if len(all_cell_data_) != 0:
-            print(f'{protocol} has {len(all_cell_data_)} cells with total {x} sweeps')
-            all_expt_ = pd.concat(all_cell_data_, ignore_index=True, axis=0)
+            del neuron_data
+
+        if not all_expt_.empty:
+            print(f'{protocol} has {all_expt_["cellID"].nunique()} unique cells with total {x} sweeps')
 
             # add analysis params to the df
+            print("adding analysis params to the df")
             df_short, df_long = expt_to_dataframe.add_analysed_params2(all_expt_)
             del all_expt_
 
             # save  dfs
+            print("return from expt_to_dataframe. Saving DFs")
             save_df_to_h5(df_short, filename_suffix='short', protocol=protocol, save_combined_also=True)
             del df_short
-            # save_df_to_h5(df_long, filename_suffix='long', protocol=protocol, save_combined_also=False)
-
+            print("Saving the large DF now")
+            save_df_to_h5(df_long, filename_suffix='long', protocol=protocol, save_combined_also=False)
 
 def all_cell_plots(all_expt_df):
     df = all_expt_df.iloc[:,:29].copy()
-
  
     # # CC Cells
 
@@ -202,15 +251,15 @@ def save_df_to_h5(df, filename_suffix, protocol='FreqSweep', save_combined_also=
     if save_combined_also:
         combineddata_filename = "parsed_data\\all_cells_" + protocol + '_combined_' + filename_suffix +'.h5'
         df.to_hdf(combineddata_filename, format='fixed', key='data', mode='w')
-        
+    print("Saving CC df")    
     ccfilename = "parsed_data\\all_cells_" + protocol + '_CC_' + filename_suffix +'.h5'
     df_save = df[ df['clampMode']=='CC']
     df_save.to_hdf(ccfilename, format='fixed', key='data', mode='w')
-    
+    print("Saving VC df")
     vcfilename = "parsed_data\\all_cells_" + protocol + '_VC_' + filename_suffix +'.h5'
     df_save = df[ df['clampMode']=='VC']
     df_save.to_hdf(vcfilename, format='fixed', key='data', mode='w')
    
 if __name__ == "__main__":
-    protocols = ['grid',]#'FreqSweep','LTMRand','SpikeTrain','surprise','convergence', 'grid'] #'',
+    protocols = ['grid','SpikeTrain','FreqSweep','LTMRand','surprise','convergence']
     main(cell_set=None, protocols=protocols)

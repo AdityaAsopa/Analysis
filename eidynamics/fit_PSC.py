@@ -207,7 +207,7 @@ def deconv( dat, freq ):
     #plotFromKernel( scaleList, correctedStimIdx, newkernel, label )
     #t = np.arange( 0.0, len( residual ) - 1e-6, 1.0 ) / Fs
     #plt.plot( t, residual, label = label )
-    return np.array(scaleList), residual, dfit, kfit
+    return np.array(scaleList), residual, dfit, kfit, kernel
 
 
 def deconvFit( scaleList, correctedStimIdx, kernel ):
@@ -226,49 +226,53 @@ def deconvFit( scaleList, correctedStimIdx, kernel ):
     return r2
 
 
-def main(time, sweep_data, freq, show_plots=False):
+def main(time, sweep_data, freq, show_plots=False, fig='', ax=''):
         
-    deconvo, residual, dfit, kfit = deconv( sweep_data, freq )
+    deconvo, residual, dfit, kfit, kernel = deconv( sweep_data, freq )
+    if fig == '':
+        fig, ax = plt.subplots(1,3, figsize = (18, 4.8) )
     # print(deconvo, residual, dfit, kfit)
     if show_plots:
-        plot_fits( freq, time, deconvo, residual, dfit, kfit )
-        plt.show()
+        fig, ax = plot_fits( freq, time, deconvo, residual, dfit, kfit , fig, ax)
+        # fig.show()
 
-    return {"deconv": deconvo, "residual": residual, "dfit": dfit, "kfit": kfit}
+    return {"deconv": deconvo, "residual": residual, "dfit": dfit, "kfit": kfit, 'kernel': kernel}, fig, ax
 
-def plot_fits(freq, t, deconv, residual, dfit, kfit):
-    plt.figure( figsize = (18, 4.8) )
-    plt.subplot( 1, 3, 1 )
+def plot_fits(freq, t, deconv, residual, dfit, kfit, fig, ax):
+    # fig, ax = plt.subplots(1,3, figsize = (18, 4.8) )
 
-    plt.plot( t, dfit, ":", label="deconv" )
-    plt.plot( t, kfit, ":", label="kernel" )
+    # plt.subplot( 1, 3, 1 )
+    ax[0].plot( t, dfit, ":", label="deconv" )
+    ax[0].plot( t, kfit, ":", label="kernel" )
 
-    plt.xlabel( "Time (s)" )
-    plt.ylabel( "Synaptic current (pA)" )
-    plt.legend()
-    plt.title( "Currents" )
+    ax[0].set_xlabel( "Time (s)" )
+    ax[0].set_ylabel( "Synaptic current (pA)" )
+    ax[0].legend()
+    ax[0].set_title( "Currents" )
     # plt.title( "Currents: cell {}, Freq = {}, NumSq = {}".format( cellnum, freq, args.numSquares ) )
 
-    plt.subplot( 1, 3, 2 )
+    # plt.subplot( 1, 3, 2 )
     lenres = len( residual ) // 2
     tr = np.arange( 0.0, lenres - 1e-6, 1.0 ) / Fs
-    plt.plot( tr, residual[:lenres], label = "Fit Residual" )
-
-    plt.xlabel( "Time (s)" )
-    plt.ylabel( "Residual (pA)" )
-    plt.legend()
-    plt.title( "Fit Residual" )
+    ax[1].plot( tr, residual[:lenres], label = "Fit Residual" )
+    print("length of residual", len(residual), len(tr), np.min(tr), np.max(tr))
+    ax[1].set_xlabel( "Time (s)" )
+    ax[1].set_ylabel( "Residual (pA)" )
+    ax[1].legend()
+    ax[1].set_title( "Fit Residual" )
     # plt.title( "cell {}, Freq = {}: Residual ".format( cellnum, freq ) )
 
-    plt.subplot( 1, 3, 3 )
-    plt.plot( range( 1,len( deconv )+1 ), deconv/deconv[0], label="Deconv" )
-    plt.xlabel( "Pulse # in burst" )
-    plt.ylabel( "Synaptic response as ratio to first pulse." )
-    plt.legend()
-    plt.title( "Deconv or Relative PSC strength" )
+    # plt.subplot( 1, 3, 3 )
+    ax[2].plot( range( 1,len( deconv )+1 ), deconv/deconv[0], label="Deconv" )
+    ax[2].set_xlabel( "Pulse # in burst" )
+    ax[2].set_ylabel( "Synaptic response as ratio to first pulse." )
+    ax[2].legend()
+    ax[2].set_title( "Deconv or Relative PSC strength" )
     # plt.title( "cell {}, Freq = {}: Deconv ".format( cellnum, freq ) )
     #plt.show()
     #plt.pause( 0.001 )
+
+    return fig, ax
 
 
 if __name__ == "__main__":

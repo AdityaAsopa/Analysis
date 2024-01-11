@@ -75,9 +75,9 @@ def abf_to_data(abf_file,exclude_channels=[],
         abf.setSweep(sweepNumber=sweep)
         # Optionally exporting time axis and Ch0 command waveform for every sweep
         if not 'Cmd' in exclude_channels:
-            sweepArray.update({'Cmd':abf.sweepC})
+            sweepArray.update({'Cmd': (abf.sweepC).astype(np.float32)})
         if not 'Time' in exclude_channels:
-            sweepArray.update({'Time':abf.sweepX})
+            sweepArray.update({'Time':(abf.sweepX).astype(np.float32)})
 
         for ch in range(numChannels):
             abf.setSweep(sweepNumber=sweep, channel=ch)

@@ -17,38 +17,81 @@ from scipy import stats
 from eidynamics import utils
 from eidynamics import pattern_index
 
+def create_edge_colormap():
+    # get only the middle row
+    import matplotlib as mpl
+    from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+   
+    nodes = [0, 0.28, 0.52, 0.78, 1.0]
+    colors = np.array([[109,11,212], [53,42,212], [28,83,202], [0,163,178], [92,228,112]])/256
+
+    edge = LinearSegmentedColormap.from_list("edge", list(zip(nodes, colors)))
+    edge_r = edge.reversed()
+
+    if not 'edge' in mpl.colormaps:
+        mpl.colormaps.register(cmap=edge)
+        mpl.colormaps.register(cmap=edge_r)
+
+create_edge_colormap()
 
 
-def simplify_axes(axes, remove_ticks=True, xticks=[], yticks=[], exclude_from_simplification=['bottom', 'left']):
+def simplify_axes(axes, splines_to_keep=['bottom','left'], axis_offset=10, remove_ticks=True, xtick_locs=[], xtick_labels=[], ytick_locs=[], ytick_labels=[]):
     '''simplify axis properties to remove clutter like ticks, ticklabels, spines, etc.'''
     # check if ax is a list of axes or a numpy array
     if not isinstance(axes, (list, np.ndarray)):
         axes = [axes]
 
-    for ax in axes:
-        for side in ['bottom', 'left', 'top', 'right']:
-            if side not in exclude_from_simplification:
+    for ax in axes:        
+        # remove spines
+        for side in ['top', 'right', 'left', 'bottom']:
+            if side not in splines_to_keep: # remove top and right
                 ax.spines[side].set_visible(False)
-            else:    
+                ax.set_xticks([]) if side=='bottom' else ''
+                ax.set_yticks([]) if side=='left' else ''
+                # set xticklabels and yticklabels to empty list
+                ax.set_xticklabels([]) if side=='bottom' else ''
+                ax.set_yticklabels([]) if side=='left' else ''
+            else:    # keep ticks on all splines
                 ax.spines[side].set_linewidth(0.5)
+                ax.spines[side].set_position(('outward', axis_offset))
+                ax.set_xticks(xtick_locs, labels=xtick_labels)
+                ax.set_yticks(ytick_locs, labels=ytick_labels)
+                # set xlim and ylim
+                ax.set_xlim([min(xtick_locs), max(xtick_locs)])
+                ax.set_ylim([min(ytick_locs), max(ytick_locs)])
 
-        if 'bottom' not in exclude_from_simplification:
-            ax.tick_params(axis='x', which='both', length=0)
-            ax.get_xaxis().tick_bottom()
-            ax.set_xticks([])
-         
-        # ax.tick_params(axis='both', which='both', length=0)
-        if remove_ticks:
-            ax.set_yticks([])
-        else:
-            ax.set_yticks(yticks)
-            ax.set_xticks(xticks)
-        
+        #remove title       
         ax.set_title('')
+
+        # remove legend box and location top right
+        ax.legend(frameon=False, loc='upper right')
+
     return axes
 
 
-def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, labelx='', labely='', unitx='', unity='', fontsize=12, color='black', linewidth=2, pad=0.1, simplify=True, exclude_axis_from_simplification=[], show_labels=False):
+def split_axes(ax, which_axes=['left', 'bottom'], offset=10):
+    _adjust_spines(ax, which_axes, offset_distance=offset)
+
+
+def _adjust_spines(ax, visible_spines, offset_distance=10):
+    '''adjust spines to be inside or outside the plot'''
+    
+    # check if ax is a list of axes or a numpy array
+    if not isinstance(ax, (list, np.ndarray)):
+        axs = [ax]
+
+    for axx in axs:
+        axx.label_outer(remove_inner_ticks=True)
+
+        for loc, spine in axx.spines.items():
+            print(loc, spine)
+            if loc in visible_spines:
+                spine.set_position(('outward', offset_distance))  # outward by 10 points
+            else:
+                spine.set_visible(False)
+
+
+def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, labelx='', labely='', unitx='', unity='', fontsize=12, color='black', linewidth=2, pad=0.1, show_labels=False):
     """Simplifies a matplotlib axes object and adds a floating scalebar.
     Args:
         ax: matplotlib axes object
@@ -73,9 +116,6 @@ def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, l
     x,y = scalebar_origin
     xl = xlength
     yl = ylength
-
-    if simplify:
-        simplify_axes(ax, exclude_from_simplification=exclude_axis_from_simplification)
 
     # draw a line for x axis
     ax.plot([x, x+xl], [y, y]   , color=color, linewidth=linewidth)
@@ -120,16 +160,23 @@ def plot_abf_data(dataDict, label=""):
     plt.show()
 
 
-def plot_data_from_df(df, data_start_column = 35 , simplify=False, combine=False, fig=None, ax=None, exclude_from_simplification=[]):
+def plot_data_from_df(df, data_start_column = 35 , signals_to_plot=['Cell','FrameTTL', 'PD', 'Field'], signal_colors=['black','red','cyan','orange'], combine=False, fig=None, ax=None, signal_mapping={}):
     start = data_start_column
     Fs = 2e4
     sweeps = df.shape[0]
     width = int( (df.shape[1] - start)/4 )
     T = width/Fs
+    num_plots = len(signals_to_plot)
+    signal_location = {'Cell':slice(start, start+width),
+                       'FrameTTL':slice(start+width, start+2*width),
+                       'PD':slice(start+2*width, start+3*width),
+                       'Field':slice(start+3*width, start+4*width)}
+    
+    assert len(signals_to_plot) == len(signal_colors)
 
     # if combine plots is false, draw all the 4 signals separately on 4 subplots
     if combine is False:
-        print('Plotting all 4 signals separately')
+        print('Plotting all signals separately')
 
         # check if fig and ax are supplied:
         if fig is None:
@@ -138,154 +185,115 @@ def plot_data_from_df(df, data_start_column = 35 , simplify=False, combine=False
             gridspec = ax.get_subplotspec().get_gridspec()
             ax.remove()
             subfig = fig.add_subfigure(gridspec[:, 0])
-        subfigs = fig.subfigures(4,1)
-
-        subfig_axs0 = subfigs[0].subplots(1,1, sharey=True)
-        subfig_axs1 = subfigs[1].subplots(1,1, sharey=True)
-        subfig_axs2 = subfigs[2].subplots(1,1, sharey=True)
-        subfig_axs3 = subfigs[3].subplots(1,1, sharey=True)
-
-        axs = [subfig_axs0, subfig_axs1, subfig_axs2, subfig_axs3]
-        if simplify:
-            simplify_axes(axs, exclude_from_simplification=[])
+        subfigs = fig.subfigures(num_plots,1)
+        
+        axs = []
+        for f in range(num_plots):
+            subfig_axs = subfigs[f].subplots(1,1, sharey=True)
+            axs.append(subfig_axs)
 
         time = np.linspace(0, T, num=width, endpoint=False)
         # copy time vector as many times as there are sweeps
         Time = np.tile(time, (sweeps,1) )
 
+        for s, signal in enumerate(signals_to_plot):
+            locs = signal_location[signal]
+            for i in range(sweeps):
+                # start = data_start_column
+                trace = df.iloc[i, locs]
+                trace = utils.map_range(trace, 0, 5, 0,5)
+                axs[s].plot(time, trace, signal_colors[s], linewidth=1, alpha=0.1)
+                axs[s].set_ylabel(signal)
+            axs[s].plot(time, df.iloc[:,    locs].mean(axis=0), color=signal_colors[s], linewidth=1, label=signal)
 
-        for i in range(sweeps):
-            start = 35 
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, 0, 5, 0,5)
-            axs[0].plot(time, trace, 'black', linewidth=1, alpha=0.1)
-            axs[0].set_ylabel('Cell')
-
-            start += width
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, 0, 5, 0,5)
-            axs[1].plot(time, trace, 'red', linewidth=1, alpha=0.1)
-            axs[1].set_ylabel('FrameTTL')
-
-            start += width
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, 0, 5, 0,5)
-            axs[2].plot(time, trace, 'cyan', linewidth=1, alpha=0.1)
-            axs[2].set_ylabel('PD')
-
-            start += width
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, 0, 5, 0,5)
-            axs[3].plot(time, trace, 'orange', linewidth=1, alpha=0.1)
-            axs[3].set_ylabel('Field')
-        
-        # plot average sweeps on respective axes
-        axs[0].plot(time, df.iloc[:,    35:20035].mean(axis=0), color='black', linewidth=1, label='Cell')
-        axs[1].plot(time, df.iloc[:, 20035:40035].mean(axis=0), color='red', linewidth=1, label='FrameTTL')
-        axs[2].plot(time, df.iloc[:,40035:60035].mean(axis=0), color='cyan', linewidth=1, label='PD')
-        axs[3].plot(time, df.iloc[:,60035:80035].mean(axis=0), color='orange', linewidth=1, label='Field')
-  
-        axs[3].set_xlabel('Time (s)')
+        axs[-1].set_xlabel('Time (s)')
 
         return fig, axs
     
     # if combine plots is true, draw all the 4 signals on a single plot
     elif combine is True:
         print('Plotting all 4 signals on a single plot')
+        cell_max, cell_min = np.max(df.iloc[:,49:20049]), np.min(df.iloc[:,49:20049])
+        # print(cell_max, cell_min)
+        # cell_max, cell_min = np.round(cell_max, -2), np.sign(cell_min) * (np.remainder(cell_min, 10) - cell_min)
+        # print(cell_max, cell_min)
+        if not signal_mapping:
+            print('remapping to default')
+            signal_mapping = {'Cell':[cell_min, cell_max, 2, 4],
+                            'FrameTTL': [0, 5, 5, 6],
+                            'PD': [0, 1, 4, 5],
+                            'Field': [-0.5, 0.5, 0, 2]}
 
         # check if ax is supplied
         if fig is None and ax is None:
             fig, ax = plt.subplots(1,1, figsize=(10,10))
-
-        if simplify:
-            ax = simplify_axes(ax, exclude_from_simplification=exclude_from_simplification)[0]
-
+        ax.set_ylim([0,6])
         time = np.linspace(0, T, num=width, endpoint=False)
         # copy time vector as many times as there are sweeps
         Time = np.tile(time, (sweeps,1) )
 
+        for s,signal in enumerate(signals_to_plot):
+            locs = signal_location[signal]
+            from0, from1, to0, to1 = signal_mapping[signal]
+            # print(s, signal, from0, from1, to0, to1)
+            for i in range(sweeps):
+                # start = data_start_column
+                trace = df.iloc[i, locs]                
+                trace = utils.map_range(trace, from0, from1, to0, to1)
+                ax.plot(time, trace, signal_colors[s], linewidth=1, alpha=0.1)
+                ax.set_ylabel(signal)
+                trace_average = df.iloc[:,   locs].mean(axis=0)
+                trace_average = utils.map_range(trace_average, from0, from1, to0, to1)
+                ax.plot(time, trace_average, color=signal_colors[s], linewidth=1, label=signal)
+                if signal=='Cell':
+                    add_floating_scalebar(ax, scalebar_origin=[0.05, 3.0], xlength=0.1, ylength=0.5, labelx='', labely='', unitx='', unity='',
+                    fontsize=12, color=signal_colors[s], linewidth=2, pad=0.1, show_labels=False)
+                if signal == 'Field':
+                    add_floating_scalebar(ax, scalebar_origin=[0.05, 1.2], xlength=0.1, ylength=0.5, labelx='', labely='', unitx='', unity='',
+                    fontsize=12, color=signal_colors[s], linewidth=2, pad=0.1, show_labels=False)
 
-        for i in range(sweeps):
-            start = data_start_column
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, 0, 5, 2, 4)
-            ax.plot(time, trace, 'black', linewidth=1, alpha=0.1)
-            ax.set_ylabel('Cell')
-
-            start += width
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, 0, 5, 5, 6)
-            ax.plot(time, trace, 'red', linewidth=1, alpha=0.1)
-            ax.set_ylabel('FrameTTL')
-
-            start += width
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, 0, 1, 4, 5)
-            ax.plot(time, trace, 'cyan', linewidth=1, alpha=0.1)
-            ax.set_ylabel('PD')
-
-            start += width
-            trace = df.iloc[i, slice(start, start+width)]
-            trace = utils.map_range(trace, -0.5, 0.5, 0, 2)
-            ax.plot(time, trace, 'orange', linewidth=1, alpha=0.1)
-            ax.set_ylabel('Field')
-        
-        # plot average sweeps on respective axes
-        start = data_start_column
-        trace_average = df.iloc[:,   start:start+width].mean(axis=0)
-        trace_average = utils.map_range(trace_average, 0, 5, 2, 4)
-        ax.plot(time, trace_average, color='black', linewidth=1, label='Cell')
-        add_floating_scalebar(ax, scalebar_origin=[0.05, 3.0], xlength=0.1, ylength=0.5, labelx='', labely='', unitx='', unity='',
-                                        fontsize=12, color='black', linewidth=2, pad=0.1, simplify=True, exclude_axis_from_simplification=[], show_labels=False)
-
-        start += width
-        trace_average = df.iloc[:,start:start+width].mean(axis=0)
-        trace_average = utils.map_range(trace_average, 0, 5, 5, 6)
-        ax.plot(time, trace_average, color='red', linewidth=1, label='FrameTTL')
-
-        start += width
-        trace_average = df.iloc[:,40035:60035].mean(axis=0)
-        trace_average = utils.map_range(trace_average, 0, 1, 4, 5)
-        ax.plot(time, trace_average, color='cyan', linewidth=1, label='PD')
-        
-        start += width
-        trace_average = df.iloc[:,60035:80035].mean(axis=0)
-        trace_average = utils.map_range(trace_average, -0.5, 0.5, 0, 2)
-        ax.plot(time, trace_average, color='orange', linewidth=1, label='Field')
-        add_floating_scalebar(ax, scalebar_origin=[0.05, 1.2], xlength=0.1, ylength=0.5, labelx='', labely='', unitx='', unity='',
-                                        fontsize=12, color='orange', linewidth=2, pad=0.1, simplify=True, exclude_axis_from_simplification=[], show_labels=False)
-        
+                
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Voltage')
 
-        return fig, ax
+        return fig, ax, signal_mapping
     
 
-def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, simplify=True, exclude_from_simplification=[], vmin=0, vmax=1, cmap='gray', **kwargs):
+def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=1, cmap='gray', locs_is_patternID=False, **kwargs):
+    '''
+    plot a grid of values as a heatmap. input spot_values should have coord column as index
+    spot_locs is raw coordinates of the spots, spot_values is the values at those spots
+    '''
     if ax is None:
         fig, ax = plt.subplots()
 
-    if simplify:
-        ax = simplify_axes(ax, exclude_from_simplification=exclude_from_simplification)[0]
 
-    # if spot_values == []:
-    #     raise ValueError('spot_locs and spot_values must be the same length')
+    if len(spot_values) == 0:
+        raise ValueError(f'spot_locs and spot_values must be the same length but spot_locs has length {len(spot_locs)} and spot_values has length {len(spot_values)}')
     elif len(spot_values) == 1:
         spot_values = np.repeat(spot_values, len(spot_locs))
     elif len(spot_values) != len(spot_locs):
-        raise ValueError('spot_locs and spot_values must be the same length') 
+        raise ValueError(f'spot_locs and spot_values must be the same length, but spot_locs has length {len(spot_locs)} and spot_values has length {len(spot_values)}')
 
 
     # make a zero array of the grid size
     grid_array = np.zeros(grid)
-
+    
     # fill the grid array with the spot locations
-    for i in spot_locs:
-        locx = i % grid[0]
-        locy = i // grid[1]
-        grid_array[locy, locx] = spot_values[i]
+    for i, spot in enumerate(spot_locs):
+        if locs_is_patternID:
+            spots = pattern_index.patternID[spot]
+            for s in spots:
+                locx = (s-1) % grid[0]
+                locy = (s-1) // grid[1]
+                grid_array[locy, locx] = spot_values[i]
+        else:    
+            locx = (spot-1) % grid[0]
+            locy = (spot-1) // grid[1]
+            # print(i, spot, locx, locy)
+            grid_array[locy, locx] = spot_values[i]
 
-    ax.imshow(grid_array, cmap=cmap, vmin=vmin, vmax=vmax)
+    ax.imshow(grid_array, cmap=cmap)#, vmin=vmin, vmax=vmax)
     # have the axis scaled
     # ax.axis('scaled')
 
@@ -296,7 +304,7 @@ def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, simplify=True
     ax.invert_yaxis()
 
     # add the colorbar
-    cbar = plt.colorbar(ax.imshow(grid_array, cmap=cmap, vmin=vmin, vmax=vmax), ax=ax, label='Depolarization (pA)',**kwargs)
+    cbar = plt.colorbar(ax.imshow(grid_array, cmap=cmap, ), ax=ax, label='Response',**kwargs)#vmin=vmin, vmax=vmax
     # add colorbar label
     # cbar.set_ylabel('Depolorization (pA)')
     

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from eidynamics import pattern_index
 from eidynamics import ephys_functions as ephysFunc
 from eidynamics import utils
+import pulselocs_default
 n = len(utils.metadata_parameters)
 
 def expt2df(expt, neuron, eP):
@@ -209,6 +210,7 @@ def add_analysed_params(df):
 
 def add_analysed_params2(df):
     df2 = df.iloc[:, :n]
+    print(df.iloc[0,:50])
 
     # make a new analysed param df
     df3 = pd.DataFrame(columns=['cellID', 'exptID', 'sweep', 'peaks_cell', 'peaks_cell_norm', 'auc_cell', 'slope_cell', 'delay_cell','peaks_field', 'peaks_field_norm', 'cell_fpr', 'field_fpr', 'cell_ppr', 'cell_stpr', 'field_ppr', 'field_stpr'])
@@ -216,12 +218,15 @@ def add_analysed_params2(df):
 
 
     for i in range(df.shape[0]):
+        
         Fs = 2e4
         row = df.iloc[i, :]
-        ipi = int(Fs / row['stimFreq'])
+        stimfreq = row['stimFreq']
+        ipi = int(Fs / stimfreq)
         pw  = int(Fs * row['pulseWidth'] / 1000)
         protocol = row['protocol']
         numPulses = row['numPulses']
+        probe_pulse_start = row['probePulseStart']
         
         # add cell ID to the row in df3
         df3.loc[i, 'cellID'] = int(row['cellID'])
@@ -238,26 +243,77 @@ def add_analysed_params2(df):
         # binarize the led signal where the led signal is above 3 standard deviations of the baseline (first 2000 points)
         try:
             led, peak_locs = utils.binarize_trace(led)
+            peak_locs = peak_locs['left']
         except AssertionError:
             print('AssertionError: ', protocol, i, row['cellID'], row['exptID'], row['sweep'])
-            continue
-        peak_locs = peak_locs['left']
-
+            # print(f'peak_locs not equal to {numPulses}:', protocol, i, len(peak_locs), row['cellID'], row['exptID'], row['sweep'])
+            # if peak_locs length is not correct then use the default values for each protocol
+            if protocol == 'SpikeTrain':
+                peak_locs = pulselocs_default.SpikeTrain
+                print("Pulse locs loaded from default")
+            elif (protocol == 'FreqSweep') & (probe_pulse_start == 0.2):
+                peak_locs = np.concatenate([np.array([4000]),(20000*utils.get_pulse_times(8,10000/20000,stimfreq)).astype(int)])
+                peak_locs = peak_locs[peak_locs <= len(cell)-ipi]
+                print("Pulse locs loaded from default")
+            elif (protocol == 'FreqSweep') & (probe_pulse_start > 0.22):
+                peak_locs = np.concatenate([np.array([4481]),(20000*utils.get_pulse_times(8,4481/20000,stimfreq)).astype(int)])
+                peak_locs = peak_locs[peak_locs <= len(cell)-ipi]
+                print("Pulse locs loaded from default")
+            # continue
+        
+        
         # if there are 8 peaks add the first peak_loc value again at the beginning
         if (protocol=='FreqSweep') & (len(peak_locs) == 8):
             peak_locs = np.insert(peak_locs, 0, peak_locs[0])
+
         if (protocol=='FreqSweep') & (numPulses == 8):
             numPulses = 9
         if (protocol=='Surprise') & (numPulses == 32):
             numPulses = 33
         if (protocol=='grid') & (numPulses == 8):
             numPulses = 9
+        if (protocol=='grid') & (numPulses == 1):
+            numPulses = 1
         if (protocol=='convergence') & (numPulses == 8):
             numPulses = 9
+        if (protocol=='convergence') & (numPulses == 3):
+            numPulses = 3
+        if (protocol == 'SpikeTrain'):
+            numPulses = 230
             
         if len(peak_locs) != numPulses:
             print(f'peak_locs not equal to {numPulses}:', protocol, i, len(peak_locs), row['cellID'], row['exptID'], row['sweep'])
-            continue
+            # if peak_locs length is not correct then use the default values for each protocol
+            if protocol == 'SpikeTrain':
+                peak_locs = pulselocs_default.SpikeTrain
+                print("Pulse locs loaded from default")
+            elif (protocol == 'FreqSweep') & (probe_pulse_start == 0.2):
+                peak_locs = np.concatenate([np.array([4000]),(20000*utils.get_pulse_times(8,10000/20000,stimfreq)).astype(int)])
+                peak_locs = peak_locs[peak_locs <= len(cell)-ipi]
+                print("Pulse locs loaded from default")
+            elif (protocol == 'FreqSweep') & (probe_pulse_start > 0.22):
+                peak_locs = np.concatenate([np.array([4481]),(20000*utils.get_pulse_times(8,4481/20000,stimfreq)).astype(int)])
+                peak_locs = peak_locs[peak_locs <= len(cell)-ipi]
+                print("Pulse locs loaded from default")
+            elif protocol == 'LTMRand':
+                peak_locs = np.concatenate([np.array([4631]),(20000*utils.get_pulse_times(8,4631/20000,stimfreq)).astype(int)])
+                print("Pulse locs loaded from default")
+            elif protocol == 'surprise':
+                peak_locs = np.concatenate([np.array([4007]),(20000*utils.get_pulse_times(33,4007/20000,stimfreq)).astype(int)])
+                print("Pulse locs loaded from default")
+            elif (protocol == 'convergence') & (numPulses == 9):
+                peak_locs = np.concatenate([np.array([9585]),(20000*utils.get_pulse_times(8,9585/20000,stimfreq)).astype(int)])
+                print("Pulse locs loaded from default")
+            elif (protocol == 'convergence') & (numPulses == 3):
+                peak_locs = np.concatenate([np.array([4631]),(20000*utils.get_pulse_times(3,4631/20000,stimfreq)).astype(int)])
+                print("Pulse locs loaded from default")
+            elif (protocol == 'grid') & (numPulses == 1):
+                peak_locs = np.array([700,700])
+                print("Pulse locs loaded from default")
+            elif (protocol == 'grid') & (numPulses == 9):
+                peak_locs = np.concatenate([np.array([3680]),(20000*utils.get_pulse_times(8,9680/20000,stimfreq)).astype(int)])
+                print("Pulse locs loaded from default")
+
 
         sweep_cell_response_peaks = np.zeros(len(peak_locs))
         sweep_cell_response_aucs = np.zeros(len(peak_locs))
@@ -265,9 +321,12 @@ def add_analysed_params2(df):
         sweep_pulse_to_cell_response_peak_delay = np.zeros(len(peak_locs))
         sweep_field_response_peaks = np.zeros(len(peak_locs))
 
+        # print(row['cellID'], row['exptID'], row['sweep'], len(peak_locs), peak_locs)
         for j, loc in enumerate(peak_locs):
+            
             cellslice = cell[loc:loc+ipi]
             fieldslice = field[loc:loc+ipi]
+            # print(j, loc, ipi, cellslice.shape, fieldslice.shape)
 
             # get max of cell slice
             cellpulsemax = utils.get_pulse_response(cell, loc, loc+ipi, 1, prop='peak')
@@ -305,12 +364,18 @@ def add_analysed_params2(df):
 
 
     # make first three columns integers type
+    print("Churning through sweeps complete. merging dataframes...")
     df3[['cellID', 'exptID', 'sweep']] = df3[['cellID', 'exptID', 'sweep']].astype(int)
-
     df_short = pd.merge(df.iloc[:, :n], df3, on=['cellID', 'exptID', 'sweep'])
+    
+    # print('converting df into float32')
+    # float64_cols = df.select_dtypes(include=[np.float64]).columns
+    # df[float64_cols] = df[float64_cols].astype(np.float32)
+    
     df_all = pd.merge(df, df3, on=['cellID', 'exptID', 'sweep'])
 
     # shift last 69 columns of df_all after 34th column
+    print("merging complete. shifting columns...")
     df_all = pd.concat( [df_all.iloc[:,:n], df_all.iloc[:,-13:], df_all.iloc[:,n:-13]], axis=1 ) #[x[:34], x[-69:], x[34:-69]]
 
     return df_short, df_all
