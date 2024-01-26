@@ -40,6 +40,7 @@ def run_qc(cellObject, cellDirectory, mode='cell'):
             
             is_baseline_stable(dataDF, protocol)
             is_IR_stable(      dataDF, protocol)
+            # is_response_present(dataDF, protocol) #KS test for noisy data (for test mentioned in Aanchal-Sahil's paper)
             # is_ChR2_stable(    dataDF, protocol)
             # is_spiking_stable( dataDF, cellID, exptID_range)
             
@@ -97,6 +98,29 @@ def is_IR_stable(dataDf, protocol_name):
     print("saved figs in: ", figpath)
 
     plt.close('all')
+
+
+def is_response_present(dataDF, protocol):
+    from scipy.stats import ks_2samp
+
+    # Assume `data` is your array of 10000 datapoints
+    baseline = data[:2000]
+    period = data[2000:]
+
+    # Compute the CDF of the baseline period and the period of interest
+    cdf_baseline = np.cumsum(np.histogram(baseline, bins=1000, density=True)[0])
+    cdf_period = np.cumsum(np.histogram(period, bins=1000, density=True)[0])
+
+    # Calculate the maximum difference between the two CDFs using the KS test
+    ks_statistic, p_value = ks_2samp(cdf_baseline, cdf_period)
+
+    # Compare the maximum difference with the critical value at a significance level of 0.05
+    critical_value = 1.36 / np.sqrt(len(data))
+    if ks_statistic > critical_value:
+        print("The two distributions are significantly different.")
+    else:
+        print("The two distributions are not significantly different.")
+
 
 
 def is_ChR2_stable(dataDf, protocol_name):

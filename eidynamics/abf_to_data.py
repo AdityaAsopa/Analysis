@@ -93,7 +93,7 @@ def abf_to_data(abf_file,exclude_channels=[],
             else:
                 pass
             if (ch==3) and (not ch in exclude_channels) and (units[3]=='pA'):
-                
+                print('Scaling field by 1/20')
                 sweepArray.update({ch: parsedSweep/signal_scaling/20})
 
         

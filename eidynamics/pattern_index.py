@@ -131,6 +131,13 @@ def get_patternID(sqSet):
     for k,v in patternID.items():
         if v == sqSet:
             return int(k)
+
+def get_patternIDlist_for_nSq_pattern(patternIDnSq):
+    spotlist = []
+    spotcoords = patternID[patternIDnSq]
+    for spot in spotcoords:
+        spotlist.append(get_patternID([spot]))
+    return spotlist
             
 ################# Calibration Details ################
 

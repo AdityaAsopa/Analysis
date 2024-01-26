@@ -172,9 +172,9 @@ def findResidual( kernel, kpk, residual, si, stimWidth ):
     return bestScale
 
 
-def deconv( dat, freq ):
-    startIdx = int( round( 0.5 * Fs ) )
-    stimWidth = int( round( Fs/freq ) )
+def deconv( dat, freq, trainStart=0.5, probepulsetime=0.2 ):
+    startIdx = int( round( trainStart * Fs ) ) # Start at 0.5 sec, convert to datapoints by multiplying by Fs
+    stimWidth = int( round( Fs/freq ) ) # what I call IPI
     # Don't reuse stimWidth for stimIdx because of cumulative error.
     stimIdx = [ int( round( i * Fs/freq ) ) for i in range( 8 ) ]
 
@@ -199,18 +199,21 @@ def deconv( dat, freq ):
         correctedStimIdx.append( si )
 
     #print( "ScaleList = ", scaleList )
-    dfit = deconvFit( scaleList, correctedStimIdx, newkernel )
+    dfit = deconvFit( scaleList, correctedStimIdx, newkernel, trainStart )
 
     kfit = np.zeros( len( dat ) )
-    stimStartIdx = int( round( 0.2 * Fs ) )
+    stimStartIdx = int( round( probepulsetime * Fs ) )
     kfit[stimStartIdx:] = newkernel[:-stimStartIdx]
     #plotFromKernel( scaleList, correctedStimIdx, newkernel, label )
     #t = np.arange( 0.0, len( residual ) - 1e-6, 1.0 ) / Fs
     #plt.plot( t, residual, label = label )
+
+    # the residual that is returned should be same length as dat and should have the residual in the right place.
+     
     return np.array(scaleList), residual, dfit, kfit, kernel
 
 
-def deconvFit( scaleList, correctedStimIdx, kernel ):
+def deconvFit( scaleList, correctedStimIdx, kernel, trainStart ):
     ret = np.zeros( int( round( Fs ) ) )
     for ss, idx in zip( scaleList, correctedStimIdx ):
         if idx > 0:
@@ -221,24 +224,24 @@ def deconvFit( scaleList, correctedStimIdx, kernel ):
     #t = np.arange( 0.5, 1.0 - 1e-6, 1.0/Fs )
     #plt.plot( t, ret[0:len(t)], ":", label = label + "_est" )
     r2 = np.zeros( int( round( Fs ) ) )
-    startIdx = int( round( 0.5 * Fs ) )
+    startIdx = int( round( trainStart * Fs ) )
     r2[startIdx:] = ret[:-startIdx]
     return r2
 
 
-def main(time, sweep_data, freq, show_plots=False, fig='', ax=''):
+def main(time, sweep_data, freq, trainStart=0.5, show_plots=False, fig='', ax=''):
         
-    deconvo, residual, dfit, kfit, kernel = deconv( sweep_data, freq )
+    deconvo, residual, dfit, kfit, kernel = deconv( sweep_data, freq, trainStart=trainStart )
     if fig == '':
         fig, ax = plt.subplots(1,3, figsize = (18, 4.8) )
     # print(deconvo, residual, dfit, kfit)
     if show_plots:
-        fig, ax = plot_fits( freq, time, deconvo, residual, dfit, kfit , fig, ax)
+        fig, ax = plot_fits( freq, time, deconvo, residual, dfit, kfit , fig, ax, trainStart)
         # fig.show()
 
-    return {"deconv": deconvo, "residual": residual, "dfit": dfit, "kfit": kfit, 'kernel': kernel}, fig, ax
+    return {"deconv": deconvo, "residual": residual, "dfit": dfit, "kfit": kfit, 'kernel': kernel}, fig, ax #
 
-def plot_fits(freq, t, deconv, residual, dfit, kfit, fig, ax):
+def plot_fits(freq, t, deconv, residual, dfit, kfit, fig, ax, trainStart):
     # fig, ax = plt.subplots(1,3, figsize = (18, 4.8) )
 
     # plt.subplot( 1, 3, 1 )
@@ -253,8 +256,8 @@ def plot_fits(freq, t, deconv, residual, dfit, kfit, fig, ax):
 
     # plt.subplot( 1, 3, 2 )
     lenres = len( residual ) // 2
-    tr = np.arange( 0.0, lenres - 1e-6, 1.0 ) / Fs
-    ax[1].plot( tr, residual[:lenres], label = "Fit Residual" )
+    tr = np.arange( trainStart, 1.0, 1.0/Fs )
+    ax[1].plot( tr, residual[:len(tr)], label = "Fit Residual" )
     print("length of residual", len(residual), len(tr), np.min(tr), np.max(tr))
     ax[1].set_xlabel( "Time (s)" )
     ax[1].set_ylabel( "Residual (pA)" )

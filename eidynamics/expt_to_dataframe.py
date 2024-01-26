@@ -368,9 +368,9 @@ def add_analysed_params2(df):
     df3[['cellID', 'exptID', 'sweep']] = df3[['cellID', 'exptID', 'sweep']].astype(int)
     df_short = pd.merge(df.iloc[:, :n], df3, on=['cellID', 'exptID', 'sweep'])
     
-    # print('converting df into float32')
-    # float64_cols = df.select_dtypes(include=[np.float64]).columns
-    # df[float64_cols] = df[float64_cols].astype(np.float32)
+    # Convert float64 columns to float32
+    float64_cols = df.select_dtypes(include=[np.float64]).columns
+    df[float64_cols] = df[float64_cols].astype(np.float32)
     
     df_all = pd.merge(df, df3, on=['cellID', 'exptID', 'sweep'])
 
