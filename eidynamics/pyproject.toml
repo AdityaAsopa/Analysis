@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "eidynamics"
+version = "0.1.0"
+description = "Toolset to analyse EPHYS data"
+authors = ["Aditya Asopa <adityaasopa@hotmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^2.0.1"
+matplotlib = "^3.9.1"
+scipy = "^1.14.0"
+pandas = "^2.2.2"
+seaborn = "^0.13.2"
+pyabf = "^2.3.8"
+h5py = "^3.11.0"
+statsmodels = "^0.14.2"
+tables = "^3.9.2"
+openpyxl = "^3.1.5"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.1.0"
+ruff = "^0.5.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -32,10 +32,12 @@ def separate_channel_save_hdf(df2, cellname):
 def main(freq_sweep_datapath, clamp='VC'):
     df = pd.read_hdf(freq_sweep_datapath, key='data')
     
-    # list of cc cells
+    # list of vc cells
     if clamp== 'VC':
-        cell_list = np.array([7492, 7491, 6301, 6201, 1931, 1621, 1541, 1531, 1524, 1523, 1522, 1491, 111])
+        # cell_list = np.array([7492, 7491, 6301, 6201, 1931, 1621, 1541, 1531, 1524, 1523, 1522, 1491, 111])
+        cell_list = df['cellID'].unique()
         df = df[ df['cellID'].isin(cell_list) ]
+    # list of cc cells
     elif clamp == 'CC':
         cell_list = df['cellID'].unique()
         df = df[ pd.notnull(df['peaks_cell'])]

@@ -1,0 +1,37 @@
+Issue with Upi\s fitting algo,
+remove 1sq,
+stat annotations are good,
+cell: 1621, check the time of fitting points (valley time and peak time), check stim start time.
+Upi's newest script for fitting: stp_peaks_and_refs.py
+
+Delay against what?
+only show sublinearity
+delay I-E vs numSq
+delay of I-E vs EPSCmax
+
+How to proceed from here:
+1. Introduction: add more refs?
+2. Figure 1:
+	Setup: protocol design
+	standardization: How CA3 stim is, desensitization (field, supplementary)
+	characterization: CA3 response map, CA3-Field relation, Field-CA1 relation
+	Conclusion: protocol is designed to probe the I/O relationship in multiple dimensions.
+	Status: Legend done, description done
+3. Figure 2:
+	EPSP response in current clamp (?)
+	Fitting
+	PSC vs factors heatmap
+	a measure of effect: synaptic impact, charge etc
+	Measure of plasticity for E and I: PPR, STPR etc
+	SVM or MEM model (?)
+	Conclusion: 1. short-term plasticity properties of E and I are co-tuned/depressing/potentiating/ 2. Which factor is most important
+	Status: remainder: analysis, plotting, arranging
+4. Figure 3:
+	How do E and I combine to cause normalization (SDN or slope)
+	What is normalization?
+	Distribution of gamma and slope, stats (?)
+	Gamma and slope heatmap
+	Delay(E-I) vs EPSCpeak
+	across cell distribution (?)
+	conclusion: second pulse has the highest chance of escape, delay is statistically significant(?), normalization is statistically significant (?)
+	Status: stats to be done, delay plots, across cell distribution

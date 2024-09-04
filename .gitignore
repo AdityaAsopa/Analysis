@@ -12,14 +12,20 @@ upilab
 raw_plots_all_cells
 oct16_redo_findsim_new_data
 jan26_redo_findsim_with_refpk
+*Raw*
+*raw*
+*notebooks*
 
 # files
 *temp*.*
 *copy*.*
 *test*.*
+*raw*.*
 *.h5
 *.xlsx
 *.csv
 *.cpython*
+*.html
 labnotes*
 untitled*
+*notebook*.ipynb

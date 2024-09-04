@@ -1,0 +1,66 @@
+cellID                                                           4041
+sex                                                                 F
+ageAtInj                                             31 days 00:00:00
+ageAtExpt                                           101 days 00:00:00
+incubation                                           70 days 00:00:00
+unit                                                               mV
+location                                                          CA1
+protocol                                                    FreqSweep
+exptSeq                                                             0
+exptID                                                              3
+sweep                                                               1
+stimFreq                                                           20
+numSq                                                               5
+intensity                                                         100
+pulseWidth                                                          5
+clampMode                                                          CC
+clampPotential                                                    -70
+condition                                                     Control
+AP                                                                  0
+IR                                                         198.190689
+tau                                                          0.028824
+sweepBaseline                                              -71.551514
+numPatterns                                                         1
+patternList                                                        48
+numPulses                                                           8
+pulseTrainStart                                                   0.5
+probePulseStart                                                   0.2
+frameChangeTimes                                                 3004
+pulseTimes          [4000, 10000, 11000, 12000, 13000, 14000, 1500...
+sweepLength                                                       1.0
+baselineFlag                                                    False
+IRFlag                                                          False
+RaFlag                                                          False
+spikingFlag                                                     False
+ChR2Flag                                                        False
+fieldData                                                        True
+peaks_cell          [3.0582242012023926, 2.2187838554382324, 2.555...
+peaks_cell_norm     [1.0, 0.7255137980288954, 0.8357707987808957, ...
+auc_cell            [1971.2958427667618, 1347.1242834888399, 2194....
+slope_cell              [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+delay_cell          [-0.175, -0.4651, -0.52515, -0.5777, -0.6363, ...
+peaks_field         [0.2780042737722397, 0.27900683879852295, 0.27...
+peaks_field_norm    [1.0, 1.0036062935748413, 1.0028020988445292, ...
+cell_fpr                                                     3.058224
+field_fpr                                                    0.278004
+cell_ppr                                                     0.725514
+cell_stpr                                                    1.870547
+field_ppr                                                    1.003606
+field_stpr                                                   2.692596
+0                                                            0.101421
+
+1sq experiments
+4041: [14]
+3751: [1, 2]
+5611: [3, 6]
+5291: [6]
+5211: [11]
+3882: [16,  1]
+3872: [12]
+3791: [4]
+3781: [3]
+3402: [17]
+3401: [9]
+3192: [13]
+2331: [2]
+4021: [2]

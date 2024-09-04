@@ -24,10 +24,15 @@ metadata_parameters = ['cellID', 'sex','ageAtInj','ageAtExpt','incubation', 'uni
 
 analysed_properties1 = [ 'peaks_cell','peaks_cell_norm','auc_cell','slope_cell','delay_cell','peaks_field','peaks_field_norm']
 analysed_properties2 = ['cell_fpr','field_fpr','cell_ppr','cell_stpr','field_ppr','field_stpr']
+analysed_properties3 = ['cell_fpr_max', 'cell_fpr_min', 'cell_fpr_auc', 'cell_fpr_ttp', 'cell_fpr_p2p',
+                        'field_fpr_max','field_fpr_min', 'field_fpr_auc', 'field_fpr_ttp', 'field_fpr_p2p',
+                        'numChannels', 'cellunit', 'fieldunit']
 
 analysed_properties1_abbreviations = ['pc','pcn','ac','sc','dc','pf','pfn']
         
-def gridSizeCalc(sqSize,objMag,frameSz=frameSize):
+def gridSizeCalc(sqSize : list[int],
+                 objMag : float,
+                 frameSz: list[float] = frameSize) -> list[int]:
 
     gridSize = np.array([1,1])
 
@@ -45,7 +50,9 @@ def gridSizeCalc(sqSize,objMag,frameSz=frameSize):
     squareSizeCalc(np.ceil(gridSize),objMag)
 
 
-def squareSizeCalc(gridSize,objMag,frameSz=frameSize):
+def squareSizeCalc(gridSize,
+                   objMag,
+                   frameSz=frameSize):
     '''
     Pass two values as the arguments for the file: [gridSizeX, gridSizeY], objectiveMag
     command line syntax should look like:  [24 24] 40
@@ -63,7 +70,10 @@ def squareSizeCalc(gridSize,objMag,frameSz=frameSize):
     return ss
 
 
-def butter_bandpass(lowcut, highcut, fs, order=5):
+def butter_bandpass(lowcut, 
+                    highcut, 
+                    fs, 
+                    order=5):
     nyq = 0.5 * fs
     low = lowcut / nyq
     high = highcut / nyq
@@ -71,7 +81,12 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
     return sos
 
 
-def filter_data(x, filter_type='butter', low_cutoff=0.1, high_cutoff=500,sampling_freq=2e4):
+def filter_data(x, 
+                filter_type='butter', 
+                low_cutoff=0.1, 
+                high_cutoff=500,
+                sampling_freq=2e4):
+
     if filter_type == 'butter':
         sos = butter(N=2, Wn=high_cutoff, fs=sampling_freq, output='sos')
         y = sosfiltfilt(sos,x)
@@ -89,7 +104,12 @@ def filter_data(x, filter_type='butter', low_cutoff=0.1, high_cutoff=500,samplin
 
 
 # map one range of values to another
-def map_range( input_signal, in_min, in_max, out_min, out_max ):
+def map_range(input_signal, 
+              in_min, 
+              in_max, 
+              out_min, 
+              out_max):
+
     return (input_signal - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
@@ -137,7 +157,9 @@ def binarize_trace(trace, max_value='signal_max', method='derivative', threshold
         neg_peaks, _ = find_peaks(d_trace, height=0.25*min_of_d_trace, distance=100)
         # assert  that the peaks are equal in number otherwise pass assertion error
         
-        assert len(pos_peaks) == len(neg_peaks), "Error in photodiode signal. pos_peaks and neg_peaks are not of the same length. Peak detection fault."
+        assert len(pos_peaks) == \
+            len(neg_peaks), "Error in photodiode signal. \
+            pos_peaks and neg_peaks are not of the same length. Peak detection fault."
 
         
         peak_locs = {'left': pos_peaks, 'right': neg_peaks}
@@ -229,6 +251,27 @@ def alpha_synapse(t,Vmax,tau):
     return y
 
 
+def delayed_alpha_function(t, A, tau, delta):
+    """
+    Compute the delayed alpha function.
+
+    Parameters:
+    t (array-like): Time values.
+    A (float): Amplitude of the alpha function.
+    tau (float): Time constant of the alpha function. (expressed in the same units as the vector 't')
+    delta (float): Delay.
+
+    Returns:
+    array-like: The delayed alpha function values.
+    """
+    tdel = np.zeros(delta)
+    T = np.append(tdel, t)
+    T = T[:len(t)]
+    a = 1 / tau
+    y = A * (a * (T)) * np.exp(1 - a * (T))
+    return y
+
+
 def delayed_alpha_function(t,A,tau,delta):
     tdel = np.zeros(int(2e4*delta))
     T   = np.append(tdel,t)
@@ -246,7 +289,14 @@ def dual_alpha_function(t, A, B, tau1, tau2, delta1, delta2):
     return (1.0/(tau1-tau2)) * (np.exp(-t/tau1) - np.exp(-t/tau2))
     
 
-def _PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4, filter_type='butter', filter_cutoff=2000  ):
+def _PSP_start_time(response_array,
+                    clamp='CC',
+                    EorI='E',
+                    stimStartTime=0.2,
+                    Fs=2e4, 
+                    filter_type='butter', 
+                    filter_cutoff=2000,
+                    ):
     '''
     Input: nxm array where n is number of frames, m is datapoints per sweep
     '''
@@ -261,8 +311,8 @@ def _PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4,
     w                   = 40 if np.max(avgAllSpots)>=30 else 60
     
     if clamp == 'VC' and EorI == 'E':
-        avgAllSpots     = -1*avgAllSpots
-        w               = 60
+        avgAllSpots *= -1
+        w = 60
 
     
     stimStart           = int(Fs*stimStartTime)
@@ -285,7 +335,8 @@ def _PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4,
     try:
         synDelay_ms        = 1000*(PSPStartTime[0] - stimStartTime)
         valueAtPSPstart    = avgAllSpots[int(Fs*PSPStartTime[0])]
-    except:
+    except Exception as e:
+        print(e)
         synDelay_ms        = 0
         valueAtPSPstart    = avgAllSpots[stimStart]
 
@@ -294,7 +345,36 @@ def _PSP_start_time(response_array,clamp='CC',EorI='E',stimStartTime=0.2,Fs=2e4,
 
 
 
-def get_signal_inflection_time(signal, peaks_to_detect='all', width=20, movavg_window=40, baseline_time_sec=0.2, stim_start_sec=0.2, Fs=2e4, filter_type='butter', filter_cutoff=2000, mode='test'):
+def get_signal_inflection_time(signal, 
+                               peaks_to_detect='all', 
+                               width=20, 
+                               movavg_window=40, 
+                               baseline_time_sec=0.2, 
+                               stim_start_sec=0.2, 
+                               Fs=2e4, 
+                               filter_type='butter', 
+                               filter_cutoff=2000, 
+                               mode='test'):
+    """
+    Calculate the inflection point time of a signal.
+
+    Parameters:
+    - signal (array-like): The input signal.
+    - peaks_to_detect (str, optional): Determines which peaks to detect. Default is 'all'.
+    - width (int, optional): The width parameter for peak detection. Default is 20.
+    - movavg_window (int, optional): The window size for moving average. Default is 40.
+    - baseline_time_sec (float, optional): The duration of the baseline period in seconds. Default is 0.2.
+    - stim_start_sec (float, optional): The time at which the stimulus starts in seconds. Default is 0.2.
+    - Fs (float, optional): The sampling frequency of the signal. Default is 2e4.
+    - filter_type (str, optional): The type of filter to apply. Default is 'butter'.
+    - filter_cutoff (float, optional): The cutoff frequency for the filter. Default is 2000.
+    - mode (str, optional): The mode of operation. Default is 'test'.
+
+    Returns:
+    - inflection_point_sec (float or array-like): The time(s) of the inflection point(s) in seconds.
+    - response_delay (float or array-like): The response delay(s) in milliseconds.
+    - signal_value_at_inflection (float or array-like): The signal value(s) at the inflection point(s).
+    """
     baseline = np.mean(signal[:int(Fs*baseline_time_sec)])
     trace  = signal - baseline
     stim_start= int(Fs*stim_start_sec)
@@ -324,18 +404,18 @@ def get_signal_inflection_time(signal, peaks_to_detect='all', width=20, movavg_w
         locs = peaks_properties['left_ips']
         inflection_point_sec = locs/Fs
         
-        # inflection_point_sec = []
-        # response_delay = []
-        # signal_value_at_inflection = []
-        # for i in range(len(peaks_properties['left_ips'])):
-        #     first_wide_fluctuation_above_std_dev   = peaks_properties['left_ips'][i]
-        #     fluctuation_width    = peaks_properties['widths'][i]
+        inflection_point_sec = []
+        response_delay = []
+        signal_value_at_inflection = []
+        for i in range(len(peaks_properties['left_ips'])):
+            first_wide_fluctuation_above_std_dev   = peaks_properties['left_ips'][i]
+            fluctuation_width    = peaks_properties['widths'][i]
         
-        #     # inflection_point    = int(first_wide_fluctuation_above_std_dev) + w - fluctuation_width
-        #     inflection_point      = int(first_wide_fluctuation_above_std_dev + width )
-        #     inflection_point_sec.append( (first_wide_fluctuation_above_std_dev + width )/Fs )
-        #     response_delay.append( 1000*(inflection_point_sec[i] - stim_start_sec) )
-        #     signal_value_at_inflection.append( signal[inflection_point] )
+            # inflection_point    = int(first_wide_fluctuation_above_std_dev) + w - fluctuation_width
+            inflection_point      = int(first_wide_fluctuation_above_std_dev + width )
+            inflection_point_sec.append( (first_wide_fluctuation_above_std_dev + width )/Fs )
+            response_delay.append( 1000*(inflection_point_sec[i] - stim_start_sec) )
+            signal_value_at_inflection.append( signal[inflection_point] )
     
     if mode=='test':
         return inflection_point_sec, response_delay, signal_value_at_inflection, moving_avg, fluctuations, fluctuations_above_stddev, peaks_properties
@@ -391,6 +471,15 @@ def rolling_variance_baseline(vector,window=500,slide=50):
 
 
 def mean_at_least_rolling_variance(vector,window=2000,slide=50):
+    # if vector is a numpy array with shape (n,m) the call the same function on each of the rows
+    # convert vector to np.array
+    vector = np.array(vector)
+    if len(vector.shape) == 2:
+        mean_vector = np.zeros(vector.shape[0])
+        for i in range(vector.shape[0]):
+            mean_vector[i] = mean_at_least_rolling_variance(vector[i,:],window=window,slide=slide)
+        return mean_vector
+
     t1          = 0
     leastVar    = np.var(vector)
     leastVarTime= 0

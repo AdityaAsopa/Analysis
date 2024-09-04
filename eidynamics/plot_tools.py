@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 import matplotlib.gridspec as gridspec
 
 from scipy.signal import filter_design
@@ -91,7 +92,7 @@ def _adjust_spines(ax, visible_spines, offset_distance=10):
                 spine.set_visible(False)
 
 
-def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, labelx='', labely='', unitx='', unity='', fontsize=12, color='black', linewidth=2, pad=0.1, show_labels=False):
+def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, labelx='', labely='', unitx='', unity='', fontsize=12, color='black', linewidth=2, pad=0.01, show_labels=False):
     """Simplifies a matplotlib axes object and adds a floating scalebar.
     Args:
         ax: matplotlib axes object
@@ -120,7 +121,6 @@ def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, l
     # draw a line for x axis
     ax.plot([x, x+xl], [y, y]   , color=color, linewidth=linewidth)
 
-    
     # draw a line for y axis
     ax.plot([x, x],    [y, y+yl], color=color, linewidth=linewidth)
     
@@ -160,19 +160,26 @@ def plot_abf_data(dataDict, label=""):
     plt.show()
 
 
-def plot_data_from_df(df, data_start_column = 35 , signals_to_plot=['Cell','FrameTTL', 'PD', 'Field'], signal_colors=['black','red','cyan','orange'], combine=False, fig=None, ax=None, signal_mapping={}):
+def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','FrameTTL', 'PD', 'Field'], signal_colors=['black','red','cyan','orange'], combine=False, fig=None, ax=None, signal_mapping={}):
+    '''
+    plot the data from a dataframe. The dataframe should have the data in the columns and the sweeps in the rows.
+    
+    '''
     start = data_start_column
     Fs = 2e4
     sweeps = df.shape[0]
-    width = int( (df.shape[1] - start)/4 )
-    T = width/Fs
+    width = int( (df.shape[1] - start - 24) / 4 )
+    T = width / Fs
     num_plots = len(signals_to_plot)
     signal_location = {'Cell':slice(start, start+width),
                        'FrameTTL':slice(start+width, start+2*width),
                        'PD':slice(start+2*width, start+3*width),
                        'Field':slice(start+3*width, start+4*width)}
-    
-    assert len(signals_to_plot) == len(signal_colors)
+    signalcolors = {}
+    for sig in signals_to_plot:
+        signalcolors[sig] = signal_colors[signals_to_plot.index(sig)]
+
+    assert len(signals_to_plot) == len(signalcolors)
 
     # if combine plots is false, draw all the 4 signals separately on 4 subplots
     if combine is False:
@@ -180,7 +187,7 @@ def plot_data_from_df(df, data_start_column = 35 , signals_to_plot=['Cell','Fram
 
         # check if fig and ax are supplied:
         if fig is None:
-            fig = plt.figure(layout='constrained', figsize=(10, 4))
+            fig = plt.figure(layout='constrained', figsize=(10, 4), )
         else:
             gridspec = ax.get_subplotspec().get_gridspec()
             ax.remove()
@@ -189,7 +196,7 @@ def plot_data_from_df(df, data_start_column = 35 , signals_to_plot=['Cell','Fram
         
         axs = []
         for f in range(num_plots):
-            subfig_axs = subfigs[f].subplots(1,1, sharey=True)
+            subfig_axs = subfigs[f].subplots(1,1, sharex=True, sharey=True)
             axs.append(subfig_axs)
 
         time = np.linspace(0, T, num=width, endpoint=False)
@@ -202,9 +209,9 @@ def plot_data_from_df(df, data_start_column = 35 , signals_to_plot=['Cell','Fram
                 # start = data_start_column
                 trace = df.iloc[i, locs]
                 trace = utils.map_range(trace, 0, 5, 0,5)
-                axs[s].plot(time, trace, signal_colors[s], linewidth=1, alpha=0.1)
+                axs[s].plot(time, trace, signalcolors[signal], linewidth=1, alpha=0.1)
                 axs[s].set_ylabel(signal)
-            axs[s].plot(time, df.iloc[:,    locs].mean(axis=0), color=signal_colors[s], linewidth=1, label=signal)
+            axs[s].plot(time, df.iloc[:,    locs].mean(axis=0), color=signalcolors[signal], linewidth=1, label=signal)
 
         axs[-1].set_xlabel('Time (s)')
 
@@ -213,7 +220,7 @@ def plot_data_from_df(df, data_start_column = 35 , signals_to_plot=['Cell','Fram
     # if combine plots is true, draw all the 4 signals on a single plot
     elif combine is True:
         print('Plotting all 4 signals on a single plot')
-        cell_max, cell_min = np.max(df.iloc[:,49:20049]), np.min(df.iloc[:,49:20049])
+        cell_max, cell_min = np.round(np.max(df.iloc[:,49:20049]),2) , np.round(np.min(df.iloc[:,49:20049]),2)
         # print(cell_max, cell_min)
         # cell_max, cell_min = np.round(cell_max, -2), np.sign(cell_min) * (np.remainder(cell_min, 10) - cell_min)
         # print(cell_max, cell_min)
@@ -246,10 +253,10 @@ def plot_data_from_df(df, data_start_column = 35 , signals_to_plot=['Cell','Fram
                 trace_average = utils.map_range(trace_average, from0, from1, to0, to1)
                 ax.plot(time, trace_average, color=signal_colors[s], linewidth=1, label=signal)
                 if signal=='Cell':
-                    add_floating_scalebar(ax, scalebar_origin=[0.05, 3.0], xlength=0.1, ylength=0.5, labelx='', labely='', unitx='', unity='',
-                    fontsize=12, color=signal_colors[s], linewidth=2, pad=0.1, show_labels=False)
+                    add_floating_scalebar(ax, scalebar_origin=[0.05, 3.0], xlength=0.1, ylength=2, labelx='', labely=f'{np.round(cell_max, 2)}', unitx='', unity='',
+                    fontsize=12, color=signal_colors[s], linewidth=2, pad=0.1, show_labels=True)
                 if signal == 'Field':
-                    add_floating_scalebar(ax, scalebar_origin=[0.05, 1.2], xlength=0.1, ylength=0.5, labelx='', labely='', unitx='', unity='',
+                    add_floating_scalebar(ax, scalebar_origin=[0.03, 1.2], xlength=0.1, ylength=2, labelx='', labely='1.0', unitx='', unity='mV',
                     fontsize=12, color=signal_colors[s], linewidth=2, pad=0.1, show_labels=False)
 
                 
@@ -311,3 +318,63 @@ def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=
     ax.set_aspect(1/pattern_index.polygon_frame_properties['aspect_ratio'])
 
     return locx, locy, ax
+
+
+def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, kind='violin', palette='viridis', stat_across='hue', stat=stats.kruskal, skip_first_xvalue=True, annotate_wrt_data=False, offset_btw_star_n_line=0.1, color='grey', coord_system='data', fontsize=12, zorder=10):
+    ''' This function takes a dataframe, and makes pairwise comparisons between the groups in the hue column
+    for each x value. The function then annotates the line plot with the p-values of the comparisons.'''
+
+    if draw:
+        # draw the plots
+        if kind == 'violin':
+            sns.violinplot(data=df_melt, x=x, y=y, hue=hue, palette=palette, ax=ax, alpha=0.8, split=True, inner='quartile', linewidth=1)
+        elif kind == 'strip':
+            sns.stripplot(data=df_melt, x=x, y=y, hue=hue, palette=palette, ax=ax, alpha=0.8, dodge=1,)
+        elif kind == 'line':
+            sns.lineplot(data=df_melt, x=x, y=y, hue=hue, palette=palette, ax=ax, alpha=0.5, errorbar=('sd', 1), err_style='bars', linewidth=3,err_kws={"elinewidth": 3, 'capsize':5})
+
+
+    hue_values = df[hue].unique() # group labels for each x-axis categorical value
+    x_values = df[x].unique() # x-axis categorical value labels
+
+    # get the xticks and xticklabels
+    xticks = ax.get_xticks()
+    xticklabels = ax.get_xticklabels()
+
+    # get the max value of data across all x and all hue groups
+    max_ydata = df[y].max()
+    # set ypos to be 0.9*ylim
+    ypos = 0.9*ax.get_ylim()[1]
+
+    df_melt = df.copy()
+    # for each x-value, get the ygroup values for hue1 and hue2
+    for ix, x_val in enumerate(x_values):
+        if skip_first_xvalue:
+            if ix==0:
+                continue
+                    
+        group_data = df_melt[(df_melt[x]==x_val)].groupby(hue)[y].apply(list)
+        # convert all the group data into a list of lists
+        group_data = group_data.values.tolist()
+        kruskal_statistic, kruskal_pval = stats.kruskal(*group_data)
+
+        # get the location of x_val on the x-axis of ax
+        # get x-ticks and x-tick-labels
+        xpos = xticks[ix]
+
+        # get the maximum value of y for the given x_val across all the groups, add the offset to get the ypos for annotation
+        if annotate_wrt_data:
+            ypos = 1.1* np.max(group_data)
+
+        # convert xpos and ypos into axes coordinate system if coord_system=='axes'
+        if coord_system=='axes':
+            xpos = ax.transAxes.inverted().transform(ax.transData.transform([xpos, ypos]))[0]
+            ypos = ax.transAxes.inverted().transform(ax.transData.transform([xpos, ypos]))[1]
+        
+
+        
+        annotate_stat_stars(ax, kruskal_pval, star_loc=[xpos, ypos], add_line=False, color=color, coord_system=coord_system, fontsize=12, zorder=10)
+
+        # print(ix, x_val, kruskal_statistic, kruskal_pval, xpos, ypos)
+    
+

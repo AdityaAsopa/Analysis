@@ -241,6 +241,7 @@ def main(time, sweep_data, freq, trainStart=0.5, show_plots=False, fig='', ax=''
 
     return {"deconv": deconvo, "residual": residual, "dfit": dfit, "kfit": kfit, 'kernel': kernel}, fig, ax #
 
+
 def plot_fits(freq, t, deconv, residual, dfit, kfit, fig, ax, trainStart):
     # fig, ax = plt.subplots(1,3, figsize = (18, 4.8) )
 
@@ -277,6 +278,13 @@ def plot_fits(freq, t, deconv, residual, dfit, kfit, fig, ax, trainStart):
 
     return fig, ax
 
+
+def find_sweep_expected(trace, freq, fig, ax):
+    
+    time = np.linspace(0, len(trace)/20000, len(trace))
+    fits, fig, ax = main(time, trace, freq, show_plots=True, fig=fig, ax=ax)
+
+    return fits, fig, ax
 
 if __name__ == "__main__":
     main()
