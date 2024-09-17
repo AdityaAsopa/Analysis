@@ -76,7 +76,9 @@ def calcKernel( dat ):
     if abs( kmax ) > abs( kmin ): # Inhib trace has a positive peak.
         return kmax, rawKernel, baseline, tauFit(rawKernel, baseline)
     else:
-        return kmin, rawKernel, baseline, tauFit(rawKernel, baseline)
+        print('negative kernel!')
+        raise FloatingPointError( "calcKernel: negative kernel" )
+        # return kmin, rawKernel, baseline, tauFit(rawKernel, baseline)
 
 def findStpScale( kernel, kpk, ret, si, stimWidth, tau, ax ):
     # ret[0,1] = valley_t, y; ret[1,2] = pk_t, y
