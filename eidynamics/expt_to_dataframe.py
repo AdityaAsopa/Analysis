@@ -213,7 +213,7 @@ def add_analysed_params2(df):
     print(df.iloc[0,:50])
 
     # make a new analysed param df
-    df3 = pd.DataFrame(columns=['cellID', 'exptID', 'sweep', 'peaks_cell', 'peaks_cell_norm', 'auc_cell', 'slope_cell', 'delay_cell','peaks_field', 'peaks_field_norm', 'cell_fpr', 'field_fpr', 'cell_ppr', 'cell_stpr', 'field_ppr', 'field_stpr'])
+    df3 = pd.DataFrame(columns=['cellID', 'exptID', 'sweep', 'trialID','peaks_cell', 'peaks_cell_norm', 'auc_cell', 'slope_cell', 'delay_cell','peaks_field', 'peaks_field_norm', 'cell_fpr', 'field_fpr', 'cell_ppr', 'cell_stpr', 'field_ppr', 'field_stpr'])
     df3.astype({'cellID': 'int32', 'exptID': 'int32', 'sweep': 'int32', 'peaks_cell': 'float32', 'peaks_field': 'float32', 'auc_cell': 'float32', 'slope_cell': 'float32', 'delay_cell': 'float32', 'cell_fpr': 'float32', 'field_fpr': 'float32'})
 
 
@@ -232,6 +232,7 @@ def add_analysed_params2(df):
         df3.loc[i, 'cellID'] = int(row['cellID'])
         df3.loc[i, 'exptID']= int(row['exptID'])
         df3.loc[i, 'sweep']= int(row['sweep'])
+        df3.loc[i, 'trialID']= str(row['cellID']) + "_" + str(row['exptID']) + "_" + str(row['sweep'])
 
         # convert a vector of length 80000 to a 2D array of shape (4, 20000)
         [cell, framettl, led, field] = np.reshape(df.iloc[i,n:], (4, -1))
@@ -321,7 +322,6 @@ def add_analysed_params2(df):
         sweep_pulse_to_cell_response_peak_delay = np.zeros(len(peak_locs))
         sweep_field_response_peaks = np.zeros(len(peak_locs))
 
-        # print(row['cellID'], row['exptID'], row['sweep'], len(peak_locs), peak_locs)
         for j, loc in enumerate(peak_locs):
             
             cellslice = cell[loc:loc+ipi]
@@ -340,7 +340,7 @@ def add_analysed_params2(df):
             # sweep_cell_response_slopes[j] = cellpulseslope
             sweep_pulse_to_cell_response_peak_delay[j] =   ( np.argmax(cellslice)  - loc ) / Fs
             sweep_field_response_peaks[j] = fieldpulsepeak
-
+        break
         # start adding properties to df3
         df3.at[i,'peaks_cell' ]= sweep_cell_response_peaks       
         df3.at[i,'peaks_field'] = sweep_field_response_peaks      

@@ -9,8 +9,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-from scipy.signal import filter_design
-from scipy.signal import butter, bessel, decimate, sosfiltfilt
+from scipy.signal import filtfilt
+from scipy.signal import butter, bessel, decimate, sosfiltfilt, iirnotch
 from scipy.signal import find_peaks, peak_widths
 
 frameSize = [13032.25, 7419.2]  # Aug 2021 calibration
@@ -86,6 +86,16 @@ def filter_data(x,
                 low_cutoff=0.1, 
                 high_cutoff=500,
                 sampling_freq=2e4):
+    '''
+    While filtering, the data is filtered in both forward and reverse directions to avoid phase shift.
+    Filter types: 'butter', 'bessel', 'decimate', 'butter_bandpass'
+    Which filter to use:
+    - Butterworth filter is used for low-pass, high-pass, band-pass, and band-stop filtering. Does not have that much ripples in the passband.
+    - Bessel filter is used for low-pass filtering.
+    - Decimate is used for downsampling the data.
+    - Butterworth bandpass filter is used for bandpass filtering.
+    - notch filter is used for removing 50Hz noise.
+    '''
 
     if filter_type == 'butter':
         sos = butter(N=2, Wn=high_cutoff, fs=sampling_freq, output='sos')
@@ -98,6 +108,11 @@ def filter_data(x,
     elif filter_type == 'butter_bandpass':
         sos = butter_bandpass(lowcut=low_cutoff, highcut=high_cutoff, fs=sampling_freq, order=5)
         y = sosfiltfilt(sos, x)
+    elif filter_type == 'notch':
+        # remove 50Hz noise
+        f0, Q = 50, 5
+        b,a = iirnotch(f0, Q, fs=sampling_freq)
+        y = filtfilt(b, a, x, )
     else:
         y = x
     return y
@@ -941,6 +956,7 @@ def convert_list_column_to_new_df(df, column_name: str, new_column_name_sequence
 
 #TODO: transfer this function somewhere better Sept 2023
 def save_expanded_df(df):
+
     # expand the param df fully, more handy for plotting
     analysed_properties1 = utils.analysed_properties1
     analysed_properties2 = utils.analysed_properties2
@@ -955,3 +971,12 @@ def save_expanded_df(df):
     df3 = df3.drop(columns=analysed_properties1+analysed_properties2)
     # save df3 as analysed params expanded
     df3.to_hdf(r"parsed_data\all_cells_FreqSweep_combined_expanded.h5", key='data', mode='w')
+
+
+def get_cellwise_numtrials(datadf, columns = ['cellID', 'exptID']):
+    # get number of trials for each cell
+    numtrials = datadf.groupby(columns)['trialID'].nunique()
+    total_combinations = len(numtrials)
+    totaltrials = numtrials.sum()
+    combinations = '_'.join(columns) + ' combined'
+    print(f'##\n Assessing dataframe: \nTotal {combinations}: {total_combinations}\nTotal Trials: {totaltrials}\nData Size: {datadf.shape}', '\n', numtrials)

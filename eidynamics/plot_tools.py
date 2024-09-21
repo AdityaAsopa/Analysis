@@ -7,16 +7,35 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import seaborn as sns
 import matplotlib.gridspec as gridspec
 
-from scipy.signal import filter_design
-from scipy.signal import butter, bessel, decimate, sosfiltfilt
-from scipy.signal import find_peaks, peak_widths
+# from scipy.signal import filter_design
+# from scipy.signal import butter, bessel, decimate, sosfiltfilt
+# from scipy.signal import find_peaks, peak_widths
 from scipy import stats
 
 from eidynamics import utils
 from eidynamics import pattern_index
+
+# make a colour map viridis
+viridis = mpl.colormaps["viridis"]
+cividis = mpl.colormaps["cividis"]
+flare   = mpl.colormaps["flare"]
+crest   = mpl.colormaps["crest"]
+magma   = mpl.colormaps["magma"]
+
+color_E             = "flare"
+color_I             = "crest"
+color_freq          = {1:magma(0.05), 5:magma(0.1), 10:magma(0.2), 20:magma(.4), 30:magma(.5), 40:magma(.6), 50:magma(.7), 100:magma(.9)}
+color_squares       = {1:viridis(0.2), 5:viridis(.4), 7:viridis(.6), 15:viridis(.8), 20:viridis(1.0)}
+color_squares_EI    = {-70: {1:flare(0.2), 5:flare(.4), 7:flare(.6), 15:flare(.8), 20:flare(1.0)}, 
+                         0: {1:crest(0.2), 5:crest(.4), 7:crest(.6), 15:crest(.8), 20:crest(1.0)}}
+color_EI            = {-70:flare(0.5), 0:crest(0.5)}
+Fs = 2e4
+
+Fs=2e4
 
 def create_edge_colormap():
     # get only the middle row
@@ -85,7 +104,6 @@ def _adjust_spines(ax, visible_spines, offset_distance=10):
         axx.label_outer(remove_inner_ticks=True)
 
         for loc, spine in axx.spines.items():
-            print(loc, spine)
             if loc in visible_spines:
                 spine.set_position(('outward', offset_distance))  # outward by 10 points
             else:
@@ -98,12 +116,12 @@ def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, l
         ax: matplotlib axes object
         x: x position of the scalebar in data coordinates
         y: y position of the scalebar in data coordinates
-        xl: length of the x-axis of scalebar in data coordinates
-        yl: length of the y-axis of scalebar in data coordinates
+        xlength: length of the x-axis of scalebar in data coordinates
+        ylength: length of the y-axis of scalebar in data coordinates
         labelx: label of the a-axis of scalebar
         labely: label of the y-axis of scalebar
-        unitx: units of the x-axis of scalebar
-        unity: units of the y-axis of scalebar
+        unitx: units of the x-axis of scalebar to add to the label
+        unity: units of the y-axis of scalebar to add to the label
         fontsize: fontsize of the label
         color: color of the scalebar
         linewidth: linewidth of the scalebar
@@ -114,10 +132,21 @@ def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, l
         add_floating_scalebar(ax, 1, 1, 0.1, 0.2, '0.1', '0.2', 's', 'mV')
 
     """
-    x,y = scalebar_origin
+    # get yaxis limits
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    rangex = xlim[1] - xlim[0]
+    rangey = ylim[1] - ylim[0]
+    x,y = scalebar_origin[0]*rangex+xlim[0] , scalebar_origin[1]*rangey+ylim[0]
     xl = xlength
     yl = ylength
-
+    if not labely:
+        labely = str(yl)
+    if not labelx:
+        labelx = str(xl)
+    print('printing lims')
+    print(xlim,rangex,x,xl)
+    print(ylim,rangey,y,yl)
     # draw a line for x axis
     ax.plot([x, x+xl], [y, y]   , color=color, linewidth=linewidth)
 
@@ -126,9 +155,9 @@ def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, l
     
     if show_labels:    
         # write x axis label
-        ax.text(x+xl/2, y-2*pad, labelx+' '+unitx, fontsize=fontsize, horizontalalignment='center', verticalalignment='top')
+        ax.text(x+xl/2, y-2*pad, labelx+' '+unitx, fontsize=fontsize, horizontalalignment='center', verticalalignment='top', color=color)
         # write y axis label
-        ax.text(x-pad, y+yl/2, labely+' '+unity, fontsize=fontsize, horizontalalignment='right', verticalalignment='center', rotation=90) # alignment of the rotated text as a block
+        ax.text(x-pad, y+yl/2, labely+' '+unity, fontsize=fontsize, horizontalalignment='right', verticalalignment='center', rotation=90, color=color) # alignment of the rotated text as a block
     
 
 def plot_abf_data(dataDict, label=""):
@@ -163,6 +192,15 @@ def plot_abf_data(dataDict, label=""):
 def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','FrameTTL', 'PD', 'Field'], signal_colors=['black','red','cyan','orange'], combine=False, fig=None, ax=None, signal_mapping={}):
     '''
     plot the data from a dataframe. The dataframe should have the data in the columns and the sweeps in the rows.
+    Format of signal mapping:
+        signal_mapping = {
+                        'Cell':[cell_min, cell_max, 2, 4],
+                        'FrameTTL': [0, 5, 5, 6],
+                        'PD': [0, 1, 4, 5],
+                        'Field': [field_min, field_max, 0, 2],
+                        'scalebar_cell': np.round(cell_max-cell_min, 2),
+                        'scalebar_field': np.round(field_max-field_min, 2)
+                        }
     
     '''
     start = data_start_column
@@ -221,6 +259,8 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
     elif combine is True:
         print('Plotting all 4 signals on a single plot')
         cell_max, cell_min = np.round(np.max(df.iloc[:,49:20049]),2) , np.round(np.min(df.iloc[:,49:20049]),2)
+        field_max, field_min = np.round(np.max(df.iloc[:,60049:80049]),2) , np.round(np.min(df.iloc[:,60049:80049]),2)
+        unit_cell = df.iloc[0, :]['unit']
         # print(cell_max, cell_min)
         # cell_max, cell_min = np.round(cell_max, -2), np.sign(cell_min) * (np.remainder(cell_min, 10) - cell_min)
         # print(cell_max, cell_min)
@@ -229,7 +269,9 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
             signal_mapping = {'Cell':[cell_min, cell_max, 2, 4],
                             'FrameTTL': [0, 5, 5, 6],
                             'PD': [0, 1, 4, 5],
-                            'Field': [-0.5, 0.5, 0, 2]}
+                            'Field': [field_min, field_max, 0, 2],
+                            'scalebar_cell': np.round(cell_max-cell_min, 2),
+                            'scalebar_field': np.round(field_max-field_min, 2)}
 
         # check if ax is supplied
         if fig is None and ax is None:
@@ -237,7 +279,7 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
         ax.set_ylim([0,6])
         time = np.linspace(0, T, num=width, endpoint=False)
         # copy time vector as many times as there are sweeps
-        Time = np.tile(time, (sweeps,1) )
+        # Time = np.tile(time, (sweeps,1) )
 
         for s,signal in enumerate(signals_to_plot):
             locs = signal_location[signal]
@@ -252,12 +294,15 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
                 trace_average = df.iloc[:,   locs].mean(axis=0)
                 trace_average = utils.map_range(trace_average, from0, from1, to0, to1)
                 ax.plot(time, trace_average, color=signal_colors[s], linewidth=1, label=signal)
-                if signal=='Cell':
-                    add_floating_scalebar(ax, scalebar_origin=[0.05, 3.0], xlength=0.1, ylength=2, labelx='', labely=f'{np.round(cell_max, 2)}', unitx='', unity='',
-                    fontsize=12, color=signal_colors[s], linewidth=2, pad=0.1, show_labels=True)
-                if signal == 'Field':
-                    add_floating_scalebar(ax, scalebar_origin=[0.03, 1.2], xlength=0.1, ylength=2, labelx='', labely='1.0', unitx='', unity='mV',
-                    fontsize=12, color=signal_colors[s], linewidth=2, pad=0.1, show_labels=False)
+                if i==0:
+                    if signal=='Cell':
+                        scalebarx = 0.05*T
+                        add_floating_scalebar(ax, scalebar_origin=[scalebarx, 0.4], xlength=0.1, ylength=1, labelx=f'{0.1*T}', labely=f' {signal_mapping["scalebar_cell"]/2:.2f}', unitx=f'ms', unity=unit_cell,
+                        fontsize=12, color=signal_colors[s], linewidth=2, pad=0.0, show_labels=True)
+                    if signal == 'Field':
+                        scalebarx = 0.05*T
+                        add_floating_scalebar(ax, scalebar_origin=[scalebarx, 0.05], xlength=0.1, ylength=1, labelx=f'{0.1*T}', labely=f'{signal_mapping["scalebar_field"]/2:.2f}', unitx=f'ms', unity='mV',
+                        fontsize=12, color=signal_colors[s], linewidth=2, pad=0.0, show_labels=True)
 
                 
         ax.set_xlabel('Time (s)')
@@ -266,7 +311,7 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
         return fig, ax, signal_mapping
     
 
-def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=1, cmap='gray', locs_is_patternID=False, **kwargs):
+def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=1, cmap='gray', locs_is_patternID=False, add_colorbar=False, **kwargs):
     '''
     plot a grid of values as a heatmap. input spot_values should have coord column as index
     spot_locs is raw coordinates of the spots, spot_values is the values at those spots
@@ -300,7 +345,8 @@ def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=
             # print(i, spot, locx, locy)
             grid_array[locy, locx] = spot_values[i]
 
-    ax.imshow(grid_array, cmap=cmap)#, vmin=vmin, vmax=vmax)
+    ax.imshow(grid_array, cmap=cmap, aspect='auto', vmin=vmin, vmax=vmax)
+    ax.axis('off')
     # have the axis scaled
     # ax.axis('scaled')
 
@@ -311,13 +357,16 @@ def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=
     ax.invert_yaxis()
 
     # add the colorbar
-    cbar = plt.colorbar(ax.imshow(grid_array, cmap=cmap, ), ax=ax, label='Response',**kwargs)#vmin=vmin, vmax=vmax
-    # add colorbar label
-    # cbar.set_ylabel('Depolorization (pA)')
+    if add_colorbar:
+        cbar = plt.colorbar(ax.imshow(grid_array, cmap=cmap, ), ax=ax, label='Response',**kwargs)#vmin=vmin, vmax=vmax
+        # add colorbar label
+        cbar.set_ylabel('Depolorization (pA)')
+    else:
+        cbar = None
     
     ax.set_aspect(1/pattern_index.polygon_frame_properties['aspect_ratio'])
 
-    return locx, locy, ax
+    return locx, locy, ax, cbar
 
 
 def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, kind='violin', palette='viridis', stat_across='hue', stat=stats.kruskal, skip_first_xvalue=True, annotate_wrt_data=False, offset_btw_star_n_line=0.1, color='grey', coord_system='data', fontsize=12, zorder=10):
@@ -378,3 +427,42 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
         # print(ix, x_val, kruskal_statistic, kruskal_pval, xpos, ypos)
     
 
+def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01, patterns =[1,46,52], palette='grey', 
+                                between='clampPotential', hue='numSq', hues=[1,5,15],
+                                stim_scale=10, invert=False, filter_data=False, passband=[0.1, 1000], Fs=2e4):    
+    betweens = dfcell[between].unique()
+    # print(hues, betweens)
+    probe_pulse_time = dfcell.iloc[0]['probePulseStart']
+    shift = 0 if signal=='cell' else 60000
+    t0 = int(Fs*(probe_pulse_time - pre)) 
+    t1 = int(Fs*(probe_pulse_time - pre + window)) 
+    tstart = [window*i+pre*i for i in range(len(hues))]
+    insets = []
+    for i, hu in enumerate(hues):
+        for j, bet in enumerate(betweens):
+            # print(f'plotting {hu} and {bet}')
+            dfE  = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet) & (dfcell['patternList'].isin(patterns))]
+            dfPD = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet)].iloc[0, 40000+t0:40000+t1].to_numpy()
+            # print(dfE.shape, dfPD.shape)
+            pat = dfE['patternList'].unique()[0]
+            dfslice = dfE.iloc[:, shift+t0:shift+t1].to_numpy()
+            if invert:
+                dfslice *= -1
+            if filter_data:
+                dfslice = utils.filter_data(dfslice,filter_type='butter',low_cutoff=passband[0], high_cutoff=passband[1],sampling_freq=2e4)
+                if signal=='field':
+                    # apply a notch filter
+                    dfslice = utils.filter_data(dfslice, filter_type='notch', sampling_freq=2e4)
+            # plot the pulse response
+            time = np.linspace(tstart[i], tstart[i]+window, int(Fs*window))
+            [ax.plot(time, row , color=palette[bet][hu], alpha=0.2, linewidth=1) for row in dfslice]
+            ax.plot(time, np.mean(dfslice, axis=0) , color=palette[bet][hu], alpha=1, linewidth=2)
+            ax.plot(time,  stim_scale*dfPD, color='cyan', alpha=0.8)
+        # draw the pattern in the insert
+        locx, locy = tstart[i]/(3*(window+pre)), 0.02
+        axins = ax.inset_axes([locx, locy, 0.1,0.1], transform=ax.transAxes )
+        insets.append(axins)
+        spot_locs = pattern_index.patternID[pat]
+        _ = plot_grid(spot_locs=spot_locs, spot_values=[hu], grid=[24,24], ax=axins, vmin=0, vmax=20, cmap=viridis, locs_is_patternID=False, add_colorbar=False)
+
+    return ax, insets

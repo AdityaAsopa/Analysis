@@ -17,52 +17,6 @@ from typing import Optional
 import argparse
 
 
-# def main(cell_set: list = None, protocols: list = ['FreqSweep']) -> None:
-#     all_cell_data = []
-
-#     if cell_set is None:
-#         cell_set = all_cells.all_cells
-
-#     for protocol in protocols:
-#         all_cell_data_ = []
-#         x = 0
-#         for cell in cell_set:
-#             print(cell)
-#             cellpath = all_cells.project_path_root / cell
-#             cellID = cellpath.stem
-#             cellpickle = cellpath / (str(cellID) + ".pkl")
-#             print(cellpickle)
-
-#             try:
-#                 neuron = ephys_classes.Neuron.loadCell(cellpickle)
-#                 neuron_data = neuron.data[protocol]
-#                 if neuron_data is None:
-#                     continue
-#             except Exception as err:
-#                 print(err)
-#                 print("Error loading cell: ", cellpickle)
-#                 continue
-            
-#             all_cell_data_.append(neuron_data)
-#             x += neuron_data.shape[0]
-            
-#         if len(all_cell_data_) != 0:
-#             print(f'{protocol} has {len(all_cell_data_)} cells with total {x} sweeps')
-#             all_expt_ = pd.concat(all_cell_data_, ignore_index=True, axis=0)
-
-#             # add analysis params to the df
-#             print("adding analysis params to the df")
-#             df_short, df_long = expt_to_dataframe.add_analysed_params2(all_expt_)
-#             del all_expt_
-
-#             # save  dfs
-#             print("return from expt_to_dataframe. Saving DFs")
-#             save_df_to_h5(df_short, filename_suffix='short', protocol=protocol, save_combined_also=True)
-#             del df_short
-#             print("Saving the large DF now")
-#             save_df_to_h5(df_long, filename_suffix='long', protocol=protocol, save_combined_also=False)
-
-### copilot version
 def main(cell_set: list = None, protocols: list = ['FreqSweep'], clampMode: str = 'all') -> None:
     if cell_set is None:
         cell_set = all_cells.all_cells
@@ -286,7 +240,7 @@ def save_df_to_h5(df: pd.DataFrame, filename_suffix: str, protocol: str = 'FreqS
 
    
 if __name__ == "__main__":
-    protocols = ['grid', 'LTMRand', 'surprise', 'convergence', 'SpikeTrain']#'FreqSweep'
+    protocols = ['FreqSweep','grid', 'LTMRand', 'surprise', 'convergence', 'SpikeTrain']#,'FreqSweep']
     
     parser = argparse.ArgumentParser(description='Process all cells')
     parser.add_argument('--protocol', type=str, default='FreqSweep', help='protocol name')
@@ -302,127 +256,3 @@ if __name__ == "__main__":
         main(protocols=[args.protocol], clampMode=args.clampMode)
 
 
-'''
-Code for combining all the protocols into one dataframe
-# Frequency Sweep Protocol - Current Clamp
-freq_sweep_datapath =  r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Analysis\parsed_data\all_cells_FreqSweep_CC_short.h5"
-# other protocol data paths: spiketrain, grid, LTMRand, surprise
-spiketrain_datapath = r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Analysis\parsed_data\all_cells_Spiketrain_CC_short.h5"
-grid_datapath       = r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Analysis\parsed_data\all_cells_Grid_CC_short.h5"
-LTMRand_datapath    = r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Analysis\parsed_data\all_cells_LTMRand_CC_short.h5"
-surprise_datapath   = r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Analysis\parsed_data\all_cells_Surprise_CC_short.h5"
-
-# all all the h5 files into a list of dataframes and concatenate them
-df1 = pd.read_hdf(freq_sweep_datapath, key='data')
-df2 = pd.read_hdf(spiketrain_datapath, key='data')
-df3 = pd.read_hdf(grid_datapath, key='data')
-df4 = pd.read_hdf(LTMRand_datapath, key='data')
-df5 = pd.read_hdf(surprise_datapath, key='data')
-df_short_all_CC = pd.concat([df1, df2, df3, df4, df5], ignore_index=True)
-# del the individual dataframes as they are not needed anymore
-del df1, df2, df3, df4, df5
-print('df_short_all_CC has {} sweeps'.format(len(df_short_all_CC)))
-# make df2 an alias of df_short_all_CC
-df2 = df_short_all_CC
-# df2 = df2[ pd.notnull(df2['peaks_cell'])] # remove all sweeps that had NaNs in analysed params (mostly due to bad pulse detection)
-# df2 = df2.reset_index(drop=True)
-
-allprotocol_600ms_datapath =  r"parsed_data\all_cells_allprotocols_4channels_combined_600ms.h5"
-dfcut = pd.read_hdf(allprotocol_600ms_datapath, key='data')
-#print size of df
-print("Size of dataframe: ", dfcut.shape)
-# dfcut = dfcut[ pd.notnull(dfcut['peaks_cell'])] # remove all sweeps that had NaNs in analysed params (mostly due to bad pulse detection)
-# reset index
-# dfcut = dfcut.reset_index(drop=True)
-# print new size of df
-print("Size of dataframe: ", dfcut.shape)
-
-
-----------------
-# in the dataframe df_cut, each row has 36049 columns (for 600ms). first 49 columns are metadata, next 12000 columns are the 600ms data for each channel: cell, stim, and field.
-# for each row, there is a metadata column value called 'probePulseStart'. Multiplying that value with sampling frequency Fs=2e4 will give the data point at which the pulse starts.
-# from that datapoint, in each row, for each channel, i want to find the max, min, area-under-the-curve, and the time-to-peak. I want to then store these values in new columns in the dataframe.
-# del df
-#let's start
-# new_cols = ['cell_fpr_max', 'cell_fpr_min', 'cell_fpr_auc', 'cell_fpr_ttp', 'cell_fpr_p2p', 'field_fpr_max', 'field_fpr_min', 'field_fpr_auc', 'field_fpr_ttp','field_fpr_p2p' ]
-# # set type to be float32 and fill with zeros
-# for new_col in new_cols:
-#     dfcut[new_col] = 0.0
-#     dfcut[new_col] = dfcut[new_col].astype('float32')
-Fs = 2e4
-# for each row, for each channel, find the max, min, area-under-the-curve, and the time-to-peak. I want to then store these values in new columns in the dataframe.
-
-for i in range(dfcut.shape[0]):
-    row = dfcut.iloc[i,:]
-    #print dataframe index of the row being processed
-    ind = row.name
-    # print(ind, row['cellID'], row['exptID'], row['sweep'])
-    pps = int(row['probePulseStart']*Fs)
-    clamp = row['clampMode']
-    clampPot = row['clampPotential']
-    if row['probePulseStart'] == row['pulseTrainStart']:
-        ipi = int(Fs/row['stimFreq'])
-    else:
-        ipi = 2000
-    [cell, stim, field] = np.reshape(row.iloc[49:36049], (3, -1))
-    # baseline subtract
-    cell = cell - np.mean(cell[:pps])
-    field = field - np.mean(field[:pps])
-    stim = stim - np.mean(stim[:pps])
-    # flip cell if it is VC and clamp potential is -70mV
-    if (clamp == 'VC') & (clampPot == -70):
-        cell *= -1
-    # calculate parameters for each channel and store in the new column
-    dfcut.loc[ind,'cell_fpr_max'] = (np.max(cell[pps:pps+ipi]) ).astype('float32')
-    dfcut.loc[ind,'cell_fpr_min'] = (np.min(cell[pps:pps+ipi])).astype('float32')
-    dfcut.loc[ind,'cell_fpr_auc'] = (np.trapz(cell[pps:pps+ipi])).astype('float32')
-    dfcut.loc[ind,'cell_fpr_ttp'] = (np.argmax(cell[pps:pps+ipi])).astype('float32')
-    dfcut.loc[ind,'cell_fpr_p2p'] = (np.max(cell[pps:pps+ipi]) - np.min(cell[pps:pps+ipi])).astype('float32')
-    dfcut.loc[ind,'field_fpr_max'] = (np.max(field[pps:pps+ipi])).astype('float32')
-    dfcut.loc[ind,'field_fpr_min'] = (np.min(field[pps:pps+ipi])).astype('float32')
-    dfcut.loc[ind,'field_fpr_auc'] = (np.trapz(field[pps:pps+ipi])).astype('float32')
-    # if field min is bigger in amplitude than field max, then get the time to peak as the time to the field min
-    if np.abs(np.min(field[pps:pps+ipi])) > np.abs(np.max(field[pps:pps+ipi])):
-        dfcut.loc[ind,'field_fpr_ttp'] = (np.argmax(-1*field[pps:pps+ipi])).astype('float32')
-    else:
-        dfcut.loc[ind,'field_fpr_ttp'] = (np.argmax(field[pps:pps+ipi])).astype('float32')
-    dfcut.loc[ind,'field_fpr_p2p'] = (np.max(field[pps:pps+ipi]) - np.min(field[pps:pps+ipi])).astype('float32')
-    # print(dfcut.loc[ind, ['cellID', 'exptID', 'sweep']])
-
-#save dfcut as a new file
-# dfcutshort = pd.concat([dfcut.iloc[:,:49], dfcut.iloc[:,36049:]], axis=1)
-# print(dfcutshort.columns)
-dfcutshort.to_hdf(r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Analysis\parsed_data\all_cells_allprotocols_with_fpr_values.h5", key='data', mode='w')
-
-
-
-# i want to go through all the files in the folder and subfolders under cell_data_path that match the filename "_rec.abf" and open using abf_to_data
-
-unitdf = pd.DataFrame(columns=['cellID', 'exptID','numChannels','cellunit', 'fieldunit'])
-x = list(cell_data_path.glob('**/*_rec.abf'))
-print(len(x))
-for i,abffile in enumerate(x):
-    print(i/367, abffile)
-    filename        = pathlib.Path(abffile).name[:15]
-    try:
-        abf             = pyabf.ABF(abffile)
-        numChannels     = abf.channelCount
-        channelList     = abf.channelList
-        if numChannels==4:
-            fieldunit       = abf.adcUnits[3]
-        elif numChannels==3:
-            fieldunit = ""
-        cellunit = abf.adcUnits[0]
-        
-    except:
-        print("Error in file: ", abffile)
-        cellunit, fieldunit = "", ""
-
-    unitdf.loc[i]   = {'cellID':int(abffile.parent.stem),  'exptID':int(abffile.name[-12:-8]), 'numChannels':numChannels,'cellunit':cellunit, 'fieldunit':fieldunit}
-
-dfshortpath = r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Analysis\parsed_data\all_cells_allprotocols_with_fpr_values.h5"
-dfmerge = pd.merge(df2, unitdf, on=['cellID', 'exptID'], how='left')
-# save at dfshortpath
-dfmerge.to_hdf(dfshortpath, key='data', mode='w')
-
-'''

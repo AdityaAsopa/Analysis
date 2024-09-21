@@ -51,30 +51,39 @@ def pairwise_annotate_violin_plot(ax, df, x='', y='', stat=wilcoxon, add_line=Fa
     violin_locs = {int(label.get_text()):label.get_position() for label in labels}
 
     counter = 0
+    pvalues = {}
+    nvalues = {}
+    original_ylim = ax.get_ylim()[1]
     for i in unique_values:
         for j in unique_values:
-            if i > j:
+            if i < j:
                 xipos, xjpos = violin_locs[i][0], violin_locs[j][0]
                 xpos = (xipos + xjpos) / 2
-                ypos = (1.0 + counter * 0.05) * ax.get_ylim()[1]
+                ypos = (1.0 + counter * 0.01) * original_ylim
                 counter += 1
-
-                _, pval = stat(df[df[x] == i][y], df[df[x] == j][y])
+                sample1, sample2 = df[df[x] == i], df[df[x] == j]
+                # count nans in sample1 and sample2
+                nans1, nans2 = sample1[y].isna().sum(), sample2[y].isna().sum()
+                _, pval = stat(sample1[y], sample2[y])
                 annotate_stat_stars(ax, pval, star_loc=[xpos, ypos], add_line=True, line_locs=[xipos, xjpos, ypos, ypos], offset_btw_star_n_line=offset, color=color, coord_system=coord_system, fontsize=12, zorder=10)
+                pvalues[(i, j)] = pval
+                n1, n2 = (len(sample1), len(sample2))
+                nvalues[(i, j)] = (n1, n2)
                 if add_n:
                     # add annotation of size of the groups
-                    ax.text(xpos, ypos, f'(n1={len(df[df[x] == i])}, n2={len(df[df[x] == j])})', color=color, fontsize=fontsize-2, ha='center', zorder=10, **kwargs)
+                    ax.text(xpos, ypos, f'(n1={n1}, n2={n2})', color=color, fontsize=fontsize-2, ha='center', **kwargs)
 
+    return pvalues, nvalues
             
 
-def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, kind='violin', palette='viridis', dodge=True, stat_across='hue', stat=kruskal, skip_first_xvalue=True, annotate_wrt_data=False, offset_btw_star_n_line=0.1, color='grey', coord_system='data', fontsize=12, zorder=10, add_n=False):
+def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, kind='violin', palette='viridis', split_violins=False, dodge=True, stat_across='hue', stat=kruskal, skip_first_xvalue=True, annotate_wrt_data=False, offset_btw_star_n_line=0.1, color='grey', coord_system='data', fontsize=12, zorder=10, add_n=False):
     ''' This function takes a dataframe, and makes pairwise comparisons between the groups in the hue column
     for each x value. The function then annotates the line plot with the p-values of the comparisons.'''
 
     if draw:
         # draw the plots
         if kind == 'violin':
-            sns.violinplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, alpha=0.8, split=True, inner='quartile', linewidth=1)
+            sns.violinplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, alpha=0.8, split=split_violins, inner='quartile', linewidth=1)
         elif kind == 'strip':
             sns.stripplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, alpha=0.8, dodge=dodge,)
         elif kind == 'line':
@@ -83,33 +92,30 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
             sns.barplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, alpha=0.8, dodge=dodge, ci='sd', errwidth=3, capsize=0.1)
         elif kind=='box':
             sns.boxplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, )
+        elif kind=='point':
+            sns.pointplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, dodge=dodge, errorbar='se' )
         else:
             pass
 
+    ax.legend([],[], frameon=False)
     if stat_across == 'hue':
         # get the unique hue values and x values
-        hue_values = df[hue].unique() # group labels for each x-axis categorical value
-        x_values = df[x].unique() # x-axis categorical value labels
-
-        # get the xticks and xticklabels
+        hue_values  = df[hue].unique() # group labels for each x-axis categorical value
+        x_values    = df[x].unique() # x-axis categorical value labels
+        # set the xticks and xticklabels according to the x-values
+        ax.set_xticks(range(len(x_values)), labels=x_values)
         xticks = ax.get_xticks()
         xticklabels = ax.get_xticklabels()
-        print('hue values: ', hue_values)
-        print('xtick values: ', x_values)
-
         # get the max value of data across all x and all hue groups
         max_ydata = df[y].max()
         # set ypos to be 0.9*ylim
         ypos = 0.9*ax.get_ylim()[1]
-
 
         # for each x-value, get the ygroup values for hue1 and hue2
         for ix, x_val in enumerate(x_values):
             if (ix==0) & (skip_first_xvalue):
                 continue
             grouped_df = df[(df[x]==x_val)].groupby(hue)
-            
-            print(len(grouped_df), grouped_df.head(len(grouped_df)))
             group_data = grouped_df[y].apply(list)
             # convert all the group data into a list of lists
             group_data = group_data.values.tolist()
@@ -142,10 +148,12 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
     elif (stat_across == 'x') or (stat_across == x):
         # get the unique hue values and x values
         unique_values = np.unique(df[x])
+        xticks = ax.set_xticks(range(len(unique_values)), labels=unique_values)
         xticks = ax.get_xticks()
         labels = ax.get_xticklabels()
         num_violins = len(labels)
         # violin_locs = {int(label.get_text()):label.get_position() for label in labels}
+        original_ylim = ax.get_ylim()[1]
 
         counter = 0
         for ix, i in enumerate(unique_values):
@@ -154,9 +162,8 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
                     # xipos, xjpos = violin_locs[i][0], violin_locs[j][0]
                     xipos, xjpos = xticks[ix], xticks[jx]
                     xpos = (xipos + xjpos) / 2
-                    ypos = (1.0 + counter * 0.05) * ax.get_ylim()[1]
+                    ypos = (1.0 + counter * 0.05) * original_ylim
                     counter += 1
-                    print(xipos, xjpos, xpos, ypos, counter)
                     _, pval = stat(df[df[x] == i][y], df[df[x] == j][y])
                     annotate_stat_stars(ax, pval, star_loc=[xpos, ypos], add_line=True, line_locs=[xipos, xjpos, ypos, ypos], color=color, coord_system=coord_system, fontsize=12, zorder=10)
                     if add_n:
