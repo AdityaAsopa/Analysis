@@ -50,7 +50,6 @@ color_EI = {-70:flare(0), 0:crest(0)}
 colors_EI = {-70:flare, 0:crest}
 
 Fs = 2e4
-%matplotlib widget
 freq_sweep_pulses = np.arange(9)
 
 
