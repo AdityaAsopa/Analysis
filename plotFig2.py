@@ -76,11 +76,13 @@ def calcKernel( dat ):
     if abs( kmax ) > abs( kmin ): # Inhib trace has a positive peak.
         return kmax, rawKernel, baseline, tauFit(rawKernel, baseline)
     else:
-        print('negative kernel!')
-        raise FloatingPointError( "calcKernel: negative kernel" )
-        # return kmin, rawKernel, baseline, tauFit(rawKernel, baseline)
+        return kmin, rawKernel, baseline, tauFit(rawKernel, baseline)
 
 def findStpScale( kernel, kpk, ret, si, stimWidth, tau, ax ):
+    '''
+    This function finds the scale factor for short-term plasticity (STP) based on the kernel, peak value, and other parameters.
+    It calculates the rise time and total rise for the given stimulus and returns the scale factor.
+    '''
     # ret[0,1] = valley_t, y; ret[1,2] = pk_t, y
     if ret[0] < endT and si < (endT * sampleRate):
         return 1.0
@@ -116,6 +118,7 @@ def findPkVal( dat, freq, startIdx, isExc ):
         if imax + imin - stimWidth > imin:
             print( "WARNING: reversal" )
         return [(imax + startIdx + imin - stimWidth)/sampleRate, d3[imax], (startIdx+imin)/sampleRate, d2[imin]]
+    
     else:   # This is the inhibitory input, which has positive currents.
         imax = np.argmax(d2)
         d3 = np.array(dat.iloc[startIdx + imax-stimWidth:imax + startIdx])
@@ -143,7 +146,7 @@ def deconv(dat, freq, start_time, end_time , ax, noprobepulse=False):
     Returns:
     - scaleList (numpy.ndarray): The array of scale values.
     - synthPlot (matplotlib.lines.Line2D): The synthetic plot.
-    - npv (numpy.ndarray): The normalized peak values.
+    - npv (numpy.ndarray): The normalized peak and valley values.
 
     """
     # set startT and endT as global variables
@@ -175,7 +178,6 @@ def deconv(dat, freq, start_time, end_time , ax, noprobepulse=False):
     # print(stimIdx, freq, kpkidx, kpk, startT, endT, stimWidth, kernel.shape, tau)
     for si in stimIdx:
         ret = findPkVal(dat, freq, si + kpkidx // 2, (kpk < 0))
-        # print(si, ret)
         pv.append(ret)
         scale = findStpScale(kernel, kpk, ret, si, stimWidth, tau, None)
         scaleList.append(scale)

@@ -102,9 +102,9 @@ print(f"Unique sweeps in screened data: {cc_FS_shortdf_slice['trialID'].nunique(
 
 # save the screened trialIDs
 # save trial IDs as a numpy array text file, all trialID are strings
-np.savetxt(data_path_FS / "screened_trialIDs_CC_FS.txt", screened_cc_trialIDs, fmt='%s')
+np.savetxt(data_path_FS / "Figure1_screened_trialIDs_CC_FS.txt", screened_cc_trialIDs, fmt='%s')
 
-# CC data screening based on dataflag_fields
+# VC data screening based on dataflag_fields
 vc_FS_shortdf_slice = vc_FS_shortdf[
             (vc_FS_shortdf['location'] == 'CA1') &
             (vc_FS_shortdf['numSq'].isin([1,5,15])) &
@@ -124,7 +124,7 @@ print(f"Unique sweeps in screened data: {vc_FS_shortdf_slice['trialID'].nunique(
 
 # save the screened trialIDs
 # save trial IDs as a numpy array text file, all trialID are strings
-np.savetxt(data_path_FS / "screened_trialIDs_VC_FS.txt", screened_vc_trialIDs, fmt='%s')
+np.savetxt(data_path_FS / "Figure1_screened_trialIDs_VC_FS.txt", screened_vc_trialIDs, fmt='%s')
 
 # combine short dataframes slice
 xc_FS_shortdf_slice = pd.concat([cc_FS_shortdf_slice, vc_FS_shortdf_slice], axis=0)

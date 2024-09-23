@@ -466,3 +466,195 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
         _ = plot_grid(spot_locs=spot_locs, spot_values=[hu], grid=[24,24], ax=axins, vmin=0, vmax=20, cmap=viridis, locs_is_patternID=False, add_colorbar=False)
 
     return ax, insets
+
+def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, shrink=0.8, palette='viridis', annotate=False):
+    bboxA = ax.get_position()
+    x0,x1 = bboxA.x0,bboxA.x1 
+    y0,y1 = bboxA.y0,bboxA.y1 
+    w, h  = bboxA.width,bboxA.height
+
+    # remove axis ax
+    ax.remove()
+    # create  a new axis in the position of ax
+    ax =  fig.add_axes([x0, y0, shrink*w, shrink*h])
+    axx = fig.add_axes([x0, y0+shrink*h+pad, shrink*w, barw], aspect='auto')
+    axy = fig.add_axes([x0+shrink*w+pad, y0, barw, shrink*h], aspect='auto')
+    axc = fig.add_axes([x0+shrink*w+barw+2*pad, y0, barw, shrink*h], aspect='auto')
+
+    partial_pulse_wise  = pivotdf.mean(axis=0).values.reshape(1,-1)
+    partial_freq_wise   = pivotdf.mean(axis=1).values.reshape(-1,1)
+    partial_pulse_wise_n  = numdf.sum(axis=0).values.reshape(1,-1)
+    partial_freq_wise_n   = numdf.sum(axis=1).values.reshape(-1,1)
+    maxlim              = np.round(np.max(pivotdf.values),2)
+    minlim              = np.round(np.min(pivotdf.values),2)
+    ax.imshow(pivotdf, cmap=palette, vmin=minlim, vmax=maxlim, aspect='auto', )
+    axx.imshow(partial_pulse_wise, cmap=palette, vmin=minlim, vmax=maxlim, )
+    axy.imshow(partial_freq_wise, cmap=palette, vmin=minlim, vmax=maxlim, origin='lower')
+
+    # annotate
+    if annotate:
+        # for a in [ax, axx, axy]:
+        for i in range(partial_freq_wise_n.shape[0]):
+            axy.text(0, i, f'{partial_freq_wise[i,0]:.2f}', ha='center', va='center', color='white', fontsize=12)
+            axy.text(0-0.2, i-0.2, f'{partial_freq_wise_n[i,0]:.0f}', ha='center', va='center', color='yellow', fontsize=10)
+            for j in range(partial_pulse_wise_n.shape[1]):
+                ax.text(j, i, f'{pivotdf.values[i,j]:.2f}', ha='center', va='center', color='white', fontsize=12)
+                ax.text(j-0.2, i-0.2, f'{numdf.values[i,j]:.0f}', ha='center', va='center', color='yellow', fontsize=10)
+                if i == 0:
+                    axx.text(j, 0, f'{partial_pulse_wise[0,j]:.2f}', ha='center', va='center', color='white', fontsize=12)
+                    axx.text(j-0.2, 0-0.2, f'{partial_pulse_wise_n[0,j]:.0f}', ha='center', va='center', color='yellow', fontsize=10)
+
+
+    ax.set_xticks(np.arange(9), labels=np.arange(9))
+    ax.set_ylim([-0.5,3.5])
+    ax.set_yticks([0,1,2,3], labels=[20,30,40,50])
+    ax.set_xlabel('Pulse Index',    fontdict={'fontsize':12})
+    ax.set_ylabel('Frequency (Hz)', fontdict={'fontsize':12})
+    # remove ticks but keep tick labels from axis ax
+    # remove spines
+    ax.spines['bottom'].set_visible(False)
+    ax.spines[  'left'].set_visible(False)
+    ax.spines[ 'right'].set_visible(False)
+    ax.spines[   'top'].set_visible(False)
+
+    # # make some labels invisible
+    axx.xaxis.set_tick_params(labelbottom =False)
+    axy.yaxis.set_tick_params(labelleft   =False)
+
+    # # set aspect of ax_histy2 same as axy
+    numlevels = 3
+    cbar = fig.colorbar(ax.get_images()[0], cax=axc, )
+
+    # # remove ticks
+    axx.get_xaxis().set_visible(False)
+    axx.get_yaxis().set_visible(False)
+    axy.get_xaxis().set_visible(False)
+    axy.get_yaxis().set_visible(False)
+
+    # # change fontsize to 12 for all the axes
+    for ax_ in [axx, axy, axc]:
+        ax_.spines['bottom'].set_visible(False)
+        ax_.spines['left'].set_visible(False)
+        ax_.spines['right'].set_visible(False)
+        ax_.spines['top'].set_visible(False)
+        for item in ([ax_.title, ax_.xaxis.label, ax_.yaxis.label] +
+                    ax_.get_xticklabels() + ax_.get_yticklabels()):
+            item.set_fontsize(12)
+    axx.set_aspect('auto')
+    axy.set_aspect('auto')
+
+    return ax, axx, axy, axc, cbar
+
+def plot_response_heatmaps(datadf, feature='PSC', skip1sq=True, include_spike_trials=False, Fig=None, figlabels=[], figname_suffix="", clampMode='VC', heatmap_palette={-70:flare, 0:crest}, heatmap_title=True, annot=False):
+    if feature == 'spike_':
+        include_spike_trials = True
+        datadf = datadf[datadf['AP'] == 1]
+
+    if include_spike_trials == False and clampMode == 'CC':
+        datadf = datadf[datadf['spike_in_stim_period'] == 0]
+    
+    print('data shape:', datadf.shape)
+
+    # Load the data
+    freq_sweep_pulses = range(9)
+    to_plot = [f'{feature}{i}' for i in freq_sweep_pulses]
+    df_melt = pd.melt( datadf, id_vars=['cellID', 'clampPotential','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
+    df_melt['pulse'] = df_melt.apply(lambda x: x['pulseIndex'][-1], axis=1)
+    df_melt['pulse'] = df_melt['pulse'].astype(int)
+    df_melt['numSq'] = df_melt['numSq'].astype(int)
+    df_melt['clampPotential'] = df_melt['clampPotential'].astype(int)
+    df_melt['stimFreq'] = df_melt['stimFreq'].astype(int)
+
+    # convert patternList to integer
+    df_melt['patternList'] = df_melt['patternList'].apply(lambda x: int(x))
+
+    # drop pulseIndex column
+    df_melt.drop(columns=['pulseIndex'], inplace=True)
+    df_melt['peak_response'] = df_melt['peak_response'].abs()
+
+    sqs = np.sort(df_melt['numSq'].unique())
+    if skip1sq:
+        sqs = np.delete(sqs, np.where(sqs == 1))
+    clamps = df_melt['clampPotential'].unique()
+
+    colors_EI = {-70:flare, 0:crest}
+    if clampMode == 'CC':
+        palette = {-70:'viridis'}
+    else:
+        palette = colors_EI
+
+    ##----------------------------------------------------------------------------------------------------------------
+    # for cell in df_melt['cellID'].unique():
+    screened_cells = df_melt['cellID'].unique()
+
+    # A4
+    # if fig is supplied, then remove all the axes from it and add new axes
+    if Fig is not None:
+        Fig.clear()
+        ax2      = Fig.subplots(len(sqs), len(clamps), sharex=False, sharey=False)
+    else:
+        Fig, ax2 = plt.subplots(len(sqs), len(clamps), figsize=(15,10), sharex=False, sharey=False)
+    
+    # make the ax2 2D array
+    ax2 = np.array(ax2).reshape(len(sqs), len(clamps))
+    
+    # Fig.suptitle(f'Heatmap of {feature[:-1]}', fontsize=16)
+    Fig.subplots_adjust(hspace=0.5, wspace=0.5)
+    if not figlabels:
+        figlabels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    assert len(figlabels) >= len(sqs)*len(clamps), 'Number of labels should be greater than or equal to the number of subplots'
+    
+    # PSC heatmaps
+    axes = []
+    counter = 0
+    for s,sq in enumerate(sqs):
+        for c,clamp in enumerate(clamps):
+            
+            # conditions
+            numSq, clampPotential = sq, clamp
+            # apply condition
+            xpscdf = df_melt[ (df_melt['numSq'] == numSq) & (df_melt['clampPotential'] == clampPotential)]
+            # print(s,c,numSq, clampPotential,xpscdf.shape)
+            x = xpscdf.groupby(['pulse', 'stimFreq']).mean().reset_index()
+            x_matrix = x.pivot(index='stimFreq', columns='pulse', values='peak_response')
+
+            # print a matrix of number of trials for each condition
+            num_trials = xpscdf.groupby(['pulse', 'stimFreq']).count().reset_index()
+            num_trials_matrix = num_trials.pivot(index='stimFreq', columns='pulse', values='peak_response')
+                        
+            # if x_matrix has shape 0, add nan values as a list of 9 values
+            # create a new empty dataframe with rows as frequencies and columns as pulses
+            if x_matrix.shape[0] == 0:
+                x_matrix = pd.DataFrame(np.nan, index=[20,30,40,50], columns=np.arange(9))
+                num_trials_matrix = pd.DataFrame(0, index=[20,30,40,50], columns=np.arange(9))
+            # if in the x_matrix other frequencies don't exist, add them with nan values
+            for freq in [20,30,40,50]:
+                if freq not in x_matrix.index:
+                    x_matrix.loc[freq] = np.nan
+                if freq not in num_trials_matrix.index:
+                    num_trials_matrix.loc[freq] = 0
+            
+            if feature == 'delay_':
+                # multiply by 1000 and round to 1 decimal place
+                x_matrix = x_matrix*1000
+
+            x_matrix = x_matrix.sort_index()
+            num_trials_matrix = num_trials_matrix.sort_index()
+
+            axs = ax_to_partial_dist_heatmap_ax(x_matrix, num_trials_matrix, Fig, ax2[s,c], barw=0.03, pad=0.01, shrink=0.8, palette=palette[clamp], annotate=annot)
+            axs[0].set_title(f'{sq} Sq', y=1.2, loc='left') if heatmap_title else ''
+            axs[0].text(-0.1, 1.1, figlabels[counter], transform=axs[0].transAxes, size=20, weight='bold')
+            # ax2[s,c].set_title(f'Heatmap of {feature} for {numSq} Sq and {clamp} mV')
+            
+            axes.append(axs)
+            counter += 1
+            
+
+    # add supertitle on figure
+    # Fig.suptitle(f'Peak response to different frequencies and pulses - Cell {cell}', fontsize=16)
+    # save fig
+    # paper_figure_export_location = Path(r"paper_figures\\Figure2v4\\")
+    # Fig.savefig(paper_figure_export_location / f'Fig2_{feature}_heatmap_all_cells_{figname_suffix}.svg', format='svg', dpi=300)
+    # Fig.savefig(paper_figure_export_location / f'Fig2_{feature}_heatmap_all_cells_{figname_suffix}.png', format='png', dpi=300)
+
+    return Fig, axes
