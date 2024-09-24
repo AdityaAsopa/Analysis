@@ -88,8 +88,9 @@ def findStpScale( kernel, kpk, ret, si, stimWidth, tau, ax ):
         return 1.0
     if kpk < 0 : # Exc
         kpkIdx = np.argmin( kernel[:-stimWidth] )
-    else:
+    elif kpk > 0: # Inh
         kpkIdx = np.argmax( kernel[:-stimWidth] )
+
     pkIdx = int( round ( (ret[2]) * sampleRate )) - si
     riseIdx = int( round ( (ret[2] - ret[0]) * sampleRate ))
     riseDelta1 = kernel[kpkIdx + stimWidth - riseIdx ] - kernel[kpkIdx + stimWidth]
@@ -167,7 +168,6 @@ def deconv(dat, freq, start_time, end_time , ax, noprobepulse=False):
 
     # use calcKernel to get the kernel, peak, and baseline
     kpk, kernel, baseline, tau = calcKernel(dat) 
-    
     kpkidx = np.argmax(kernel) if kpk > 0 else np.argmin(kernel)
     # ax.plot(np.linspace(startT,endT,len(kernel)),kernel, "m.-")
     scaleList = []
@@ -175,7 +175,10 @@ def deconv(dat, freq, start_time, end_time , ax, noprobepulse=False):
     absVal = [baseline]
     pv = []
     correctedStimIdx = []
-    # print(stimIdx, freq, kpkidx, kpk, startT, endT, stimWidth, kernel.shape, tau)
+    print(stimIdx, freq, kpkidx, kpk, startT, endT, stimWidth, kernel.shape, tau)
+    if kpkidx == 0 or math.isnan(kpk) or math.isinf(kpk):
+        raise FloatingPointError( "WARNING: kpk is zero, nan or inf" )
+        
     for si in stimIdx:
         ret = findPkVal(dat, freq, si + kpkidx // 2, (kpk < 0))
         pv.append(ret)

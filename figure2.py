@@ -162,7 +162,7 @@ del vc_FS_longdf
 
 def main():
     # Setup the figure
-    w,h = 15,25   
+    w,h = 21, 29.7   
     fig = plt.figure(layout='constrained', figsize=(w,h))
 
     [Fig2Top, Fig2Mid, Fig2Bottom] = fig.subfigures(3,1, wspace=0.03, hspace=0.02, height_ratios=[2, 1, 2])

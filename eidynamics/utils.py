@@ -980,3 +980,18 @@ def get_cellwise_numtrials(datadf, columns = ['cellID', 'exptID']):
     totaltrials = numtrials.sum()
     combinations = '_'.join(columns) + ' combined'
     print(f'##\n Assessing dataframe: \nTotal {combinations}: {total_combinations}\nTotal Trials: {totaltrials}\nData Size: {datadf.shape}', '\n', numtrials)
+
+# write a function to expand a column containing list into multiple columns and save them with new column names
+def expand_list_column(df_in, column_name, new_column_name_prefix):
+    print(df_in.shape)
+    
+    num_columns = len(df_in[column_name].iloc[0])
+    new_column_names = [new_column_name_prefix + str(i) for i in range(num_columns)]
+    print('new columns: ', new_column_names)
+
+    df_x = pd.DataFrame(df_in[column_name].to_list(), columns=new_column_names, index=df_in.index)
+    df_in = pd.concat([df_in, df_x], axis=1)
+    # df_in.drop(columns=column_name, inplace=True)
+    print(df_x.shape, df_in.shape)
+    
+    return df_in

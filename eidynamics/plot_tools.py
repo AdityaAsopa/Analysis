@@ -467,7 +467,7 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
 
     return ax, insets
 
-def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, shrink=0.8, palette='viridis', annotate=False):
+def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, shrink=0.8, palette='viridis', force_vmin_to_zero=False, annotate=False):
     bboxA = ax.get_position()
     x0,x1 = bboxA.x0,bboxA.x1 
     y0,y1 = bboxA.y0,bboxA.y1 
@@ -487,9 +487,11 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
     partial_freq_wise_n   = numdf.sum(axis=1).values.reshape(-1,1)
     maxlim              = np.round(np.max(pivotdf.values),2)
     minlim              = np.round(np.min(pivotdf.values),2)
-    ax.imshow(pivotdf, cmap=palette, vmin=minlim, vmax=maxlim, aspect='auto', )
+    if force_vmin_to_zero:
+        minlim = 0
+    ax.imshow(pivotdf,             cmap=palette, vmin=minlim, vmax=maxlim, aspect='auto', )
     axx.imshow(partial_pulse_wise, cmap=palette, vmin=minlim, vmax=maxlim, )
-    axy.imshow(partial_freq_wise, cmap=palette, vmin=minlim, vmax=maxlim, origin='lower')
+    axy.imshow(partial_freq_wise,  cmap=palette, vmin=minlim, vmax=maxlim, origin='lower')
 
     # annotate
     if annotate:
@@ -545,7 +547,7 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
 
     return ax, axx, axy, axc, cbar
 
-def plot_response_heatmaps(datadf, feature='PSC', skip1sq=True, include_spike_trials=False, Fig=None, figlabels=[], figname_suffix="", clampMode='VC', heatmap_palette={-70:flare, 0:crest}, heatmap_title=True, annot=False):
+def plot_response_heatmaps(datadf, feature='PSC', skip1sq_heatmap=True, include_spike_trials=False, Fig=None, figlabels=[], figname_suffix="", clampMode='VC', heatmap_palette={-70:flare, 0:crest}, heatmap_title=True, annot=False):
     if feature == 'spike_':
         include_spike_trials = True
         datadf = datadf[datadf['AP'] == 1]
@@ -573,7 +575,7 @@ def plot_response_heatmaps(datadf, feature='PSC', skip1sq=True, include_spike_tr
     df_melt['peak_response'] = df_melt['peak_response'].abs()
 
     sqs = np.sort(df_melt['numSq'].unique())
-    if skip1sq:
+    if skip1sq_heatmap:
         sqs = np.delete(sqs, np.where(sqs == 1))
     clamps = df_melt['clampPotential'].unique()
 
@@ -641,7 +643,7 @@ def plot_response_heatmaps(datadf, feature='PSC', skip1sq=True, include_spike_tr
             x_matrix = x_matrix.sort_index()
             num_trials_matrix = num_trials_matrix.sort_index()
 
-            axs = ax_to_partial_dist_heatmap_ax(x_matrix, num_trials_matrix, Fig, ax2[s,c], barw=0.03, pad=0.01, shrink=0.8, palette=palette[clamp], annotate=annot)
+            axs = ax_to_partial_dist_heatmap_ax(x_matrix, num_trials_matrix, Fig, ax2[s,c], barw=0.03, pad=0.01, shrink=0.8, palette=heatmap_palette, annotate=annot)
             axs[0].set_title(f'{sq} Sq', y=1.2, loc='left') if heatmap_title else ''
             axs[0].text(-0.1, 1.1, figlabels[counter], transform=axs[0].transAxes, size=20, weight='bold')
             # ax2[s,c].set_title(f'Heatmap of {feature} for {numSq} Sq and {clamp} mV')
