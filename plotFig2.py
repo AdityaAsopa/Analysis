@@ -163,9 +163,8 @@ def deconv(dat, freq, start_time, end_time , ax, noprobepulse=False):
     if noprobepulse:
         stimIdx = [int(startT * sampleRate)] + [int(round(sampleRate * (endT + i / freq))) for i in range(9)]
         stimIdx = stimIdx[1:]
-        startT = stimIdx[0]/2e4
-        endT = stimIdx[1]/2e4
-
+        startT  = stimIdx[0]/2e4
+        endT    = stimIdx[1]/2e4
     # use calcKernel to get the kernel, peak, and baseline
     kpk, kernel, baseline, tau = calcKernel(dat) 
     kpkidx = np.argmax(kernel) if kpk > 0 else np.argmin(kernel)

@@ -8,6 +8,7 @@ import importlib
 
 import numpy                as np
 import matplotlib           as mpl
+import matplotlib.patches   as mpatches
 import matplotlib.pyplot    as plt
 import seaborn              as sns
 import pandas               as pd
@@ -79,6 +80,10 @@ print(xc_all_shortdf.shape)
 cc_FS_datapath =  data_path_FS / "all_cells_FreqSweep_CC_long.h5" 
 vc_FS_datapath =  data_path_FS / "all_cells_FreqSweep_VC_long.h5"
 
+# Load it later as needed
+# cc_FS_longdf = pd.read_hdf(cc_FS_datapath, key='data')
+# vc_FS_longdf = pd.read_hdf(vc_FS_datapath, key='data')
+
 # Screening -----------------------------------------------------------------------------------------------
 # CC data screening based on dataflag_fields
 cc_FS_shortdf_slice = cc_FS_shortdf[
@@ -102,16 +107,15 @@ print(f"Unique sweeps in screened data: {cc_FS_shortdf_slice['trialID'].nunique(
 
 # save the screened trialIDs
 # save trial IDs as a numpy array text file, all trialID are strings
-np.savetxt(data_path_FS / "Figure1_screened_trialIDs_CC_FS.txt", screened_cc_trialIDs, fmt='%s')
+np.savetxt(paper_figure_export_location / "Figure1_screened_trialIDs_CC_FS.txt", screened_cc_trialIDs, fmt='%s')
 
-# VC data screening based on dataflag_fields
+# CC data screening based on dataflag_fields
 vc_FS_shortdf_slice = vc_FS_shortdf[
             (vc_FS_shortdf['location'] == 'CA1') &
             (vc_FS_shortdf['numSq'].isin([1,5,15])) &
+            (vc_FS_shortdf['stimFreq'].isin([20,30,40,50])) &
             (vc_FS_shortdf['condition'] == 'Control') &
             (vc_FS_shortdf['ch0_response']==1) &
-            (vc_FS_shortdf['intensity'] == 100) &
-            (vc_FS_shortdf['pulseWidth'] == 2) &
             (vc_FS_shortdf['IR'] >50) & (vc_FS_shortdf['IR'] < 300) &
             (vc_FS_shortdf['tau'] < 40) & 
             (vc_FS_shortdf['ac_noise_power_in_ch0'] < 40)
@@ -124,7 +128,7 @@ print(f"Unique sweeps in screened data: {vc_FS_shortdf_slice['trialID'].nunique(
 
 # save the screened trialIDs
 # save trial IDs as a numpy array text file, all trialID are strings
-np.savetxt(data_path_FS / "Figure1_screened_trialIDs_VC_FS.txt", screened_vc_trialIDs, fmt='%s')
+np.savetxt(paper_figure_export_location / "Figure1_screened_trialIDs_VC_FS.txt", screened_vc_trialIDs, fmt='%s')
 
 # combine short dataframes slice
 xc_FS_shortdf_slice = pd.concat([cc_FS_shortdf_slice, vc_FS_shortdf_slice], axis=0)
@@ -159,13 +163,13 @@ def main():
                 AAABBBCCCDDD
                 EEEEFFFFGGGG
                 HHHHIIIIJJJJ
+                KKKKLLLLMMMM
                 '''
-    fig1, ax1 = plt.subplot_mosaic(mosaic, figsize=(w, h), constrained_layout=True,)
-    ax1a, ax1b, ax1c, ax1d, ax1e, ax1f, ax1g, ax1h, ax1i, ax1j = [ax1[_] for _ in ax1.keys()]
-    # fig1, [[ax1a, ax1b],[ax1c, ax1d],[ax1e, ax1f],[ax1g, ax1h]] = plt.subplots(4,2, figsize=(w, h),)
+    fig1, ax1 = plt.subplot_mosaic(mosaic, figsize=(w, h), )
+    ax1a, ax1b, ax1c, ax1d, ax1e, ax1f, ax1g, ax1h, ax1i, ax1j, ax1k, ax1l, ax1m = [ax1[_] for _ in ax1.keys()]
+
     # have more space between suplots
     fig1.subplots_adjust(hspace=0.5, wspace=0.5)
-
 
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Fig 1A: Slice, polygon projection, and recording electrodes
@@ -194,8 +198,6 @@ def main():
     ax1c.set_aspect(imw/imh)
     ax1c.axis('off')
 
-    importlib.reload(plot_tools)
-    importlib.reload(utils)
     # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # # Fig 1D: Protocol Freq Sweep
     ax1d.text(-0.1, 1.1, 'D', transform=ax1d.transAxes, size=20, weight='bold')
@@ -212,7 +214,6 @@ def main():
     # remove legend
     ax1d.legend([],[], frameon=False)
 
-
     # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # # # Fig 1E: Current clamp responses
     ax1e.text(-0.1, 1.1, 'E', transform=ax1e.transAxes, size=20, weight='bold')
@@ -220,14 +221,14 @@ def main():
     ax1e.set_xlim([0, 0.5])
     ax1e.set_ylim([-0.15, 0.45])
     ax1e, ax1e_insets = plot_tools.draw_pulse_response_snippets(dftemp, ax1e, signal='field', window=0.15, patterns=range(56), between='clampPotential', hue='numSq', hues=[1,5,15],
-                                                                palette=color_squares_EI, invert=True, filter_data=True, passband=[100, 500])
+                                                                grid_size=11,stim_scale=2.5, stim_offset=0.3 ,palette=color_squares_EI, invert=True, filter_data=True, passband=[100, 500])
     ax1e.set_xticks([])
     ax1e.set_yticks([])
     # # axes spines to remove
     # plot_tools.split_axes(ax1e, which_axes=['left', 'bottom'], offset=10)
     sns.despine(ax=ax1e, top=True, right=True, left=True, bottom=True, offset=10, )
     # add floating scalebar
-    plot_tools.add_floating_scalebar(ax1e, scalebar_origin=[0.05,0.8], xlength=0.1, ylength=0.1, labelx='100', labely='', unitx='ms', unity='mV', fontsize=12, color='black', linewidth=2, pad=0.01, show_labels=True)
+    plot_tools.add_floating_scalebar(ax1e, scalebar_origin=[0.05,0.4], xlength=0.1, ylength=0.1, labelx='100', labely='', unitx='ms', unity='mV', fontsize=12, color='black', linewidth=2, pad=0.01, show_labels=True)
 
     # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # # # Fig 1F: CA3 cell_fpr vs field_fpr
@@ -254,9 +255,8 @@ def main():
     ax1f.spines['right'].set_visible(False)
 
     # # statistics
-    importlib.reload(stat_annotate)
-    ax1f_pvalues, ax1f_nvalues = stat_annotate.pairwise_annotate_violin_plot(ax1f, dftemp, x='numSq', y='field_fpr_p2p', stat=mannwhitneyu, add_line=True, offset=0.1, color='grey',
-                                                                            add_n=True,coord_system='', fontsize=12, zorder=10)
+    ax1f_pvalues, ax1f_nvalues = stat_annotate.pairwise_annotate_violin_plot(ax1f, dftemp, x='numSq', y='field_fpr_p2p', stat=mannwhitneyu, add_line=True, offset=0.15, color='grey',
+                                                                            add_n=False,coord_system='', fontsize=12, zorder=10)
 
     # set labels
     ax1f.set_ylabel('First Peak Field Response (mV)')
@@ -267,7 +267,6 @@ def main():
     ax1f.spines['top'].set_visible(False)
     ax1f.spines['right'].set_visible(False)
     sns.despine(ax=ax1f, top=True, right=True, left=False, bottom=False, offset=10, trim=True) 
-
 
     # #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # # # Fig 1G: CA3 cell_fpr vs field_fpr
@@ -292,22 +291,20 @@ def main():
     ax1g.set_yticks([0, 0.5, 1.0, 1.5])
     sns.despine(ax=ax1g, top=True, right=True, left=False, bottom=False, offset=10, )
 
-
     # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # # # Fig 1H: Current clamp responses
     ax1h.text(-0.1, 1.1, 'H', transform=ax1h.transAxes, size=20, weight='bold')
     ax1h.set_xlim([0, 0.5])
     ax1h.set_ylim([-3.3, 10])
-    importlib.reload(plot_tools)
     dftemp = xc_FS_longdf_slice[(xc_FS_longdf_slice['cellID']==4041)]
-    ax1h, ax1h_insets = plot_tools.draw_pulse_response_snippets(dftemp, ax1h, patterns=range(55), between='clampPotential', hue='numSq',  palette=color_squares_EI)
+    ax1h, ax1h_insets = plot_tools.draw_pulse_response_snippets(dftemp, ax1h, patterns=range(55), between='clampPotential', hue='numSq',  palette=color_squares_EI,grid_size=11,stim_offset=9, stim_scale=50,)
     # # set ticks
     ax1h.set_xticks([])
     ax1h.set_yticks([])
     # # axes spines to remove
     # plot_tools.split_axes(ax1h, which_axes=['left', 'bottom'], offset=10)
     sns.despine(ax=ax1h, top=True, right=True, left=True, bottom=True, offset=10, )
-    plot_tools.add_floating_scalebar(ax1h, scalebar_origin=[0.05,0.8], xlength=0.1, ylength=2.0, labelx='100', labely='', unitx='ms', unity='mV', fontsize=12, color='black', linewidth=2, pad=0.01, show_labels=True)
+    plot_tools.add_floating_scalebar(ax1h, scalebar_origin=[0.05,0.4], xlength=0.1, ylength=2.0, labelx='100', labely='', unitx='ms', unity='mV', fontsize=12, color='black', linewidth=2, pad=0.01, show_labels=True)
 
     # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # # # Fig 1I: First peak response | cell_fpr_max vs numSq
@@ -327,13 +324,12 @@ def main():
     ax1i.spines['right'].set_visible(False)
 
     # ## Statistics for the violin plots: mannwhitneyu Rank Sum Test across numSq values
-    ax1i_pvalues, ax1i_nvalues = stat_annotate.pairwise_annotate_violin_plot(ax1i, dftemp, x='numSq', y='PSC_0', stat=mannwhitneyu, add_line=True, offset=0.1, color='grey',
-                                                                            add_n=True, coord_system='', fontsize=12, zorder=10)
+    ax1i_pvalues, ax1i_nvalues = stat_annotate.pairwise_annotate_violin_plot(ax1i, dftemp, x='numSq', y='PSC_0', stat=mannwhitneyu, add_line=True, offset=0.2, color='grey',
+                                                                            add_n=False, coord_system='', fontsize=12, zorder=10)
     sns.despine(ax=ax1i, top=True, right=True, left=False, bottom=False, offset=10, trim=True)   
 
-
     # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # # # Fig 1K: Trend in the field response across pulses
+    # # # Fig 1J: Trend in the field response across pulses
     ax1j.text(-0.1, 1.1, 'J', transform=ax1j.transAxes, size=20, weight='bold')
     # get data containing field response
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['numSq'].isin([1,5,15])) & (xc_FS_shortdf_slice['numChannels']==4)]
@@ -355,7 +351,7 @@ def main():
     dftemp = dftemp.dropna(subset=['peaks_field_norm', 'pulse_index'])
     # draw pointplot
     stat_annotate.pairwise_draw_and_annotate_line_plot(ax1j, dftemp, x='pulse_index', y='peaks_field_norm', hue='pulse_index', draw=True, kind='point', palette='viridis',
-                    split_violins=False, dodge=True, stat_across=None, )
+                    split_violins=False, dodge=True, stat_across=None,add_n=False, )
 
 
     # remove 0th pulse data for the regression to avoide the bias
@@ -374,6 +370,100 @@ def main():
     sns.despine(ax=ax1j, top=True, right=True, left=False, bottom=False, offset=10, trim=True)
 
     # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # # # Fig 1K: Trend in the field response across pulses
+    ax1k.text(-0.1, 1.1, 'K', transform=ax1k.transAxes, size=20, weight='bold')
+    # ax1k.set_xlim([0, 0.5])
+    # ax1k.set_ylim([-400,1200])
+    dftemp = xc_FS_longdf_slice[(xc_FS_longdf_slice['cellID']==6201)]
+    print( dftemp['clampPotential'].unique())
+    ax1k, ax1j_insets = plot_tools.draw_pulse_response_snippets(dftemp, ax1k, patterns=range(55), palette=color_squares_EI, between='clampPotential', hue='numSq',stim_offset=750, stim_scale=200, grid_size=11)
+    # set ticks
+    ax1k.set_xticks([])
+    ax1k.set_yticks([])
+    # axes spines to remove
+    # plot_tools.split_axes(ax1k, which_axes=['left', 'bottom'], offset=10)
+    sns.despine(ax=ax1k, top=True, right=True, left=True, bottom=True, offset=10, )
+    plot_tools.add_floating_scalebar(ax1k, scalebar_origin=[0.05,0.4], xlength=0.1, ylength=200, labelx='100', labely='', unitx='ms', unity='pA', fontsize=12, color='black', linewidth=2, pad=0.01, show_labels=True)
+
+    # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # # # Fig 1l: Trend in the field response across pulses
+    ax1l.text(-0.1, 1.1, 'L', transform=ax1l.transAxes, size=20, weight='bold')
+    dftemp = xc_FS_shortdf_slice[ (xc_FS_shortdf_slice['clampMode']=='VC') & (xc_FS_shortdf_slice['probePulseStart'] == 0.2)]
+    dftemp = dftemp.dropna(subset=['PSC_0'])
+    pscdict = {-70: [], 0: []}
+    for k,v in pscdict.items():
+        for sq in [1,5,15]:
+            dftemp1 = dftemp[(dftemp['clampPotential']==k) & (dftemp['numSq']==sq)]
+            sqlist = dftemp1['PSC_0'].to_list()
+            pscdict[k].append(sqlist)
+    labels=[]
+    for clamp in [-70,0]:
+        side = 'low' if clamp == 0 else 'high'
+        P ='EPSC' if clamp == -70 else 'IPSC'
+        parts = ax1l.violinplot(pscdict[clamp], positions=[1,2,3], vert=True, widths=0.8, showmeans=False,
+                            showextrema=False, quantiles=[[0.25,0.75],[0.25,0.75],[0.25,0.75]] ,showmedians=True, side='both', )
+        a,b,c = pscdict[clamp]
+        _, pval = kruskal(a,b,c)
+        stat_annotate.annotate_stat_stars(ax1l, pval, alpha=0.05, star_loc=[2,1950], add_line=True, line_locs=[1,3,1900,1900],
+                                            offset_btw_star_n_line=0.1, color='grey', coord_system='data',)
+        for s, violin in enumerate(parts['bodies']):
+            sq = [1,5,15][s]
+            color = color_squares_EI[clamp][sq]
+            color = mpl.colors.to_rgba(color, alpha=0.6)
+            violin.set_facecolor(color)
+            violin.set_edgecolor(color)
+            labels.append((mpatches.Patch(color=color), f'{P}, {sq} squares'))
+        for partname in ['cquantiles','cmedians',]:
+            vp = parts[partname]
+            vp.set_edgecolor('black')
+            vp.set_linewidth(0.5)
+
+    ax1l.set_ylabel('First Peak CA1 Response (mV)')
+    ax1l.set_xlabel('Number of Squares per Pattern')
+    ax1l.legend(*zip(*labels), loc='lower left', bbox_to_anchor=(0,0), frameon=True, ncols=1, fontsize=10)
+    # remove top and right spines
+    ax1l.spines['top'].set_visible(False)
+    ax1l.spines['right'].set_visible(False)
+    # set ticklabels
+    ax1l.set_xticks([1,2,3])
+    ax1l.set_xticklabels(['1','5','15'])
+    # set yticks
+    ax1l.set_yticks([-4000,-2000, 0,2000])
+    sns.despine(ax=ax1l, top=True, right=True, left=False, bottom=False, offset=10, trim=True)  
+
+    # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # # # Fig 1m: Trend in the field response across pulses
+    ax1m.text(-0.1, 1.1, 'M', transform=ax1m.transAxes, size=20, weight='bold')
+    sample_cell = 111  #screened_vc_cells[2] # 111, 7492, 1621
+    celldataE = xc_FS_longdf_slice[ (xc_FS_longdf_slice['clampMode']=='VC') & (xc_FS_longdf_slice['cellID']==sample_cell) & (xc_FS_longdf_slice['clampPotential']==-70) & (xc_FS_longdf_slice['stimFreq']==20) & (xc_FS_longdf_slice['numSq']==15)]
+    celldataI = xc_FS_longdf_slice[ (xc_FS_longdf_slice['clampMode']=='VC') & (xc_FS_longdf_slice['cellID']==sample_cell) & (xc_FS_longdf_slice['clampPotential']==  0) & (xc_FS_longdf_slice['stimFreq']==20) & (xc_FS_longdf_slice['numSq']==15)]
+    time = np.linspace(0,1,20000)
+    for i in range(celldataE.shape[0]):
+        ax1m.plot(time, celldataE.iloc[i,49:20049], color=color_EI[-70], linewidth=0.2, alpha=0.5)
+        ax1m.plot(time, celldataI.iloc[i,49:20049], color=color_EI[0], linewidth=0.2, alpha=0.5)
+    # plot mean
+    ax1m.plot(time, celldataE.iloc[:,49:20049].mean(axis=0), color=color_EI[-70], linewidth=1.5, alpha=0.8, label='EPSC')
+    ax1m.plot(time, celldataI.iloc[:,49:20049].mean(axis=0), color=color_EI[0], linewidth=1.5, alpha=0.8, label='IPSC')
+    # set legend inside the plot
+    ax1m.legend(loc='upper right', bbox_to_anchor=(0.9, 0.9), frameon=True) # legend removed to save space
+    # remove legend
+    ax1m.legend(loc='upper right', frameon=False)
+    # add a floating scalebar
+    sns.despine(ax=ax1m, left=True, right=True, top=True, bottom=True)
+    # remove ticks
+    ax1m.set_xticks([])
+    ax1m.set_yticks([])
+    plot_tools.add_floating_scalebar(ax1m, scalebar_origin=[0.0,0.8], xlength=0.1, ylength=200, labelx='100', labely='200', unitx='ms', unity='pA', fontsize=12, color='black', linewidth=2, pad=0.02, show_labels=True)
+    # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    for ax in [ax1a, ax1b, ax1c, ax1d, ax1e, ax1f, ax1g, ax1h, ax1i, ax1j, ax1k, ax1l, ax1m]:
+        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
+            item.set_fontsize(12)
+
+    for ax in [ax1a, ax1b, ax1c, ax1d, ax1e, ax1f, ax1g, ax1h, ax1i, ax1j, ax1k, ax1l, ax1m]:
+        for axis in ['top','bottom','left','right']:
+            ax.spines[axis].set_linewidth(1)
+            
+    # # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # tight layout
     plt.tight_layout()
     # # save figure
@@ -381,8 +471,6 @@ def main():
     fig1.savefig(paper_figure_export_location /  (figure_name + '.png'), dpi=300, bbox_inches='tight')
     fig1.savefig(paper_figure_export_location /  (figure_name + '.svg'), dpi=300, bbox_inches='tight')
 
-    # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 def supplementary():
     # # Supplementary Figure 1: A and B in high resolution
     Fig1A_hr, ax1A_hr = plt.subplots(1, 1, figsize=(10, 5), constrained_layout=True)
@@ -433,7 +521,6 @@ def supplementary():
     Fig1s1, ax1s1 = plt.subplots(1, 1, figsize=(10, 5), constrained_layout=True)
     ax1s1.text(-0.1, 1.1, '1s1', transform=ax1s1.transAxes, size=20, weight='bold')
     # import heatmap data
-    importlib.reload(plot_tools)
     df_CA3_heatmap = pd.read_hdf(r"parsed_data\second_order\CA3_recording_3161_grid_response_pivot.h5")
 
     grid_aspect_ratio = pattern_index.polygon_frame_properties['aspect_ratio']

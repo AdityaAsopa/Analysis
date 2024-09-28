@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 import matplotlib as mpl
 import seaborn as sns
 import matplotlib.gridspec as gridspec
@@ -144,9 +145,6 @@ def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, l
         labely = str(yl)
     if not labelx:
         labelx = str(xl)
-    print('printing lims')
-    print(xlim,rangex,x,xl)
-    print(ylim,rangey,y,yl)
     # draw a line for x axis
     ax.plot([x, x+xl], [y, y]   , color=color, linewidth=linewidth)
 
@@ -203,6 +201,7 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
                         }
     
     '''
+
     start = data_start_column
     Fs = 2e4
     sweeps = df.shape[0]
@@ -257,7 +256,7 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
     
     # if combine plots is true, draw all the 4 signals on a single plot
     elif combine is True:
-        print('Plotting all 4 signals on a single plot')
+        print(f'Plotting all {len(signals_to_plot)} signals on a single plot')
         cell_max, cell_min = np.round(np.max(df.iloc[:,49:20049]),2) , np.round(np.min(df.iloc[:,49:20049]),2)
         field_max, field_min = np.round(np.max(df.iloc[:,60049:80049]),2) , np.round(np.min(df.iloc[:,60049:80049]),2)
         unit_cell = df.iloc[0, :]['unit']
@@ -265,7 +264,6 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
         # cell_max, cell_min = np.round(cell_max, -2), np.sign(cell_min) * (np.remainder(cell_min, 10) - cell_min)
         # print(cell_max, cell_min)
         if not signal_mapping:
-            print('remapping to default')
             signal_mapping = {'Cell':[cell_min, cell_max, 2, 4],
                             'FrameTTL': [0, 5, 5, 6],
                             'PD': [0, 1, 4, 5],
@@ -287,7 +285,7 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
             # print(s, signal, from0, from1, to0, to1)
             for i in range(sweeps):
                 # start = data_start_column
-                trace = df.iloc[i, locs]                
+                trace = df.iloc[i, locs]               
                 trace = utils.map_range(trace, from0, from1, to0, to1)
                 ax.plot(time, trace, signal_colors[s], linewidth=1, alpha=0.1)
                 ax.set_ylabel(signal)
@@ -303,7 +301,6 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
                         scalebarx = 0.05*T
                         add_floating_scalebar(ax, scalebar_origin=[scalebarx, 0.05], xlength=0.1, ylength=1, labelx=f'{0.1*T}', labely=f'{signal_mapping["scalebar_field"]/2:.2f}', unitx=f'ms', unity='mV',
                         fontsize=12, color=signal_colors[s], linewidth=2, pad=0.0, show_labels=True)
-
                 
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Voltage')
@@ -311,7 +308,7 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
         return fig, ax, signal_mapping
     
 
-def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=1, cmap='gray', locs_is_patternID=False, add_colorbar=False, **kwargs):
+def plot_grid(from_pattern=True, numSq=15, spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=1, cmap='gray', locs_is_patternID=False, add_colorbar=False, **kwargs):
     '''
     plot a grid of values as a heatmap. input spot_values should have coord column as index
     spot_locs is raw coordinates of the spots, spot_values is the values at those spots
@@ -319,31 +316,49 @@ def plot_grid(spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=
     if ax is None:
         fig, ax = plt.subplots()
 
+    numlocs = len(spot_locs)
 
-    if len(spot_values) == 0:
-        raise ValueError(f'spot_locs and spot_values must be the same length but spot_locs has length {len(spot_locs)} and spot_values has length {len(spot_values)}')
-    elif len(spot_values) == 1:
-        spot_values = np.repeat(spot_values, len(spot_locs))
-    elif len(spot_values) != len(spot_locs):
-        raise ValueError(f'spot_locs and spot_values must be the same length, but spot_locs has length {len(spot_locs)} and spot_values has length {len(spot_values)}')
-
-
-    # make a zero array of the grid size
-    grid_array = np.zeros(grid)
-    
-    # fill the grid array with the spot locations
-    for i, spot in enumerate(spot_locs):
-        if locs_is_patternID:
-            spots = pattern_index.patternID[spot]
-            for s in spots:
-                locx = (s-1) % grid[0]
-                locy = (s-1) // grid[1]
+    if from_pattern:
+        if len(spot_values) == 0:
+            raise ValueError(f'spot_locs and spot_values must be the same length but spot_locs has length {numSq} and spot_values has length {len(spot_values)}')
+        elif len(spot_values) == 1:
+            spot_values = np.repeat(spot_values, numlocs)
+        elif len(spot_values) != numlocs:
+            raise ValueError(f'spot_locs and spot_values must be the same length, but spot_locs has length {numSq} and spot_values has length {len(spot_values)}')
+        assert numSq == numlocs, 'spot_locs and spot_values must be the same length'
+        # make a zero array of the grid size
+        grid_array = np.zeros(grid)
+        
+        # fill the grid array with the spot locations
+        for i, spot in enumerate(spot_locs):
+            if locs_is_patternID:
+                spots = pattern_index.patternID[spot]
+                for s in spots:
+                    locx = (s-1) % grid[0]
+                    locy = (s-1) // grid[1]
+                    grid_array[locy, locx] = spot_values[i]
+            else:    
+                locx = (spot-1) % grid[0]
+                locy = (spot-1) // grid[1]
+                # print(i, spot, locx, locy)
                 grid_array[locy, locx] = spot_values[i]
-        else:    
-            locx = (spot-1) % grid[0]
-            locy = (spot-1) // grid[1]
-            # print(i, spot, locx, locy)
-            grid_array[locy, locx] = spot_values[i]
+
+    else:
+        grid_array   = np.zeros((grid[0],grid[1]))
+        checkerboard = np.zeros((grid[0],grid[1]))
+        # make a checkerboard_grid
+        checkerboard[1::2, 1::2] = 1
+        # flatten the checkerboard
+        checkerboard = checkerboard
+        # Get random row and column indices
+        allspots = np.array(np.where(checkerboard.flatten() == 1)).reshape(-1)
+        # choose random locations = 5
+        chosenfew = np.random.choice(allspots, numSq, replace=False)
+        locx = chosenfew  % grid[0]
+        locy = chosenfew // grid[1]
+        # set values to 1 at the locations
+        grid_array[locx, locy] = vmax
+
 
     ax.imshow(grid_array, cmap=cmap, aspect='auto', vmin=vmin, vmax=vmax)
     ax.axis('off')
@@ -429,7 +444,8 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
 
 def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01, patterns =[1,46,52], palette='grey', 
                                 between='clampPotential', hue='numSq', hues=[1,5,15],
-                                stim_scale=10, invert=False, filter_data=False, passband=[0.1, 1000], Fs=2e4):    
+                                stim_scale=10, stim_offset=0, invert=False, filter_data=False, passband=[0.1, 1000], Fs=2e4,
+                                draw_pattern=True, grid_size=24, spots_light_on_dark=False, pattern_scale=2):    
     betweens = dfcell[between].unique()
     # print(hues, betweens)
     probe_pulse_time = dfcell.iloc[0]['probePulseStart']
@@ -442,7 +458,6 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
         for j, bet in enumerate(betweens):
             # print(f'plotting {hu} and {bet}')
             dfE  = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet) & (dfcell['patternList'].isin(patterns))]
-            dfPD = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet)].iloc[0, 40000+t0:40000+t1].to_numpy()
             # print(dfE.shape, dfPD.shape)
             pat = dfE['patternList'].unique()[0]
             dfslice = dfE.iloc[:, shift+t0:shift+t1].to_numpy()
@@ -457,17 +472,36 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
             time = np.linspace(tstart[i], tstart[i]+window, int(Fs*window))
             [ax.plot(time, row , color=palette[bet][hu], alpha=0.2, linewidth=1) for row in dfslice]
             ax.plot(time, np.mean(dfslice, axis=0) , color=palette[bet][hu], alpha=1, linewidth=2)
-            ax.plot(time,  stim_scale*dfPD, color='cyan', alpha=0.8)
-        # draw the pattern in the insert
-        locx, locy = tstart[i]/(3*(window+pre)), 0.02
-        axins = ax.inset_axes([locx, locy, 0.1,0.1], transform=ax.transAxes )
-        insets.append(axins)
-        spot_locs = pattern_index.patternID[pat]
-        _ = plot_grid(spot_locs=spot_locs, spot_values=[hu], grid=[24,24], ax=axins, vmin=0, vmax=20, cmap=viridis, locs_is_patternID=False, add_colorbar=False)
+        dfPD = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet)].iloc[0, 40000+t0:40000+t1].to_numpy()
+        ax.plot(time,  stim_scale*dfPD + stim_offset, color='blue', alpha=0.8)
+        if draw_pattern:
+            locx, locy = tstart[i]/(3*(window+pre)), 1.0
+            inset_dims = pattern_scale*0.1
+            axins = ax.inset_axes([locx, locy, inset_dims,inset_dims], transform=ax.transAxes )
+            insets.append(axins)
+            spot_locs = pattern_index.patternID[pat]
+            sq_color = color_squares[hu]
+            # make a colormap from sq_color
+            Ncolors = 2
+            clrlim1 = [1,1,1]
+            clrlim2 = color_squares[hu]
+            vals = np.ones((Ncolors, 4))
+            if spots_light_on_dark:
+                clrlim1, clrlim2 = clrlim2, clrlim1 
+            vals[:, 0] = np.linspace(clrlim1[0],clrlim2[0], Ncolors)
+            vals[:, 1] = np.linspace(clrlim1[1],clrlim2[1], Ncolors)
+            vals[:, 2] = np.linspace(clrlim1[2],clrlim2[2], Ncolors)
+            newcmp = ListedColormap(vals)
+            _ = plot_grid(from_pattern=False, numSq=hu, grid=[grid_size,grid_size], ax=axins, vmin=0, vmax=1, cmap=newcmp,)
+            
+            # draw a box around the inset
+            axins.add_patch(plt.Rectangle((0,0), grid_size-0.5, grid_size-0.5, fill=False, edgecolor=sq_color, lw=2))
+            axins.set_xlim([0,grid_size])
+            axins.set_ylim([0,grid_size])
 
     return ax, insets
 
-def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, shrink=0.8, palette='viridis', force_vmin_to_zero=False, annotate=False):
+def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, shrink=0.8, palette='viridis', force_vmin_to_zero=False, centralize_colorscale=False, annotate=False):
     bboxA = ax.get_position()
     x0,x1 = bboxA.x0,bboxA.x1 
     y0,y1 = bboxA.y0,bboxA.y1 
@@ -483,18 +517,21 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
 
     partial_pulse_wise  = pivotdf.mean(axis=0).values.reshape(1,-1)
     partial_freq_wise   = pivotdf.mean(axis=1).values.reshape(-1,1)
-    partial_pulse_wise_n  = numdf.sum(axis=0).values.reshape(1,-1)
-    partial_freq_wise_n   = numdf.sum(axis=1).values.reshape(-1,1)
-    maxlim              = np.round(np.max(pivotdf.values),2)
-    minlim              = np.round(np.min(pivotdf.values),2)
+    maxlim              = np.round(np.max(pivotdf.values),4)
+    minlim              = np.round(np.min(pivotdf.values),4)
     if force_vmin_to_zero:
         minlim = 0
+    if centralize_colorscale:
+        maxlim =  max( np.ceil(abs(maxlim)), np.ceil(abs(minlim)) )
+        minlim = -maxlim
     ax.imshow(pivotdf,             cmap=palette, vmin=minlim, vmax=maxlim, aspect='auto', )
     axx.imshow(partial_pulse_wise, cmap=palette, vmin=minlim, vmax=maxlim, )
     axy.imshow(partial_freq_wise,  cmap=palette, vmin=minlim, vmax=maxlim, origin='lower')
 
     # annotate
     if annotate:
+        partial_pulse_wise_n  = numdf.sum(axis=0).values.reshape(1,-1)
+        partial_freq_wise_n   = numdf.sum(axis=1).values.reshape(-1,1)
         # for a in [ax, axx, axy]:
         for i in range(partial_freq_wise_n.shape[0]):
             axy.text(0, i, f'{partial_freq_wise[i,0]:.2f}', ha='center', va='center', color='white', fontsize=12)
@@ -524,8 +561,9 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
     axy.yaxis.set_tick_params(labelleft   =False)
 
     # # set aspect of ax_histy2 same as axy
-    numlevels = 3
+    numlevels = 5
     cbar = fig.colorbar(ax.get_images()[0], cax=axc, )
+    cbar.set_ticks(np.linspace(minlim, maxlim, numlevels))
 
     # # remove ticks
     axx.get_xaxis().set_visible(False)
