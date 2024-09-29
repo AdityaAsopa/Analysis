@@ -581,41 +581,47 @@ def main():
 
     # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Voltage clamp plots
-    # onset delay vs pulse index across frequencies
+    # E by I ratio vs pulse index across frequencies
     ax3['E'].text(-0.1, 1.1, 'E', fontsize=16, ha='center', transform=ax3['E'].transAxes)
-    sns.pointplot(data=ebyi_df, x='stimFreq', y='EbyI', hue='numSq', hue_order=[5,15], ax=ax3['E'], palette=color_squares, dodge=0.1)
-    ax3['E'].set_ylim([0,4])
+    sns.pointplot(data=vc_delay_df, x='pulse', y='exc_onset', hue='stimFreq', ax=ax3['E'], palette=flare, errorbar='ci',)
+    ax3['E'].set_ylim([0, 15])
+    ax3['E'].legend(loc='upper right', ncols=4, fontsize='small')
     sns.despine(ax=ax3['E'], top=True, right=True, offset=10, trim=True)
-
+    
     ax3['F'].text(-0.1, 1.1, 'F', fontsize=16, ha='center', transform=ax3['F'].transAxes)
-    sns.pointplot(data=ebyi_df, x='pulse', y='EbyI', hue='stimFreq', hue_order=[20,30,40,50], ax=ax3['F'], palette=color_freq, errorbar='se', dodge=0.2)
-    ax3['F'].set_ylim([0,4])
+    sns.pointplot(data=vc_delay_df, x='pulse', y='inh_onset', hue='stimFreq', ax=ax3['F'], palette=crest, errorbar='ci',)
+    ax3['F'].set_ylim([0, 15])
+    ax3['F'].legend(loc='upper right', ncols=4, fontsize='small')
     sns.despine(ax=ax3['F'], top=True, right=True, offset=10, trim=True)
-
+    
     ax3['G'].text(-0.1, 1.1, 'G', fontsize=16, ha='center', transform=ax3['G'].transAxes)
-    sns.pointplot(data=ebyi_df, x='pulse', y='EbyI', hue='numSq', hue_order=[5,15], ax=ax3['G'], palette=color_squares, errorbar='se', dodge=0.2)
-    ax3['G'].set_ylim([0,4])
+    sns.pointplot(data=vc_delay_df, x='pulse', y='onset_delayEI', hue='stimFreq', ax=ax3['G'], palette=edge, errorbar='ci',)
+    ax3['G'].set_ylim([0, 15])
+    ax3['G'].legend(loc='upper right', ncols=4, fontsize='small')
     sns.despine(ax=ax3['G'], top=True, right=True, offset=10, trim=True)
 
     # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Voltage clamp plots
     # onset delay vs pulse index across frequencies
+    # E by I ratio vs pulse index across frequencies
     ax3['H'].text(-0.1, 1.1, 'H', fontsize=16, ha='center', transform=ax3['H'].transAxes)
-    sns.pointplot(data=vc_delay_df, x='stimFreq', y='onset_delayEI', hue='numSq', hue_order=[5,15], ax=ax3['H'], palette=color_squares, dodge=0.1)
-    ax3['H'].set_ylim([0,6])
+    sns.pointplot(data=vc_delay_df, x='pulse', y='peak_delayEI', hue='stimFreq', ax=ax3['H'], palette=edge, errorbar='ci',)
+    ax3['H'].set_ylim([-5, 10])
+    ax3['H'].legend([],[], frameon=False)
     sns.despine(ax=ax3['H'], top=True, right=True, offset=10, trim=True)
-
+    
     ax3['I'].text(-0.1, 1.1, 'I', fontsize=16, ha='center', transform=ax3['I'].transAxes)
-    ax3['I'].text(-0.1, 1.1, 'I', fontsize=16, ha='center', transform=ax3['I'].transAxes)
-    sns.pointplot(data=vc_delay_df, x='pulse', y='onset_delayEI', hue='stimFreq', hue_order=[20,30,40,50], ax=ax3['I'], palette=color_freq, errorbar='se', dodge=0.2)
-    ax3['I'].set_ylim([0,6])
+    sns.pointplot(data=cc_delay_df, x='pulse', y='peak_delay', hue='stimFreq', ax=ax3['I'], palette=edge, errorbar='ci',)
+    ax3['I'].set_ylim([0, 30])
+    ax3['I'].legend([],[], frameon=False)
     sns.despine(ax=ax3['I'], top=True, right=True, offset=10, trim=True)
-
+    
     ax3['J'].text(-0.1, 1.1, 'J', fontsize=16, ha='center', transform=ax3['J'].transAxes)
-    ax3['J'].text(-0.1, 1.1, 'J', fontsize=16, ha='center', transform=ax3['J'].transAxes)
-    sns.pointplot(data=vc_delay_df, x='pulse', y='onset_delayEI', hue='numSq', hue_order=[5,15], ax=ax3['J'], palette=color_squares, errorbar='se', dodge=0.2)
-    ax3['J'].set_ylim([0,6])
+    sns.pointplot(data=cc_delay_df, x='pulse', y='onset_delay', hue='stimFreq', ax=ax3['J'], palette=edge, errorbar='ci',)
+    ax3['J'].set_ylim([0, 15])
+    ax3['J'].legend([],[], frameon=False)
     sns.despine(ax=ax3['J'], top=True, right=True, offset=10, trim=True)
+
     # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     for a in ['A','Bi','Bii','Ci','Cii','Di','Dii','E','F','G','H','I','J']:
         ax3[a].tick_params(axis='both', which='major', labelsize=12)
