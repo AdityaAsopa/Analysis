@@ -187,7 +187,7 @@ def plot_abf_data(dataDict, label=""):
     plt.show()
 
 
-def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','FrameTTL', 'PD', 'Field'], signal_colors=['black','red','cyan','orange'], combine=False, fig=None, ax=None, signal_mapping={}):
+def plot_data_from_df(df, data_start_column = 49, plot_mean=True, signals_to_plot=['Cell','FrameTTL', 'PD', 'Field'], signal_colors=['black','red','cyan','orange'], combine=False, fig=None, ax=None, signal_mapping={}):
     '''
     plot the data from a dataframe. The dataframe should have the data in the columns and the sweeps in the rows.
     Format of signal mapping:
@@ -230,7 +230,9 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
             ax.remove()
             subfig = fig.add_subfigure(gridspec[:, 0])
         subfigs = fig.subfigures(num_plots,1)
-        
+        # ensure that subfigs is a list
+        if not isinstance(subfigs, list):
+            subfigs = [subfigs]
         axs = []
         for f in range(num_plots):
             subfig_axs = subfigs[f].subplots(1,1, sharex=True, sharey=True)
@@ -246,9 +248,9 @@ def plot_data_from_df(df, data_start_column = 49, signals_to_plot=['Cell','Frame
                 # start = data_start_column
                 trace = df.iloc[i, locs]
                 trace = utils.map_range(trace, 0, 5, 0,5)
-                axs[s].plot(time, trace, signalcolors[signal], linewidth=1, alpha=0.1)
+                axs[s].plot(time, trace, signalcolors[signal], linewidth=1, alpha=0.2)
                 axs[s].set_ylabel(signal)
-            axs[s].plot(time, df.iloc[:,    locs].mean(axis=0), color=signalcolors[signal], linewidth=1, label=signal)
+            axs[s].plot(time, df.iloc[:,    locs].mean(axis=0), color=signalcolors[signal], linewidth=1, label=signal) if plot_mean else ''
 
         axs[-1].set_xlabel('Time (s)')
 
@@ -444,8 +446,8 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
 
 def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01, patterns =[1,46,52], palette='grey', 
                                 between='clampPotential', hue='numSq', hues=[1,5,15],
-                                stim_scale=10, stim_offset=0, invert=False, filter_data=False, passband=[0.1, 1000], Fs=2e4,
-                                draw_pattern=True, grid_size=24, spots_light_on_dark=False, pattern_scale=2):    
+                                stim_scale=10, stim_offset=0.8, invert=False, filter_data=False, passband=[0.1, 1000], Fs=2e4,
+                                draw_pattern=True, draw_listed_pattern=False, grid_size=24, spots_light_on_dark=False, pattern_scale=2):    
     betweens = dfcell[between].unique()
     # print(hues, betweens)
     probe_pulse_time = dfcell.iloc[0]['probePulseStart']
@@ -453,12 +455,24 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
     t0 = int(Fs*(probe_pulse_time - pre)) 
     t1 = int(Fs*(probe_pulse_time - pre + window)) 
     tstart = [window*i+pre*i for i in range(len(hues))]
-    insets = []
+    insets = [] ###
+    squares = []
+
+    if hue == 'numSq':
+        color_squares = {1:viridis(0.2), 5:viridis(.4), 7:viridis(.6), 15:viridis(.8), 20:viridis(1.0)}
+    elif hue == 'clampPotential':
+        color_squares = {-70:flare(0.5), 0:crest(0.5)}
+    elif hue == 'patternList': # values ranging from 1 to 80
+        color_squares = {i:crest(i/80) for i in range(1, 81)}
+        squares = [len(pattern_index.patternID[i]) for i in hues]
+    
+    print(squares)
+    
     for i, hu in enumerate(hues):
         for j, bet in enumerate(betweens):
-            # print(f'plotting {hu} and {bet}')
+            print(f'plotting {hu} and {bet}')
             dfE  = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet) & (dfcell['patternList'].isin(patterns))]
-            # print(dfE.shape, dfPD.shape)
+            print(dfE.shape)
             pat = dfE['patternList'].unique()[0]
             dfslice = dfE.iloc[:, shift+t0:shift+t1].to_numpy()
             if invert:
@@ -470,21 +484,26 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
                     dfslice = utils.filter_data(dfslice, filter_type='notch', sampling_freq=2e4)
             # plot the pulse response
             time = np.linspace(tstart[i], tstart[i]+window, int(Fs*window))
-            [ax.plot(time, row , color=palette[bet][hu], alpha=0.2, linewidth=1) for row in dfslice]
+            [ax.plot(time, row , color=palette[bet][hu], alpha=0.2, linewidth=2) for row in dfslice]
             ax.plot(time, np.mean(dfslice, axis=0) , color=palette[bet][hu], alpha=1, linewidth=2)
         dfPD = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet)].iloc[0, 40000+t0:40000+t1].to_numpy()
         ax.plot(time,  stim_scale*dfPD + stim_offset, color='blue', alpha=0.8)
         if draw_pattern:
+            if hue=='patternList':
+                sq = squares[i]
+                pat = hu
+            else:
+                sq = hu
             locx, locy = tstart[i]/(3*(window+pre)), 1.0
             inset_dims = pattern_scale*0.1
             axins = ax.inset_axes([locx, locy, inset_dims,inset_dims], transform=ax.transAxes )
             insets.append(axins)
             spot_locs = pattern_index.patternID[pat]
-            sq_color = color_squares[hu]
+            sq_color = color_squares[sq]
             # make a colormap from sq_color
             Ncolors = 2
             clrlim1 = [1,1,1]
-            clrlim2 = color_squares[hu]
+            clrlim2 = color_squares[sq]
             vals = np.ones((Ncolors, 4))
             if spots_light_on_dark:
                 clrlim1, clrlim2 = clrlim2, clrlim1 
@@ -492,8 +511,10 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
             vals[:, 1] = np.linspace(clrlim1[1],clrlim2[1], Ncolors)
             vals[:, 2] = np.linspace(clrlim1[2],clrlim2[2], Ncolors)
             newcmp = ListedColormap(vals)
-            _ = plot_grid(from_pattern=False, numSq=hu, grid=[grid_size,grid_size], ax=axins, vmin=0, vmax=1, cmap=newcmp,)
-            
+            locs = pattern_index.patternID[pat]
+            print(pat, sq, locs)
+            _ = plot_grid(from_pattern=draw_listed_pattern, numSq=sq, spot_locs=locs, spot_values=[1], grid=[grid_size,grid_size], ax=axins, vmin=0, vmax=1, cmap=newcmp,)
+            # from_pattern=True, numSq=15, spot_locs=[], spot_values=[], grid=[24,24], ax=None, vmin=0, vmax=1, cmap='gray', locs_is_patternID=False, add_colorbar=False,)
             # draw a box around the inset
             axins.add_patch(plt.Rectangle((0,0), grid_size-0.5, grid_size-0.5, fill=False, edgecolor=sq_color, lw=2))
             axins.set_xlim([0,grid_size])
@@ -681,7 +702,7 @@ def plot_response_heatmaps(datadf, feature='PSC', skip1sq_heatmap=True, include_
             x_matrix = x_matrix.sort_index()
             num_trials_matrix = num_trials_matrix.sort_index()
 
-            axs = ax_to_partial_dist_heatmap_ax(x_matrix, num_trials_matrix, Fig, ax2[s,c], barw=0.03, pad=0.01, shrink=0.8, palette=heatmap_palette, annotate=annot)
+            axs = ax_to_partial_dist_heatmap_ax(x_matrix, num_trials_matrix, Fig, ax2[s,c], barw=0.03, pad=0.01, shrink=0.8, palette=heatmap_palette[clamp], annotate=annot)
             axs[0].set_title(f'{sq} Sq', y=1.2, loc='left') if heatmap_title else ''
             axs[0].text(-0.1, 1.1, figlabels[counter], transform=axs[0].transAxes, size=20, weight='bold')
             # ax2[s,c].set_title(f'Heatmap of {feature} for {numSq} Sq and {clamp} mV')

@@ -39,7 +39,7 @@ def annotate_stat_stars(ax, pval, alpha=0.05, star_loc=[0.5,0.5], add_line=True,
             ax.plot([x1, x1], [y1a, y1b], color=color, linewidth=1)
 
 
-def pairwise_annotate_violin_plot(ax, df, x='', y='', stat=wilcoxon, add_line=False, offset=0.1, color='grey', coord_system='axes', fontsize=12, add_n=False, **kwargs ):
+def pairwise_annotate_violin_plot(ax, df, x='', y='', stat=wilcoxon, add_line=False, offset=0.1, color='grey', coord_system='axes', fontsize=12, add_n=False, annotate='both', **kwargs ):
     '''
     This function annotates a violin plot with pairwise statistical significance values.
     The function assumes that the x-axis is a categorical variable and the y-axis is a continuous variable.
@@ -49,7 +49,7 @@ def pairwise_annotate_violin_plot(ax, df, x='', y='', stat=wilcoxon, add_line=Fa
     labels = ax.get_xticklabels()
     num_violins = len(labels)
     violin_locs = {int(label.get_text()):label.get_position() for label in labels}
-
+    print(violin_locs)
     counter = 0
     pvalues = {}
     nvalues = {}
@@ -59,19 +59,27 @@ def pairwise_annotate_violin_plot(ax, df, x='', y='', stat=wilcoxon, add_line=Fa
             if i < j:
                 xipos, xjpos = violin_locs[i][0], violin_locs[j][0]
                 xpos = (xipos + xjpos) / 2
-                ypos = (1.0 + counter * 0.01) * original_ylim
+                ypos = (0.9 + counter * 0.05) * original_ylim
                 counter += 1
                 sample1, sample2 = df[df[x] == i], df[df[x] == j]
                 # count nans in sample1 and sample2
                 nans1, nans2 = sample1[y].isna().sum(), sample2[y].isna().sum()
                 _, pval = stat(sample1[y], sample2[y])
-                annotate_stat_stars(ax, pval, star_loc=[xpos, ypos], add_line=True, line_locs=[xipos, xjpos, ypos, ypos], offset_btw_star_n_line=offset, color=color, coord_system=coord_system, fontsize=12, zorder=10)
+                if annotate == 'both': # annotate both significant and non-significant pvals
+                    print(sample1.shape[0], sample2.shape[0], pval, xpos, ypos, )
+                    annotate_stat_stars(ax, pval, star_loc=[xpos, ypos], add_line=True, line_locs=[xipos, xjpos, ypos, ypos], offset_btw_star_n_line=offset, color=color, coord_system=coord_system, fontsize=12, zorder=10)
+                elif annotate == 'significant': # annotate only significant pvals
+                    if pval < 0.05:
+                        annotate_stat_stars(ax, pval, star_loc=[xpos, ypos], add_line=True, line_locs=[xipos, xjpos, ypos, ypos], offset_btw_star_n_line=offset, color=color, coord_system=coord_system, fontsize=12, zorder=10)
+                elif annotate == 'non-significant': # annotate only non-significant pvals
+                    if pval >= 0.05:
+                        annotate_stat_stars(ax, pval, star_loc=[xpos, ypos], add_line=True, line_locs=[xipos, xjpos, ypos, ypos], offset_btw_star_n_line=offset, color=color, coord_system=coord_system, fontsize=12, zorder=10)
                 pvalues[(i, j)] = pval
                 n1, n2 = (len(sample1), len(sample2))
                 nvalues[(i, j)] = (n1, n2)
                 if add_n:
                     # add annotation of size of the groups
-                    ax.text(xpos, ypos, f'(n1={n1}, n2={n2})', color=color, fontsize=fontsize-2, ha='center', **kwargs)
+                    ax.text(xpos, ypos, f'(n1={n1}, n2={n2})', color=color, fontsize=fontsize-2, ha='center', coord_system=coord_system, **kwargs)
 
     return pvalues, nvalues
             
@@ -93,7 +101,7 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
         elif kind=='box':
             sns.boxplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, )
         elif kind=='point':
-            sns.pointplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, dodge=dodge, errorbar='se' )
+            sns.pointplot(data=df, x=x, y=y, hue=hue, palette=palette, ax=ax, dodge=dodge, errorbar=('ci', 95) )
         else:
             pass
 
