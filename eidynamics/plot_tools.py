@@ -447,7 +447,7 @@ def pairwise_draw_and_annotate_line_plot(ax, df, x='', y='', hue='', draw=True, 
 def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01, patterns =[1,46,52], palette='grey', 
                                 between='clampPotential', hue='numSq', hues=[1,5,15],
                                 stim_scale=10, stim_offset=0.8, invert=False, filter_data=False, passband=[0.1, 1000], Fs=2e4,
-                                draw_pattern=True, draw_listed_pattern=False, grid_size=24, spots_light_on_dark=False, pattern_scale=2):    
+                                draw_pattern=True, draw_listed_pattern=False, grid_size=24, spots_light_on_dark=False, pattern_scale=2, skip_nodata=True):    
     betweens = dfcell[between].unique()
     # print(hues, betweens)
     probe_pulse_time = dfcell.iloc[0]['probePulseStart']
@@ -473,6 +473,9 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
             print(f'plotting {hu} and {bet}')
             dfE  = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet) & (dfcell['patternList'].isin(patterns))]
             print(dfE.shape)
+            if skip_nodata and dfE.shape[0]==0:
+                print('skipping hue:', hu, 'between:', bet)
+                continue
             pat = dfE['patternList'].unique()[0]
             dfslice = dfE.iloc[:, shift+t0:shift+t1].to_numpy()
             if invert:
@@ -484,9 +487,15 @@ def draw_pulse_response_snippets(dfcell, ax, signal='cell',window=0.15, pre=0.01
                     dfslice = utils.filter_data(dfslice, filter_type='notch', sampling_freq=2e4)
             # plot the pulse response
             time = np.linspace(tstart[i], tstart[i]+window, int(Fs*window))
-            [ax.plot(time, row , color=palette[bet][hu], alpha=0.2, linewidth=2) for row in dfslice]
-            ax.plot(time, np.mean(dfslice, axis=0) , color=palette[bet][hu], alpha=1, linewidth=2)
-        dfPD = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet)].iloc[0, 40000+t0:40000+t1].to_numpy()
+            # linewidth small if many traces
+            lw = 1#0.5 if dfslice.shape[0]>20 else 1
+            [ax.plot(time, row , color=palette[bet][hu], alpha=0.2, linewidth=lw) for row in dfslice]
+            ax.plot(time, np.mean(dfslice, axis=0) , color=palette[bet][hu], alpha=1, linewidth=2*lw)
+        dfx = dfcell[(dfcell[hue]==hu) & (dfcell[between]==bet)]
+        if skip_nodata and dfx.shape[0]==0:
+            print('skipping hue:', hu, 'between:', bet)
+            continue
+        dfPD = dfx.iloc[0, 40000+t0:40000+t1].to_numpy()
         ax.plot(time,  stim_scale*dfPD + stim_offset, color='blue', alpha=0.8)
         if draw_pattern:
             if hue=='patternList':
@@ -534,7 +543,7 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
     ax =  fig.add_axes([x0, y0, shrink*w, shrink*h])
     axx = fig.add_axes([x0, y0+shrink*h+pad, shrink*w, barw], aspect='auto')
     axy = fig.add_axes([x0+shrink*w+pad, y0, barw, shrink*h], aspect='auto')
-    axc = fig.add_axes([x0+shrink*w+barw+2*pad, y0, barw, shrink*h], aspect='auto')
+    axc = fig.add_axes([x0+shrink*w+barw+3*pad, y0, barw, shrink*h], aspect='auto')
 
     partial_pulse_wise  = pivotdf.mean(axis=0).values.reshape(1,-1)
     partial_freq_wise   = pivotdf.mean(axis=1).values.reshape(-1,1)
@@ -565,11 +574,11 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
                     axx.text(j-0.2, 0-0.2, f'{partial_pulse_wise_n[0,j]:.0f}', ha='center', va='center', color='yellow', fontsize=10)
 
 
-    ax.set_xticks(np.arange(9), labels=np.arange(9))
+    ax.set_xticks(np.arange(9), labels=np.arange(9), fontsize=16)
     ax.set_ylim([-0.5,3.5])
-    ax.set_yticks([0,1,2,3], labels=[20,30,40,50])
-    ax.set_xlabel('Pulse Index',    fontdict={'fontsize':12})
-    ax.set_ylabel('Frequency (Hz)', fontdict={'fontsize':12})
+    ax.set_yticks([0,1,2,3], labels=[20,30,40,50], fontsize=16)
+    ax.set_xlabel('Pulse Index',    fontdict={'fontsize':16})
+    ax.set_ylabel('Frequency (Hz)', fontdict={'fontsize':16})
     # remove ticks but keep tick labels from axis ax
     # remove spines
     ax.spines['bottom'].set_visible(False)
@@ -584,7 +593,7 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
     # # set aspect of ax_histy2 same as axy
     numlevels = 5
     cbar = fig.colorbar(ax.get_images()[0], cax=axc, )
-    cbar.set_ticks(np.linspace(minlim, maxlim, numlevels))
+    cbar.set_ticks(np.round(np.linspace(minlim, maxlim, numlevels), 2))
 
     # # remove ticks
     axx.get_xaxis().set_visible(False)
@@ -600,7 +609,7 @@ def ax_to_partial_dist_heatmap_ax(pivotdf, numdf, fig, ax, barw=0.03, pad=0.01, 
         ax_.spines['top'].set_visible(False)
         for item in ([ax_.title, ax_.xaxis.label, ax_.yaxis.label] +
                     ax_.get_xticklabels() + ax_.get_yticklabels()):
-            item.set_fontsize(12)
+            item.set_fontsize(16)
     axx.set_aspect('auto')
     axy.set_aspect('auto')
 
@@ -702,8 +711,8 @@ def plot_response_heatmaps(datadf, feature='PSC', skip1sq_heatmap=True, include_
             x_matrix = x_matrix.sort_index()
             num_trials_matrix = num_trials_matrix.sort_index()
 
-            axs = ax_to_partial_dist_heatmap_ax(x_matrix, num_trials_matrix, Fig, ax2[s,c], barw=0.03, pad=0.01, shrink=0.8, palette=heatmap_palette[clamp], annotate=annot)
-            axs[0].set_title(f'{sq} Sq', y=1.2, loc='left') if heatmap_title else ''
+            axs = ax_to_partial_dist_heatmap_ax(x_matrix, num_trials_matrix, Fig, ax2[s,c], barw=0.05, pad=0.02, shrink=0.8, palette=heatmap_palette[clamp], annotate=annot)#default: barw=0.03, pad=0.01, shrink=0.8,
+            axs[0].set_title(f'{sq} Sq', y=1.25, loc='left', fontsize=20) if heatmap_title else ''
             axs[0].text(-0.1, 1.1, figlabels[counter], transform=axs[0].transAxes, size=20, weight='bold')
             # ax2[s,c].set_title(f'Heatmap of {feature} for {numSq} Sq and {clamp} mV')
             
