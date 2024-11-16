@@ -1,12 +1,11 @@
 # Short-term dynamics of Excitation-Inhibition Balance in Hippocampal CA3-CA1 circuit
 # Aditya Asopa, Upinder Singh Bhalla, NCBS
-# Figure 2
-# September 2024
+# Publication: https://www.biorxiv.org/content/10.1101/2024.10.30.621034v1
 # Imports -----------------------------------------------------------------------------------------------
 from   pathlib      import Path
 import importlib
 
-import numpy                as np
+import numpy                as np 
 import matplotlib           as mpl
 import matplotlib.pyplot    as plt
 import seaborn              as sns
@@ -15,6 +14,7 @@ import pandas               as pd
 from scipy.stats   import kruskal, wilcoxon, mannwhitneyu, ranksums
 from scipy.optimize import curve_fit
 import statsmodels.api as sm
+from statsmodels.formula.api import ols
 from statsmodels.multivariate.manova import MANOVA
 import statsmodels.formula.api as smf
 
@@ -32,7 +32,8 @@ import stat_annotate
 # sns.set_context('paper')
 # sns.set_context('paper')
 plt.rcParams['font.family'] = 'Arial'
-plt.rcParams['font.size'] = 12
+plt.rcParams['font.size'] = 16
+mpl.rcParams['lines.linewidth'] = 2
 plt.rcParams['svg.fonttype'] = 'none'
 
 # make a colour map viridis
@@ -55,11 +56,16 @@ freq_sweep_pulses = np.arange(9)
 
 # Load data -----------------------------------------------------------------------------------------------
 figure_raw_material_location = Path(r"paper_figure_matter\\")
-paper_figure_export_location = Path(r"paper_figures\\Figure2v4\\")
+paper_figure_export_location = Path(r"paper_figures\\")
 data_path_FS                 = Path(r"parsed_data\\FreqSweep\\")
 data_path_grid               = Path(r"parsed_data\\Grid\\")
 data_path_analysed           = Path(r"parsed_data\\second_order\\")
-raw_data_path_cellwise       = Path(r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Data\Screened_cells\\")
+raw_data_path_cellwise       = Path(r"..\Data\Screened_cells\\")
+
+VC_FS_shortdf_withkernelfit_datapath = data_path_FS / "all_cells_FreqSweep_VC_kernelfit_response_measurements.h5"
+vc_FS_shortdf = pd.read_hdf(r"parsed_data\FreqSweep\all_cells_FreqSweep_VC_short.h5", key='data')
+cc_FS_shortdf = pd.read_hdf(r"parsed_data\FreqSweep\all_cells_FreqSweep_CC_short.h5", key='data')
+print(vc_FS_shortdf.shape, cc_FS_shortdf.shape)
 
 # September 2024
 # short data path that contains the kernel fit data for FreqSweep protocol, also contains the field p2p data. latest and checked. Use this for all freqsweep measurements.
@@ -80,12 +86,11 @@ dfshortpath     = data_path_analysed / "all_cells_allprotocols_with_fpr_values.h
 xc_all_shortdf  = pd.read_hdf(dfshortpath, key='data')
 print(xc_all_shortdf.shape)
 
-# Load the long dataset
-# only voltage clamp is needed for Fig2
+# the long dataset (don't load yet)
 cc_FS_datapath =  data_path_FS / "all_cells_FreqSweep_CC_long.h5" 
 vc_FS_datapath =  data_path_FS / "all_cells_FreqSweep_VC_long.h5"
 
-# screening
+# -----------screening---------------------------------------
 # CC data screening based on dataflag_fields
 cc_FS_shortdf_slice = cc_FS_shortdf[
             (cc_FS_shortdf['location'] == 'CA1') &
@@ -108,7 +113,12 @@ print(f"Unique cells in screened data: { cc_FS_shortdf_slice['cellID'].nunique()
 print(f"Unique sweeps in screened data: {cc_FS_shortdf_slice['trialID'].nunique()}")
 
 # save trial IDs as a numpy array text file, all trialID are strings
-np.savetxt(data_path_FS / "Figure2_screened_trialIDs_CC_FS.txt", screened_cc_trialIDs, fmt='%s')
+np.savetxt(paper_figure_export_location / "Figure2_screened_trialIDs_CC_FS.txt", screened_cc_trialIDs, fmt='%s')
+'''expected
+(4971, 163) --screened--> (2201, 163)
+Unique cells in screened data: 16
+Unique sweeps in screened data: 2201
+'''
 
 # VC data screening based on dataflag_fields
 vc_FS_shortdf_slice = vc_FS_shortdf[
@@ -133,7 +143,12 @@ print(f"Unique sweeps in screened data: {vc_FS_shortdf_slice['trialID'].nunique(
 
 # save the screened trialIDs
 # save trial IDs as a numpy array text file, all trialID are strings
-np.savetxt(data_path_FS / "Figure2_screened_trialIDs_VC_FS.txt", screened_vc_trialIDs, fmt='%s')
+np.savetxt(paper_figure_export_location / "Figure2_screened_trialIDs_VC_FS.txt", screened_vc_trialIDs, fmt='%s')
+'''expected
+(4407, 163) --screened--> (928, 163)
+Unique cells in screened data: 6
+Unique sweeps in screened data: 928
+'''
 
 # combine short dataframes slice and delete the original ones
 xc_FS_shortdf_slice = pd.concat([cc_FS_shortdf_slice, vc_FS_shortdf_slice], axis=0)
@@ -141,13 +156,13 @@ del cc_FS_shortdf, vc_FS_shortdf
 del cc_FS_shortdf_slice, vc_FS_shortdf_slice
 
 ### Load the Longform data and keep the screened trials only to save space
-# load the data, only voltage clamp long form data is required
-# cc_FS_datapath =  data_path_FS / "all_cells_FreqSweep_CC_long.h5"
-# cc_FS_longdf = pd.read_hdf(cc_FS_datapath, key='data')
+# load the data
+cc_FS_datapath =  data_path_FS / "all_cells_FreqSweep_CC_long.h5"
+cc_FS_longdf = pd.read_hdf(cc_FS_datapath, key='data')
 
-# cc_FS_longdf_slice = cc_FS_longdf[ cc_FS_longdf['trialID'].isin(screened_cc_trialIDs) ]
-# print('CC: ', cc_FS_longdf.shape, '--screened-->', cc_FS_longdf_slice.shape)
-# del cc_FS_longdf
+cc_FS_longdf_slice = cc_FS_longdf[ cc_FS_longdf['trialID'].isin(screened_cc_trialIDs) ]
+print('CC: ', cc_FS_longdf.shape, '--screened-->', cc_FS_longdf_slice.shape)
+del cc_FS_longdf
 
 # load the data
 vc_FS_datapath =  data_path_FS / "all_cells_FreqSweep_VC_long.h5"
@@ -157,12 +172,12 @@ vc_FS_longdf_slice = vc_FS_longdf[ vc_FS_longdf['trialID'].isin(screened_vc_tria
 print('VC: ', vc_FS_longdf.shape, '--screened-->', vc_FS_longdf_slice.shape)
 del vc_FS_longdf
 
-# xc_FS_longdf_slice = pd.concat([cc_FS_longdf_slice, vc_FS_longdf_slice])
-# del cc_FS_longdf_slice, vc_FS_longdf_slice
+xc_FS_longdf_slice = pd.concat([cc_FS_longdf_slice, vc_FS_longdf_slice])
+del cc_FS_longdf_slice, vc_FS_longdf_slice
 
 def main():
     # Setup the figure
-    w,h = 21, 29.7   
+    w,h = 15,25   
     fig = plt.figure(layout='constrained', figsize=(w,h))
 
     [Fig2Top, Fig2Mid, Fig2Bottom] = fig.subfigures(3,1, wspace=0.03, hspace=0.02, height_ratios=[2, 1, 2])
@@ -182,18 +197,57 @@ def main():
     # subfigsA_pos = subfigsA.get_position()
     ## -----------------------------------------------------------------------------------------------
     # Fig2A: CC heatmap of normPSC
-    importlib.reload(plot_tools)
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='CC')]
-    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['AP']==0], feature='normPSC_', Fig=subfigsA, figlabels=['Ai','Aii'], clampMode='CC', annot=False)
+    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['AP']==0], feature='normPSC_', Fig=subfigsA, figlabels=['Ai','Aii'], clampMode='CC', heatmap_palette={-70:'viridis'}, annot=False)
+    a[0][-1].set_label('Normalized PSP', rotation=90, labelpad=10)
+    a[1][-1].set_label('Normalized PSP', rotation=90, labelpad=10)
+    # Load the data for stat
+    to_plot = [f'normPSC_{i}' for i in freq_sweep_pulses]
+    df_melt = pd.melt( dftemp, id_vars=['cellID','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
+    df_melt['pulse'] = df_melt.apply(lambda x: x['pulseIndex'][-1], axis=1)
+    df_melt['pulse'] = df_melt['pulse'].astype(int)
+    df_melt['numSq'] = df_melt['numSq'].astype(int)
+    df_melt['stimFreq'] = df_melt['stimFreq'].astype(int)
 
+    # convert patternList to integer
+    df_melt['patternList'] = df_melt['patternList'].apply(lambda x: int(x))
+    # drop pulseIndex column
+    df_melt.drop(columns=['pulseIndex'], inplace=True)
+    print(f'## Unique values of: numSq: {df_melt["numSq"].nunique()}, stimFreq: {df_melt["stimFreq"].nunique()}, patterns: {df_melt["patternList"].nunique()}, pulses: {df_melt["pulse"].nunique()}')
+    model = ols('peak_response ~ C(cellID) + numSq + pulse + stimFreq ', data=df_melt).fit()
+    # Perform ANOVA
+    anova_table = sm.stats.anova_lm(model, typ=2)
+    print('\n## Stat test on normalized PSP response', '\n',anova_table)
+
+    ## -----------------------------------------------------------------------------------------------
     # spike likelihood heatmap
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='CC')]
     dftemp['numspikes'] = dftemp[[f'spike_{i}' for i in range(9)]].sum(axis=1)
     dftemp= dftemp[(dftemp['AP']==1) ]
-    f,a = plot_tools.plot_response_heatmaps(dftemp, feature='spike_', Fig=subfigsB, figlabels=['Bi','Bii'], clampMode='CC', annot=False, )
+    f,a = plot_tools.plot_response_heatmaps(dftemp, feature='spike_', Fig=subfigsB, figlabels=['Bi','Bii'], clampMode='CC', heatmap_palette={-70:'viridis'}, annot=False, )
+    a[0][-1].set_label('P(spike)', rotation=90, labelpad=10)
+    a[1][-1].set_label('P(spike)', rotation=90, labelpad=10)
+    # Load the data
+    to_plot = [f'spike_{i}' for i in freq_sweep_pulses]
+    df_melt = pd.melt( dftemp, id_vars=['cellID','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
+    df_melt['pulse'] = df_melt.apply(lambda x: x['pulseIndex'][-1], axis=1)
+    df_melt['pulse'] = df_melt['pulse'].astype(int)
+    df_melt['numSq'] = df_melt['numSq'].astype(int)
+    df_melt['stimFreq'] = df_melt['stimFreq'].astype(int)
+    # convert patternList to integer
+    df_melt['patternList'] = df_melt['patternList'].apply(lambda x: int(x))
+    print(f'## Unique values of: numSq: {df_melt["numSq"].nunique()}, stimFreq: {df_melt["stimFreq"].nunique()}, patterns: {df_melt["patternList"].nunique()}, pulses: {df_melt["pulse"].nunique()}')
+    # drop pulseIndex column
+    df_melt.drop(columns=['pulseIndex'], inplace=True)
+    model = ols('peak_response ~ C(cellID) + numSq + pulse + stimFreq ', data=df_melt).fit()
+
+    # Perform ANOVA
+    anova_table = sm.stats.anova_lm(model, typ=2)
+    print('\n## Stat test on Spike Likelihood', '\n', anova_table)
 
     ## -----------------------------------------------------------------------------------------------
     # Fig2C: Upi's fitting of the kernel for both E and I
+    ax2C.text(-0.1, 1.1, 'C', transform=ax2C.transAxes, fontsize=20, fontweight='bold', va='top', ha='right')
     cell = 7492
     pattern = 52
     trial = 0 # or 1
@@ -204,7 +258,7 @@ def main():
     _,_, npv_exc, _ = exc_results = plotFig2.deconv(row[49:80049], row['stimFreq'], row['probePulseStart'], row['pulseTrainStart'], None, noprobepulse=(row['probePulseStart']==0.5))
     valley_times = npv_exc[0]
     peak_times = npv_exc[3]
-    ax2C.plot(np.linspace(0,1,20000), row[49:20049], color='#e46d5dff', label='PSC Inh')
+    ax2C.plot(np.linspace(0,1,20000), row[49:20049], color='#e46d5dff', label='PSC Exc')
     ax2C.plot(npv_exc[0], npv_exc[1], color='#ecab7d9d', marker=".", linewidth=2, label='peak exc')
     ax2C.plot(npv_exc[2], npv_exc[3], color='#c23f69bf', marker="*", linewidth=2, label='valley exc')
 
@@ -214,7 +268,7 @@ def main():
     peak_times = npv_inh[3]
     ax2C.plot(np.linspace(0,1,20000), row[49:20049], color='#2f818dff', label='PSC Inh')
     ax2C.plot(npv_inh[0], npv_inh[1], color='#9dca929a', marker="^", linewidth=2, label='peak inh')
-    ax2C.plot(npv_inh[2], npv_inh[3], color='#2c3071b3', marker="s", linewidth=2, label='peak inh')
+    ax2C.plot(npv_inh[2], npv_inh[3], color='#2c3071b3', marker="s", linewidth=2, label='valley inh')
 
     #cosmetics
     ax2C.set_xlabel('Time (s)')
@@ -228,6 +282,7 @@ def main():
 
     ## -----------------------------------------------------------------------------------------------
     # Fig2D: E and I kernel fits
+    ax2D.text(-0.1, 1.1, 'D', transform=ax2D.transAxes, fontsize=20, fontweight='bold', va='top', ha='right')
     ax2D.plot(range(9), exc_results[0], linewidth=2, color='#e46d5dff', label='Exc')
     ax2D.plot(range(9), inh_results[0], linewidth=2, color='#2f818dff', label='Inh')
     #cosmetics
@@ -245,8 +300,33 @@ def main():
     # Fig2E: VC heatmap of normPSC
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
     f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==-70], feature='normPSC_', Fig=subfigsE1, figlabels=['Ei','Eii'], clampMode='VC', annot=False)
+    a[0][-1].set_label('Normalized EPSC', rotation=90, labelpad=10)
+    a[1][-1].set_label('Normalized EPSC', rotation=90, labelpad=10)
+
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
     f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==0], feature='normPSC_', Fig=subfigsE2, figlabels=['Eiii', 'Eiv'], clampMode='VC', annot=False)
+    a[0][-1].set_label('Normalized IPSC', rotation=90, labelpad=10)
+    a[1][-1].set_label('Normalized IPSC', rotation=90, labelpad=10)
+
+    dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
+    to_plot = [f'normPSC_{i}' for i in freq_sweep_pulses]
+    df_melt = pd.melt( dftemp, id_vars=['cellID','clampPotential','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
+    df_melt['pulse'] = df_melt.apply(lambda x: x['pulseIndex'][-1], axis=1)
+    df_melt['pulse'] = df_melt['pulse'].astype(int)
+    df_melt['numSq'] = df_melt['numSq'].astype(int)
+    df_melt['stimFreq'] = df_melt['stimFreq'].astype(int)
+    df_melt['clampPotential'] = df_melt['clampPotential'].astype(int)
+
+    # convert patternList to integer
+    df_melt['patternList'] = df_melt['patternList'].apply(lambda x: int(x))
+    # drop pulseIndex column
+    df_melt.drop(columns=['pulseIndex'], inplace=True)
+
+    print(f'## Unique values of: numSq: {df_melt["numSq"].nunique()}, stimFreq: {df_melt["stimFreq"].nunique()}, patterns: {df_melt["patternList"].nunique()}, pulses: {df_melt["pulse"].nunique()}')
+    model = ols('peak_response ~ C(cellID) + C(clampPotential) + numSq + pulse + stimFreq ', data=df_melt).fit()
+    # Perform ANOVA
+    anova_table = sm.stats.anova_lm(model, typ=2)
+    print('\n## Stat test on normalized PSC response', '\n', anova_table)
 
     ## -----------------------------------------------------------------------------------------------
     # save fig
@@ -254,5 +334,93 @@ def main():
     fig.savefig(paper_figure_export_location / f"{figname}.svg", format='svg', dpi=300)
     fig.savefig(paper_figure_export_location / f"{figname}.png", format='png', dpi=300)
 
+def stats():
+    print('## ANOVA for PSC response')
+    dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
+    print(dftemp.shape)
+    to_plot = [f'normPSC_{i}' for i in freq_sweep_pulses]
+    df_melt = pd.melt( dftemp, id_vars=['cellID','clampPotential','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
+    df_melt['pulse'] = df_melt.apply(lambda x: x['pulseIndex'][-1], axis=1)
+    df_melt['pulse'] = df_melt['pulse'].astype(int)
+    df_melt['numSq'] = df_melt['numSq'].astype(int)
+    df_melt['stimFreq'] = df_melt['stimFreq'].astype(int)
+    df_melt['clampPotential'] = df_melt['clampPotential'].astype(int)
+    # clampPotential =0 if 0, 1 if -70
+    # df_melt['clampPotential'] = df_melt['clampPotential'].apply(lambda x: 1 if x==-70 else 0)
+
+    # convert patternList to integer
+    df_melt['patternList'] = df_melt['patternList'].apply(lambda x: int(x))
+    # drop pulseIndex column
+    df_melt.drop(columns=['pulseIndex'], inplace=True)
+
+    model = ols('peak_response ~ C(cellID) + C(clampPotential) + numSq + pulse + stimFreq ', data=df_melt).fit()
+    print(model.summary())
+    # Perform ANOVA
+    anova_table = sm.stats.anova_lm(model, typ=2)
+    print('Stat test on normalized PSC response', '\n',anova_table)
+
+    print('### ANOVA between early pulses and late pulses in the train')
+    # phase 0 if pulse is less than 5 else phase is 1
+    df_melt['phase'] = df_melt['pulse'].apply(lambda x: 0 if x < 5 else 1)
+    model2 = ols('peak_response ~ C(cellID) + numSq + pulse + stimFreq ', data=df_melt).fit()
+
+    # Perform ANOVA
+    anova_table2 = sm.stats.anova_lm(model2, typ=2)
+    print(anova_table2)
+
+    dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='CC')]
+    dftemp['numspikes'] = dftemp[[f'spike_{i}' for i in range(9)]].sum(axis=1)
+    dftemp= dftemp[(dftemp['AP']==1) ]
+
+    print('### significance across frequencies')
+    # kruskal test across freqs
+    kruskal_stat, pval = kruskal(*[df_melt[df_melt['stimFreq']==i]['peak_response'] for i in [20,30,40,50]])
+    print(kruskal_stat, pval)
+
+    print('### significance across numSq')
+    # kruskal test across numSq
+    kruskal_stat, pval = kruskal(*[df_melt[df_melt['numSq']==i]['peak_response'] for i in [5,15]])
+    print(kruskal_stat, pval)
+
+    print('## ANOVA for spike likelihood')
+    # y value is 'AP' 
+    to_plot = [f'spike_{i}' for i in freq_sweep_pulses]
+    df_melt = pd.melt( dftemp, id_vars=['cellID','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
+    df_melt['pulse'] = df_melt.apply(lambda x: x['pulseIndex'][-1], axis=1)
+    df_melt['pulse'] = df_melt['pulse'].astype(int)
+    df_melt['numSq'] = df_melt['numSq'].astype(int)
+    df_melt['stimFreq'] = df_melt['stimFreq'].astype(int)
+
+    # convert patternList to integer
+    df_melt['patternList'] = df_melt['patternList'].apply(lambda x: int(x))
+    # drop pulseIndex column
+    df_melt.drop(columns=['pulseIndex'], inplace=True)
+
+    # model
+    model_spike = ols('peak_response ~ C(cellID) + numSq + pulse + stimFreq ', data=df_melt).fit()
+    # Perform ANOVA
+    anova_table_spike = sm.stats.anova_lm(model_spike, typ=2)
+    print(anova_table_spike)
+
+    print('### ANOVA between early pulses and late pulses in the train')
+    # pool data across pulses as phase and check again
+    df_melt['phase'] = df_melt['pulse'].apply(lambda x: 0 if x < 5 else 1)
+    model_spike2 = ols('peak_response ~ C(cellID) + numSq + phase + stimFreq ', data=df_melt).fit()
+
+    # Perform ANOVA
+    anova_table_spike2 = sm.stats.anova_lm(model_spike2, typ=2)
+    print(anova_table_spike2)
+
+    print('### significance across frequencies')
+    # kruskal test across freqs
+    kruskal_stat, pval = kruskal(*[df_melt[df_melt['stimFreq']==i]['peak_response'] for i in [20,30,40,50]])
+    print(kruskal_stat, pval)
+
+    print('### significance across numSq')
+    # kruskal test across numSq
+    kruskal_stat, pval = kruskal(*[df_melt[df_melt['numSq']==i]['peak_response'] for i in [5,15]])
+    print(kruskal_stat, pval)
+
 if __name__ == "__main__":
     main()
+    stats()

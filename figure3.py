@@ -21,6 +21,10 @@ import all_cells
 rollvar_baseline = utils.mean_at_least_rolling_variance
 
 sns.set_context('paper')
+mpl.rcParams['font.family'] = 'Arial'
+mpl.rcParams['font.size'] = 16
+mpl.rcParams['svg.fonttype'] = 'none'
+mpl.rcParams['lines.linewidth'] = 2
 
 # make a colour map viridis
 viridis = mpl.colormaps["viridis"]
@@ -41,12 +45,118 @@ freq_sweep_pulses = np.arange(9)
 
 # Load the data
 figure_raw_material_location = Path(r"paper_figure_matter\\")
-paper_figure_export_location = Path(r"paper_figures\\Figure3v4\\")
+paper_figure_export_location = Path(r"paper_figures\\")
 data_path_FS                 = Path(r"parsed_data\\FreqSweep\\")
 data_path_LTM                 = Path(r"parsed_data\\LTMRand\\")
 data_path_grid               = Path(r"parsed_data\\Grid\\")
 data_path_analysed           = Path(r"parsed_data\\second_order\\")
 raw_data_path_cellwise       = Path(r"C:\Users\adity\OneDrive\NCBS\Lab\Projects\EI_Dynamics\Data\Screened_cells\\")
+
+def sdnfunc(expected, gamma):
+    return gamma * expected / (gamma + expected)
+
+def nosdn(expected, m):
+    return m * expected
+
+figure_raw_material_location = Path(r"paper_figure_matter\\")
+paper_figure_export_location = Path(r"paper_figures\\Figure3v4\\")
+data_path_FS                 = Path(r"parsed_data\\FreqSweep\\")
+data_path_LTM                 = Path(r"parsed_data\\LTMRand\\")
+data_path_grid               = Path(r"parsed_data\\Grid\\")
+data_path_analysed           = Path(r"parsed_data\\second_order\\")
+raw_data_path_cellwise       = Path(r"..\Data\Screened_cells\\")
+
+### Load the CC data and screen
+# Update September 2024
+# September 2024
+# short data path that contains the kernel fit data for FreqSweep protocol, also contains the field p2p data. latest and checked. Use this for all freqsweep measurements.
+# Contains screening parameters also.
+# 18Sep24
+CC_FS_shortdf_withkernelfit_datapath = data_path_FS / "all_cells_FreqSweep_CC_kernelfit_response_measurements.h5"
+cc_FS_shortdf = pd.read_hdf(CC_FS_shortdf_withkernelfit_datapath, key='data')
+print(cc_FS_shortdf.shape)
+
+CC_LTM_shortdf_withkernelfit_datapath = data_path_LTM / "all_cells_LTM_CC_kernelfit_response_measurements_noNANs.h5"
+cc_LTM_shortdf = pd.read_hdf(CC_LTM_shortdf_withkernelfit_datapath, key='data')
+print(cc_LTM_shortdf.shape)
+
+cc_FS_LTM_shortdf = pd.concat([cc_FS_shortdf, cc_LTM_shortdf], axis=0, ignore_index=True)
+# reset index
+cc_FS_LTM_shortdf.reset_index(drop=True, inplace=True)
+
+# Data screening
+# CC data screening based on dataflag_fields: protocol freqsweep
+cc_FS_LTM_shortdf_slice = cc_FS_LTM_shortdf[
+                                            (cc_FS_LTM_shortdf['location'] == 'CA1') &
+                                            (cc_FS_LTM_shortdf['numSq'].isin([1,5,7,15])) &
+                                            (cc_FS_LTM_shortdf['stimFreq'].isin([20,30,40,50])) &
+                                            (cc_FS_LTM_shortdf['condition'] == 'Control') &
+                                            (cc_FS_LTM_shortdf['ch0_response']==1) &
+                                            (cc_FS_LTM_shortdf['IR'] >50) & (cc_FS_LTM_shortdf['IR'] < 400) &
+                                            (cc_FS_LTM_shortdf['tau'] < 40) & 
+                                            # (cc_FS_LTM_shortdf['probePulseStart']==0.2) &
+                                            # (cc_FS_LTM_shortdf['intensity']==100) &
+                                            # (cc_FS_LTM_shortdf['pulseWidth']==2) &
+                                            (cc_FS_LTM_shortdf['spike_in_baseline_period'] == 0) &
+                                            (cc_FS_LTM_shortdf['ac_noise_power_in_ch0'] < 40)
+                                            ]
+print(cc_FS_LTM_shortdf.shape, '--screened-->', cc_FS_LTM_shortdf_slice.shape)
+screened_cc_trialIDs = cc_FS_LTM_shortdf_slice['trialID'].unique()
+
+# save trial IDs as a numpy array text file, all trialID are strings
+np.savetxt(paper_figure_export_location / "Figure3_screened_trialIDs_CC_FS_LTM.txt", screened_cc_trialIDs, fmt='%s')
+
+cc_FS_LTM_shortdf_slice['patternList'] = cc_FS_LTM_shortdf_slice['patternList'].astype('int32')
+patternIDs = np.sort( cc_FS_LTM_shortdf_slice[cc_FS_LTM_shortdf_slice['numSq'] != 1]['patternList'].unique() )
+
+print(f"Unique cells in screened data: { cc_FS_LTM_shortdf_slice['cellID'].nunique()}")
+print(f"Unique sweeps in screened data: {cc_FS_LTM_shortdf_slice['trialID'].nunique()}")
+
+# # take list stored in "peaks_field_norm" column and make it into new columns
+cc_FS_LTM_shortdf_slice = utils.expand_list_column(cc_FS_LTM_shortdf_slice, 'peaks_field_norm', 'pfn_')
+
+VC_FS_shortdf_withkernelfit_datapath = data_path_FS / "all_cells_FreqSweep_VC_kernelfit_response_measurements.h5"
+vc_FS_shortdf = pd.read_hdf(VC_FS_shortdf_withkernelfit_datapath, key='data')
+print(vc_FS_shortdf.shape)
+
+# save df
+vc_FS_shortdf.to_hdf(VC_FS_shortdf_withkernelfit_datapath, key='data', mode='w')
+# VC data screening
+# VC data screening based on dataflag_fields
+vc_FS_shortdf_slice = vc_FS_shortdf[
+            (vc_FS_shortdf['location'] == 'CA1') &
+            (vc_FS_shortdf['numSq'].isin([1,5,15])) &
+            (vc_FS_shortdf['stimFreq'].isin([20,30,40,50])) &
+            (vc_FS_shortdf['condition'] == 'Control') &
+            (vc_FS_shortdf['ch0_response']==1) &
+            # (vc_FS_shortdf['intensity'] == 100) &
+            # (vc_FS_shortdf['pulseWidth'] == 2) &
+            # (vc_FS_shortdf['probePulseStart']==0.2) &
+            (vc_FS_shortdf['IR'] >40) & (vc_FS_shortdf['IR'] < 400) &
+            (vc_FS_shortdf['tau'] < 40) & 
+            (vc_FS_shortdf['ac_noise_power_in_ch0'] < 40)&
+            (vc_FS_shortdf['valley_0'].notnull())
+        ]
+print(vc_FS_shortdf.shape, '--screened-->', vc_FS_shortdf_slice.shape)
+screened_vc_trialIDs = vc_FS_shortdf_slice['trialID'].unique()
+np.savetxt(paper_figure_export_location / "Figure3_screened_trialIDs_VC_FS.txt", screened_vc_trialIDs, fmt='%s')
+
+print(f"Unique cells in screened data: { vc_FS_shortdf_slice['cellID'].nunique()}")
+print(f"Unique sweeps in screened data: {vc_FS_shortdf_slice['trialID'].nunique()}")
+
+# take list stored in "peaks_field_norm" column and make it into new columns
+# vc_FS_shortdf_slice = utils.expand_list_column(vc_FS_shortdf_slice, 'pulseTimes', 'stimOnset_')
+
+print('## Loading SDN and fit data')
+sdn_df = pd.read_hdf(paper_figure_export_location / "Figure3_sdn_data_FS_LTM.h5", key='data')
+print(sdn_df.shape)
+
+fitdf = pd.read_hdf(paper_figure_export_location / "Figure3_gamma_and_slope_fits_FS_LTM.h5", key='data')
+print(fitdf.shape)
+
+cc_delay_df = pd.read_hdf(paper_figure_export_location / "Figure3_delay_df_CC_FS.h5", key='data')
+vc_delay_df = pd.read_hdf(paper_figure_export_location / "Figure3_delay_df_VC_FS.h5", key='data')
+ebyi_df     = pd.read_hdf(    paper_figure_export_location / "Figure3_ebyi_df_VC_FS.h5" , key='data')
 
 
 def calculate_expected_response(celldf, pulse_index, freq, patternID,):
@@ -100,12 +210,6 @@ def calculate_expected_response(celldf, pulse_index, freq, patternID,):
     
     return numSq, freq, patternID, pulse_index, field_data, observed_response_cell, observed_response_scaled, expected_response
 
-def sdnfunc(observed, gamma):
-    return gamma * observed / (gamma + observed)
-
-def nosdn(observed, m):
-    return m * observed
-
 def sdn_fits(xdata, ydata, f,s,t):
     # # if xdata and ydata lenghts are not same, 
     if len(xdata) != len(ydata):
@@ -135,12 +239,12 @@ def sdn_fits(xdata, ydata, f,s,t):
     result_linear = model_linear.fit(ydata, params_linear, observed=xdata, method='cobyla')
 
     # Extract the fitted parameters
-    fitted_gamma = result.best_values['gamma']
-    fitted_slope = result_linear.best_values['m']
+    fitted_gamma = np.round( result.best_values['gamma'], 3)
+    fitted_slope = np.round( result_linear.best_values['m'], 3)
 
     return fitted_gamma, fitted_slope, result.rsquared, result_linear.rsquared
 
-def gamma_distribution(df_sdn, sdndf=None, x='expected_response', y='observed_response', first='cellID', second='pulse_index', third='freq'):
+def gamma_distribution(df_sdn, fitdf=None, x='expected_response', y='observed_response', first='cellID', second='pulse_index', third='freq'):
     gamma_dist = []
 
     # get gamma distribution for the entire dataset
@@ -183,12 +287,12 @@ def gamma_distribution(df_sdn, sdndf=None, x='expected_response', y='observed_re
     # create a dataframe from the list of dicts
     df_gamma_dist = pd.DataFrame(gamma_dist)
 
-    if sdndf is not None:
-        sdndf2 = pd.concat([sdndf, df_gamma_dist], axis=0)
+    if fitdf is not None:
+        fitdf2 = pd.concat([fitdf, df_gamma_dist], axis=0)
     else:
-        sdndf2 = df_gamma_dist
+        fitdf2 = df_gamma_dist
 
-    return sdndf2
+    return fitdf2
 
 def generate_cc_delay_df(cc_short_df):
     idvars = ['cellID','stimFreq','numSq','patternList','pulseWidth','intensity','trialID']
@@ -445,9 +549,8 @@ def make_dataset():
 
 def main():
     plt.close('all')
-
-    Fig3, ax3 = plt.subplot_mosaic([['A','Ci','Cii'],['Bi','Di','Di'],['Bii','Dii','Dii'],['E','F','G'],['H','I','J']], figsize=(15,20), )
-    plt.subplots_adjust(wspace=0.6, hspace=0.6)
+    Fig3, ax3 = plt.subplot_mosaic([['A','B','C'],['D','E','F'],['G','H','I'],['J','Li','Lii'],['Ki','Mi','Mi'],['Kii','Mii','Mii']], figsize=(21,25),)
+    plt.subplots_adjust(wspace=0.3, hspace=0.5)
 
     color_pulses_lin   = mpl.colormaps['Greens']
     color_pulses_gamma = mpl.colormaps['Purples']
@@ -456,33 +559,137 @@ def main():
     fitdf_slice = fitdf[~fitdf['gamma'].isna()]
     selected_cell = 3402
 
+    # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # ############ Voltage clamp plots #################
+    # E by I ratio vs pulse index across frequencies
+    ax3['A'].text(-0.1, 1.05, 'A', fontweight='bold', fontsize=16, ha='center', transform=ax3['A'].transAxes)
+    sns.pointplot(data=cc_delay_df, x='pulse', y='peak_PSP', ax=ax3['A'], color=rocket_r(0.5), errorbar='ci',)
+    # run a kruskal wallis test across the pulsewise responses
+    pulsewise_responses = cc_delay_df.pivot_table(columns='pulse', index='trialID', values='peak_PSP', )
+    # now run KW test across columns
+    kw_res = kruskal(*[pulsewise_responses[col] for col in pulsewise_responses.columns])
+    ax3['A'].set_ylim([0, 1.5])
+    ax3['A'].set_yticks([0,0.5,1.0,1.5])
+    ax3['A'].legend([],[], frameon=False)
+    ax3['A'].set_ylabel('PSP (mV)', fontsize=12)
+    ax3['A'].set_xlabel('Pulse Index', fontsize=12)
+    sns.despine(ax=ax3['A'], top=True, right=True, offset=10, trim=True)
+
+    ax3['D'].text(-0.1, 1.05, 'D', fontweight='bold', fontsize=16, ha='center', transform=ax3['D'].transAxes)
+    sns.pointplot(data=ebyi_df, x='pulse', y=-70, ax=ax3['D'], color=flare(0.5), errorbar='ci', label='Exc')
+    sns.pointplot(data=ebyi_df, x='pulse', y = 0, ax=ax3['D'], color=crest(0.5), errorbar='ci', label='Inh' )
+    ax3['D'].set_ylim([0,1.5])
+    ax3['D'].set_yticks([0,0.5,1.0,1.5])
+    ax3['D'].legend(loc='lower left', ncols=4, fontsize='small', bbox_to_anchor=(0.0, 1.0))
+    ax3['D'].set_ylabel('PSC Amplitude (norm.)', fontsize=12)
+    ax3['D'].set_xlabel('Pulse Index', fontsize=12)
+    sns.despine(ax=ax3['D'], top=True, right=True, offset=10, trim=True)
+
+    ax3['G'].text(-0.1, 1.05, 'G', fontweight='bold', fontsize=16, ha='center', transform=ax3['G'].transAxes)
+    sns.pointplot(data=ebyi_df, x='pulse', y='EbyI', ax=ax3['G'], color=rocket_r(0.5), errorbar='ci',)
+    ax3['G'].set_ylim([0, 3])
+    ax3['G'].set_yticks(np.arange(0,3.1,1))
+    ax3['G'].legend([],[], frameon=False)
+    ax3['G'].set_ylabel('E / I', fontsize=12)
+    ax3['G'].set_xlabel('Pulse Index', fontsize=12)
+    sns.despine(ax=ax3['G'], top=True, right=True, offset=10, trim=True)
+
     ### ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    ax3['B'].text(-0.1, 1.05, 'B', fontweight='bold', fontsize=16, ha='center', transform=ax3['B'].transAxes)
+    sns.pointplot(data=cc_delay_df, x='pulse', y='onset_delay', ax=ax3['B'], color=rocket_r(0.5), errorbar='ci',)
+    ax3['B'].set_ylim([0, 10])
+    ax3['B'].set_yticks([0,5,10])
+    # ax3['B'].legend(loc='upper left', ncols=4, fontsize='small', bbox_to_anchor=(0.0, 1.0))
+    ax3['B'].set_ylabel('PSP Onset Delay (ms)', fontsize=12)
+    ax3['B'].set_xlabel('Pulse Index', fontsize=12)
+    sns.despine(ax=ax3['B'], top=True, right=True, offset=10, trim=True)
+
+    ax3['E'].text(-0.1, 1.05, 'E', fontweight='bold', fontsize=16, ha='center', transform=ax3['E'].transAxes)
+    sns.pointplot(data=vc_delay_df, x='pulse', y='exc_onset', ax=ax3['E'], color=flare(0.5), errorbar='ci',)
+    sns.pointplot(data=vc_delay_df, x='pulse', y='inh_onset', ax=ax3['E'], color=crest(0.5), errorbar='ci',)
+    ax3['E'].set_xticks( np.arange(0,9))
+    ax3['E'].set_yticks( np.arange(0,11,5))
+    ax3['E'].set_xlabel('Pulse Index', fontsize=12)
+    ax3['E'].set_ylabel('PSC Onset Delay (ms)')
+    ax3['E'].legend([],[], frameon=False)
+    # ax3['E'].legend( loc='lower left', ncols=4, fontsize='small', bbox_to_anchor=(0.0, 0.0))
+    [ax3['E'].spines[place].set_visible(False) for place in ['top', 'right', ] ]
+    sns.despine(ax=ax3['E'], offset=10, trim=True)
+
+    ax3['H'].text(-0.1, 1.05, 'H', fontweight='bold', fontsize=16, ha='center', transform=ax3['H'].transAxes)
+    sns.pointplot(data=vc_delay_df, x='pulse', y='onset_delayEI', ax=ax3['H'], color=rocket_r(0.5), errorbar='ci',)
+    ax3['H'].set_ylim([-0.5,5])
+    ax3['H'].set_yticks([0,2,4])
+    ax3['H'].legend([],[], frameon=False)
+    ax3['H'].set_ylabel('Onset Delay (E-I) (ms)', fontsize=12)
+    ax3['H'].set_xlabel('Pulse Index', fontsize=12)
+    sns.despine(ax=ax3['H'], top=True, right=True, offset=10, trim=True)
+
+
+    # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # Voltage clamp plots
+    # onset delay vs pulse index across frequencies
+    # E by I ratio vs pulse index across frequencies
+    ax3['C'].text(-0.1, 1.05, 'C', fontweight='bold', fontsize=16, ha='center', transform=ax3['C'].transAxes)
+    sns.pointplot(data=cc_delay_df, x='pulse', y='peak_delay', ax=ax3['C'], color=rocket_r(0.5), errorbar='ci',)
+    ax3['C'].set_ylim([0, 25])
+    ax3['C'].set_yticks(np.arange(0,26,5))
+    ax3['C'].legend([],[], frameon=False)
+    ax3['C'].set_ylabel('PSP Peak Delay (ms)', fontsize=12)
+    ax3['C'].set_xlabel('Pulse Index', fontsize=12)
+    sns.despine(ax=ax3['C'], top=True, right=True, offset=10, trim=True)
+
+    sns.pointplot(data=vc_delay_df, x='pulse', y='exc_peak', ax=ax3['F'], color=flare(0.5), errorbar='ci',)
+    sns.pointplot(data=vc_delay_df, x='pulse', y='inh_peak', ax=ax3['F'], color=crest(0.5), errorbar='ci',)
+
+    ax3['F'].text(-0.1, 1.05, 'F', fontweight='bold', fontsize=16, ha='center', transform=ax3['F'].transAxes)
+    # ax3['F'].set_ylim([0, 20])
+    ax3['F'].set_xticks( np.arange(0,9))
+    ax3['F'].set_yticks( np.arange(0,21,5))
+    ax3['F'].set_xlabel('Pulse Index', fontsize=12)
+    ax3['F'].set_ylabel('PSC Peak Delay (ms)')
+    ax3['F'].legend([],[], frameon=False)
+    [ax3['F'].spines[place].set_visible(False) for place in ['top', 'right', ] ]
+    sns.despine(ax=ax3['F'], offset=10, trim=True)
+
+    ax3['I'].text(-0.1, 1.05, 'I', fontweight='bold', fontsize=16, ha='center', transform=ax3['I'].transAxes)
+    sns.pointplot(data=vc_delay_df, x='pulse', y='peak_delayEI', ax=ax3['I'], color=rocket_r(0.5), errorbar='ci',)
+    ax3['I'].set_ylim([-0.5,5])
+    ax3['I'].set_yticks(np.arange(0,6,2))
+    ax3['I'].set_ylabel('Peak Delay (E-I) (ms)', fontsize=12)
+    ax3['I'].set_xlabel('Pulse Index', fontsize=12)
+    ax3['I'].legend([],[], frameon=False)
+    sns.despine(ax=ax3['I'], top=True, right=True, offset=10, trim=True)
+
+    ### ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    ### ------------SDN Plots--------------------------------------------------------------------------------------------------------------------------------------------
     # Plot 3A: Scatterplot and SDN for cell = selected_cell, pulse = 0
-    ax3['A'].text(-0.1, 1.1, 'A', fontsize=16, ha='center', transform=ax3['A'].transAxes)
+    ax3['J'].text(-0.1, 1.05, 'J', fontweight='bold', fontsize=16, ha='center', transform=ax3['J'].transAxes)
     dftemp = sdn_df[(sdn_df['cellID']==selected_cell) & (sdn_df['pulse']==0) & (sdn_df['AP']==0)]
-    ax3['A'] = sns.scatterplot(data=dftemp, x='exp', y='obs', hue='numSq', size='numSq',sizes=[150], ax=ax3['A'], palette=color_squares)
+    ax3['J'] = sns.scatterplot(data=dftemp, x='exp', y='obs', hue='numSq', size='numSq',sizes=[150], ax=ax3['J'], palette=color_squares)
     # add gamma fit for 0th pule and all frequencies
     gammatemp       = fitdf_slice[(fitdf_slice['cellID']==selected_cell)&(fitdf_slice['observed']=='obs')&(fitdf_slice['pulse']==0)&(fitdf_slice['stimFreq']==1000)]['gamma'].values
     slopetemp       = fitdf_slice[(fitdf_slice['cellID']==selected_cell)&(fitdf_slice['observed']=='obs')&(fitdf_slice['pulse']==0)&(fitdf_slice['stimFreq']==1000)]['slope'].values
     r2_gammatemp    = fitdf_slice[(fitdf_slice['cellID']==selected_cell)&(fitdf_slice['observed']=='obs')&(fitdf_slice['pulse']==0)&(fitdf_slice['stimFreq']==1000)]['r2_sdn'].values
     r2_slopetemp    = fitdf_slice[(fitdf_slice['cellID']==selected_cell)&(fitdf_slice['observed']=='obs')&(fitdf_slice['pulse']==0)&(fitdf_slice['stimFreq']==1000)]['r2_lin'].values
     print(gammatemp, slopetemp, r2_gammatemp, r2_slopetemp)
-    ax3['A'].plot(np.linspace(0,20,20), sdnfunc(np.linspace(0,20,20),gammatemp), color='purple', linewidth=3, label=f'γ = {gammatemp[0]:.2f}')
-    ax3['A'].plot(np.linspace(0,20,20), nosdn(np.linspace(0,20,20),slopetemp),   color='green', linewidth=3,    label=f'm = {slopetemp[0]:.2f}')
-    ax3['A'].plot([0,15],[0,15], color='grey', linestyle='--')
+    ax3['J'].plot(np.linspace(0,20,20), sdnfunc(np.linspace(0,20,20),gammatemp), color='purple', linewidth=3, label=f'γ = {gammatemp[0]:.2f}')
+    ax3['J'].plot(np.linspace(0,20,20), nosdn(np.linspace(0,20,20),slopetemp),   color='green', linewidth=3,    label=f'm = {slopetemp[0]:.2f}')
+    ax3['J'].plot([0,15],[0,15], color='grey', linestyle='--')
 
-    ax3['A'].set_xlabel('Expected response (mV)')
-    ax3['A'].set_ylabel('Observed response (mV)')
-    ax3['A'].legend(loc='upper left')
+    ax3['J'].set_xlabel('Expected response (mV)')
+    ax3['J'].set_ylabel('Observed response (mV)')
+    ax3['J'].legend(loc='upper left')
 
-    ax3['A'].set_xlim([0,15])
-    ax3['A'].set_ylim([0,10])
-    sns.despine(bottom=False, left=False, trim=True, offset=10, ax=ax3['A'])
+    ax3['J'].set_xlim([0,15])
+    ax3['J'].set_ylim([0,10])
+    sns.despine(bottom=False, left=False, trim=True, offset=10, ax=ax3['J'])
 
     # ### ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # # Plot 3B: lineplot of gamma across all cells, where x-axis: pulse, y-axis: gamma, hue: stim_freq
-    ax3['Bi' ].text(-0.1, 1.1, 'Bi',  fontsize=16, ha='center', transform=ax3['Bi'].transAxes)
-    ax3['Bii'].text(-0.1, 1.1, 'Bii', fontsize=16, ha='center', transform=ax3['Bii'].transAxes)
+    ax3['Ki' ].text(-0.1, 1.05, 'Ki',  fontweight='bold', fontsize=16, ha='center', transform=ax3['Ki'].transAxes)
+    ax3['Kii'].text(-0.1, 1.05, 'Kii', fontweight='bold', fontsize=16, ha='center', transform=ax3['Kii'].transAxes)
 
 
     for i,f in enumerate([20,30,40,50]):
@@ -497,30 +704,30 @@ def main():
             gammas.append(gammatemp)
             slopes.append(slopetemp)
 
-        ax3['Bi' ].plot(np.arange(9), np.array(gammas), color='purple', linewidth=3, label=f'γ ({f} Hz)', alpha=0.2+i*0.2)
-        ax3['Bii'].plot(np.arange(9), np.array(slopes), color='green', linewidth=3, label=f'm ({f} Hz)', alpha=0.2+i*0.2)
+        ax3['Ki' ].plot(np.arange(9), np.array(gammas), color='purple', linewidth=3, label=f'γ ({f} Hz)', alpha=0.2+i*0.2)
+        ax3['Kii'].plot(np.arange(9), np.array(slopes), color='green', linewidth=3, label=f'm ({f} Hz)', alpha=0.2+i*0.2)
 
         # set ylim
-        ax3['Bi'].set_ylim( [0, 10])
-        ax3['Bii'].set_ylim([0,0.6])
+        ax3['Ki'].set_ylim( [0, 10])
+        ax3['Kii'].set_ylim([0,0.6])
 
-        sns.despine(bottom=False, left=False, ax=ax3['Bi'],  trim=True, offset=10)
-        sns.despine(bottom=False, left=False, ax=ax3['Bii'], trim=True, offset=10)
+        sns.despine(bottom=False, left=False, ax=ax3['Ki'],  trim=True, offset=10)
+        sns.despine(bottom=False, left=False, ax=ax3['Kii'], trim=True, offset=10)
 
         # legend outside
-        ax3['Bi'].legend( bbox_to_anchor=(0.0, 0.8),  loc='lower left')
-        ax3['Bii'].legend(bbox_to_anchor=(0.0, 0.8), loc='lower left')
+        ax3['Ki'].legend( bbox_to_anchor=(0.0, 0.8),  loc='lower left')
+        ax3['Kii'].legend(bbox_to_anchor=(0.0, 0.8), loc='lower left')
 
-        ax3['Bi'].set_xlabel('Pulse index', fontdict={'fontsize':12})
-        ax3['Bi'].set_ylabel('Gamma (γ)', fontdict={'fontsize':12})
-        ax3['Bii'].set_xlabel('Pulse index', fontdict={'fontsize':12})
-        ax3['Bii'].set_ylabel('Slope (m)', fontdict={'fontsize':12})
+        ax3['Ki'].set_xlabel('Pulse index', fontdict={'fontsize':12})
+        ax3['Ki'].set_ylabel('Gamma (γ)', fontdict={'fontsize':12})
+        ax3['Kii'].set_xlabel('Pulse index', fontdict={'fontsize':12})
+        ax3['Kii'].set_ylabel('Slope (m)', fontdict={'fontsize':12})
 
 
     ### ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Histogram of gamma values for all the cells in the control condition
-    ax3['Ci'].text( -0.1, 1.1, 'C i', fontsize=16, ha='center', transform=ax3['Ci'].transAxes)
-    ax3['Cii'].text(-0.1, 1.1, 'C ii', fontsize=16, ha='center', transform=ax3['Cii'].transAxes)
+    ax3['Li'].text( -0.1, 1.05, 'L i', fontweight='bold', fontsize=16, ha='center', transform=ax3['Li'].transAxes)
+    ax3['Lii'].text(-0.1, 1.05, 'L ii', fontweight='bold', fontsize=16, ha='center', transform=ax3['Lii'].transAxes)
 
     gammadist0 = fitdf[(fitdf['cellID']!=1000) &(fitdf['pulse']==0) & (fitdf['stimFreq']!=1000)& (fitdf['observed']=='obs')& (fitdf['sample_size']!=0)].dropna(subset=['gamma','slope'])
     gammadist8 = fitdf[(fitdf['cellID']!=1000) &(fitdf['pulse']==8) & (fitdf['stimFreq']!=1000)& (fitdf['observed']=='obs')& (fitdf['sample_size']!=0)].dropna(subset=['gamma','slope'])
@@ -529,28 +736,28 @@ def main():
     gammadist0['gamma'] = gammadist0['gamma'].apply(lambda x: cap if x>cap else x)
     gammadist8['gamma'] = gammadist8['gamma'].apply(lambda x: cap if x>cap else x)
 
-    sns.histplot(data=gammadist0, x='gamma', color='#8b1489', kde=True, ax=ax3['Ci'], alpha=1.0, edgecolor='None', binwidth=5, label='Pulse 0', line_kws={'lw': 2,})
-    sns.histplot(data=gammadist8, x='gamma', color='#a61900', kde=True, ax=ax3['Ci'], alpha=0.5, edgecolor='None', binwidth=5, label='Pulse 8', line_kws={'lw': 2,})
+    sns.histplot(data=gammadist0, x='gamma', color='#8b1489', kde=True, ax=ax3['Li'], alpha=1.0, edgecolor='None', binwidth=5, label='Pulse 0', line_kws={'lw': 2,})
+    sns.histplot(data=gammadist8, x='gamma', color='#a61900', kde=True, ax=ax3['Li'], alpha=0.5, edgecolor='None', binwidth=5, label='Pulse 8', line_kws={'lw': 2,})
 
-    sns.histplot(data=gammadist0, x='slope', color='#148a14', kde=True, ax=ax3['Cii'], alpha=1.0, edgecolor='None', binwidth=0.1, label='Pulse 0', line_kws={'lw': 2,})
-    sns.histplot(data=gammadist8, x='slope', color='#0088a5', kde=True, ax=ax3['Cii'], alpha=0.5, edgecolor='None', binwidth=0.1, label='Pulse 8', line_kws={'lw': 2,})
+    sns.histplot(data=gammadist0, x='slope', color='#148a14', kde=True, ax=ax3['Lii'], alpha=1.0, edgecolor='None', binwidth=0.1, label='Pulse 0', line_kws={'lw': 2,})
+    sns.histplot(data=gammadist8, x='slope', color='#0088a5', kde=True, ax=ax3['Lii'], alpha=0.5, edgecolor='None', binwidth=0.1, label='Pulse 8', line_kws={'lw': 2,})
 
     # add a vertical line at gammma = 10 and slope = 1
-    ax3['Ci'].axvline(10, color='black', linestyle='--')
-    ax3['Cii'].axvline(1, color='black', linestyle='--')
+    ax3['Li'].axvline(10, color='black', linestyle='--')
+    ax3['Lii'].axvline(1, color='black', linestyle='--')
 
-    ax3['Ci'].set_xlabel('Gamma (γ)', fontsize=12)
-    ax3['Ci'].set_ylabel('Count', fontsize=12)
-    ax3['Cii'].set_xlabel('Slope (m)', fontsize=12)
-    ax3['Cii'].set_ylabel('Count', fontsize=12)
+    ax3['Li'].set_xlabel('Gamma (γ)', fontsize=12)
+    ax3['Li'].set_ylabel('Count', fontsize=12)
+    ax3['Lii'].set_xlabel('Slope (m)', fontsize=12)
+    ax3['Lii'].set_ylabel('Count', fontsize=12)
 
-    sns.despine(bottom=False, left=False, ax=ax3['Ci'])
-    sns.despine(bottom=False, left=False, ax=ax3['Cii'])
-    ax3['Ci'].tick_params(axis='both', which='major', labelsize=12)
-    ax3['Cii'].tick_params(axis='both', which='major', labelsize=12)
+    sns.despine(bottom=False, left=False, ax=ax3['Li'])
+    sns.despine(bottom=False, left=False, ax=ax3['Lii'])
+    ax3['Li'].tick_params(axis='both', which='major', labelsize=12)
+    ax3['Lii'].tick_params(axis='both', which='major', labelsize=12)
 
-    ax3['Ci'].legend(loc='upper right')
-    ax3['Cii'].legend(loc='upper right')
+    ax3['Li'].legend(loc='upper right')
+    ax3['Lii'].legend(loc='upper right')
 
     # statistics on gamma and slope
     # rank-order test to check if pulse 0 and pulse 8 distributions are different
@@ -558,8 +765,8 @@ def main():
     _, pval_slope = mannwhitneyu(gammadist0['slope'], gammadist8['slope'])
 
     # stat annotate on the plot
-    ax3['Ci'].text(0.7, 0.5, f'p = {pval_gamma:.3f}', transform=ax3['Ci'].transAxes, fontsize=12, color='grey')
-    ax3['Cii'].text(0.7, 0.5, f'p = {pval_slope:.3f}', transform=ax3['Cii'].transAxes, fontsize=12, color='grey')
+    ax3['Li'].text(0.7, 0.5, f'p = {pval_gamma:.3f}', transform=ax3['Li'].transAxes, fontsize=12, color='grey')
+    ax3['Lii'].text(0.7, 0.5, f'p = {pval_slope:.3f}', transform=ax3['Lii'].transAxes, fontsize=12, color='grey')
 
     # ### ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Plot 3D: Heatmap of slope
@@ -574,74 +781,28 @@ def main():
     gammapivot_n = n.pivot(index='stimFreq', columns='pulse', values='gamma')
     slopepivot = x.pivot(index='stimFreq', columns='pulse', values='slope')
     slopepivot_n = n.pivot(index='stimFreq', columns='pulse', values='slope')
-    ax3['Di'], _, _, _, _ = plot_tools.ax_to_partial_dist_heatmap_ax(gammapivot, gammapivot_n, Fig3, ax3['Di'], barw=0.03, pad=0.01, shrink=0.8, palette='Purples', force_vmin_to_zero=True, annotate=False)
-    ax3['Dii'], _, _, _, _ = plot_tools.ax_to_partial_dist_heatmap_ax(slopepivot, slopepivot_n, Fig3, ax3['Dii'], barw=0.03, pad=0.01, shrink=0.8, palette='Greens', force_vmin_to_zero=True, annotate=False)
-    ax3['Di'].text( -0.1, 1.1, 'Di', fontsize=16, ha='center', transform=ax3['Di'].transAxes)
-    ax3['Dii'].text(-0.1, 1.1, 'Dii', fontsize=16, ha='center', transform=ax3['Dii'].transAxes)
+    ax3['Mi'], _, _, _, _ = plot_tools.ax_to_partial_dist_heatmap_ax(gammapivot, gammapivot_n, Fig3, ax3['Mi'], barw=0.03, pad=0.01, shrink=0.8, palette='Purples', force_vmin_to_zero=True, annotate=False)
+    ax3['Mii'], _, _, _, _ = plot_tools.ax_to_partial_dist_heatmap_ax(slopepivot, slopepivot_n, Fig3, ax3['Mii'], barw=0.03, pad=0.01, shrink=0.8, palette='Greens', force_vmin_to_zero=True, annotate=False)
+    ax3['Mi'].text( -0.1, 1.05, 'Mi', fontweight='bold', fontsize=16, ha='center', transform=ax3['Mi'].transAxes)
+    ax3['Mii'].text(-0.1, 1.05, 'Mii', fontweight='bold', fontsize=16, ha='center', transform=ax3['Mii'].transAxes)
+
 
     # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # Voltage clamp plots
-    # E by I ratio vs pulse index across frequencies
-    ax3['E'].text(-0.1, 1.1, 'E', fontsize=16, ha='center', transform=ax3['E'].transAxes)
-    sns.pointplot(data=vc_delay_df, x='pulse', y='exc_onset', hue='stimFreq', ax=ax3['E'], palette=flare, errorbar='ci',)
-    ax3['E'].set_ylim([0, 15])
-    ax3['E'].legend(loc='upper right', ncols=4, fontsize='small')
-    sns.despine(ax=ax3['E'], top=True, right=True, offset=10, trim=True)
-    
-    ax3['F'].text(-0.1, 1.1, 'F', fontsize=16, ha='center', transform=ax3['F'].transAxes)
-    sns.pointplot(data=vc_delay_df, x='pulse', y='inh_onset', hue='stimFreq', ax=ax3['F'], palette=crest, errorbar='ci',)
-    ax3['F'].set_ylim([0, 15])
-    ax3['F'].legend(loc='upper right', ncols=4, fontsize='small')
-    sns.despine(ax=ax3['F'], top=True, right=True, offset=10, trim=True)
-    
-    ax3['G'].text(-0.1, 1.1, 'G', fontsize=16, ha='center', transform=ax3['G'].transAxes)
-    sns.pointplot(data=vc_delay_df, x='pulse', y='onset_delayEI', hue='stimFreq', ax=ax3['G'], palette=edge, errorbar='ci',)
-    ax3['G'].set_ylim([0, 15])
-    ax3['G'].legend(loc='upper right', ncols=4, fontsize='small')
-    sns.despine(ax=ax3['G'], top=True, right=True, offset=10, trim=True)
-
-    # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # Voltage clamp plots
-    # onset delay vs pulse index across frequencies
-    # E by I ratio vs pulse index across frequencies
-    ax3['H'].text(-0.1, 1.1, 'H', fontsize=16, ha='center', transform=ax3['H'].transAxes)
-    sns.pointplot(data=vc_delay_df, x='pulse', y='peak_delayEI', hue='stimFreq', ax=ax3['H'], palette=edge, errorbar='ci',)
-    ax3['H'].set_ylim([-5, 10])
-    ax3['H'].legend([],[], frameon=False)
-    sns.despine(ax=ax3['H'], top=True, right=True, offset=10, trim=True)
-    
-    ax3['I'].text(-0.1, 1.1, 'I', fontsize=16, ha='center', transform=ax3['I'].transAxes)
-    sns.pointplot(data=cc_delay_df, x='pulse', y='peak_delay', hue='stimFreq', ax=ax3['I'], palette=edge, errorbar='ci',)
-    ax3['I'].set_ylim([0, 30])
-    ax3['I'].legend([],[], frameon=False)
-    sns.despine(ax=ax3['I'], top=True, right=True, offset=10, trim=True)
-    
-    ax3['J'].text(-0.1, 1.1, 'J', fontsize=16, ha='center', transform=ax3['J'].transAxes)
-    sns.pointplot(data=cc_delay_df, x='pulse', y='onset_delay', hue='stimFreq', ax=ax3['J'], palette=edge, errorbar='ci',)
-    ax3['J'].set_ylim([0, 15])
-    ax3['J'].legend([],[], frameon=False)
-    sns.despine(ax=ax3['J'], top=True, right=True, offset=10, trim=True)
-
-    # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    for a in ['A','Bi','Bii','Ci','Cii','Di','Dii','E','F','G','H','I','J']:
+    for a in ax3.keys():
         ax3[a].tick_params(axis='both', which='major', labelsize=12)
+        # axis label fontsize
+        ax3[a].set_xlabel(ax3[a].get_xlabel(), fontsize=12)
+        ax3[a].set_ylabel(ax3[a].get_ylabel(), fontsize=12)
+        # spine width
+        ax3[a].spines['left'].set_linewidth(1)
+        ax3[a].spines['bottom'].set_linewidth(1)
 
+    # Fig3.tight_layout()
     ## save fig 3
-    Fig3.savefig(paper_figure_export_location / 'Figure3.png', dpi=300, bbox_inches='tight')
-    Fig3.savefig(paper_figure_export_location / 'Figure3.svg', dpi=300, bbox_inches='tight')
+    # Fig3.savefig(paper_figure_export_location / 'Figure3v6.png', dpi=300, bbox_inches='tight')
+    # Fig3.savefig(paper_figure_export_location / 'Figure3v6.svg', dpi=300, bbox_inches='tight')
 
 # make dataset
 # sdn_df, fitdf, cc_delay_df, vc_delay_df, ebyi_df = make_dataset()
-
-# Load analysed datasets
-sdn_df = pd.read_hdf(paper_figure_export_location / "Figure3_sdn_data_FS_LTM.h5", key='data')
-print(sdn_df.shape)
-
-fitdf = pd.read_hdf(paper_figure_export_location / "Figure3_gamma_and_slope_fits_FS_LTM.h5", key='data')
-print(fitdf.shape)
-
-cc_delay_df = pd.read_hdf(paper_figure_export_location / "Figure3_delay_df_CC_FS.h5", key='data')
-vc_delay_df = pd.read_hdf(paper_figure_export_location / "Figure3_delay_df_VC_FS.h5", key='data')
-ebyi_df     = pd.read_hdf(    paper_figure_export_location / "Figure3_ebyi_df_VC_FS.h5" , key='data')
 
 main()

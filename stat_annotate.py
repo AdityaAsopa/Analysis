@@ -60,6 +60,7 @@ def pairwise_annotate_violin_plot(ax, df, x='', y='', stat=wilcoxon, add_line=Fa
                 xipos, xjpos = violin_locs[i][0], violin_locs[j][0]
                 xpos = (xipos + xjpos) / 2
                 ypos = (0.9 + counter * 0.05) * original_ylim
+                print(xpos, ypos, counter)
                 counter += 1
                 sample1, sample2 = df[df[x] == i], df[df[x] == j]
                 # count nans in sample1 and sample2
