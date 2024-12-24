@@ -59,7 +59,7 @@ def nosdn(expected, m):
     return m * expected
 
 figure_raw_material_location = Path(r"paper_figure_matter\\")
-paper_figure_export_location = Path(r"paper_figures\\Figure3v4\\")
+paper_figure_export_location = Path(r"paper_figures\\")
 data_path_FS                 = Path(r"parsed_data\\FreqSweep\\")
 data_path_LTM                 = Path(r"parsed_data\\LTMRand\\")
 data_path_grid               = Path(r"parsed_data\\Grid\\")
@@ -799,8 +799,8 @@ def main():
 
     # Fig3.tight_layout()
     ## save fig 3
-    # Fig3.savefig(paper_figure_export_location / 'Figure3v6.png', dpi=300, bbox_inches='tight')
-    # Fig3.savefig(paper_figure_export_location / 'Figure3v6.svg', dpi=300, bbox_inches='tight')
+    Fig3.savefig(paper_figure_export_location / 'Figure3v6.png', dpi=300, bbox_inches='tight')
+    Fig3.savefig(paper_figure_export_location / 'Figure3v6.svg', dpi=300, bbox_inches='tight')
 
 # make dataset
 # sdn_df, fitdf, cc_delay_df, vc_delay_df, ebyi_df = make_dataset()
