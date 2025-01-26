@@ -72,9 +72,8 @@ all_cells_response_file = "Lab\\Projects\\EI_Dynamics\\AnalysisFiles\\allCells.x
 
 ##############################################################################
 NCBS_data_path  = Path( r"\\storage.ncbs.res.in\adityaa\\" )
-myPC_data_path = Path( "C:\\Users\\adity\\OneDrive\\NCBS\\" )
+myPC_data_path = Path( "C:\\Users\\aditya\\OneDrive\\NCBS\\" )
 rig_data_path   = Path( "C:\\Users\\aditya\\OneDrive\\NCBS\\" )
-laddu_data_path = Path( "D:\\\Aditya\\")
 xutuli_data_path = Path( "/home1/bhalla/adityaa/")
 test_data_path  = Path( '.\\' )
 
@@ -82,8 +81,6 @@ test_data_path  = Path( '.\\' )
 
 if myPC_data_path.exists():
     project_path_root = myPC_data_path
-elif laddu_data_path.exists():
-    project_path_root = laddu_data_path
 elif NCBS_data_path.exists():
     project_path_root = NCBS_data_path
 elif rig_data_path.exists():
