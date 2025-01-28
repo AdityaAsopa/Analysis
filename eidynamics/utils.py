@@ -973,9 +973,9 @@ def save_expanded_df(df):
     df3.to_hdf(r"parsed_data\all_cells_FreqSweep_combined_expanded.h5", key='data', mode='w')
 
 
-def get_cellwise_numtrials(datadf, columns = ['cellID', 'exptID']):
+def get_cellwise_numtrials(datadf, columns = ['cellID', 'exptID'], unique_col='trialID'):
     # get number of trials for each cell
-    numtrials = datadf.groupby(columns)['trialID'].nunique()
+    numtrials = datadf.groupby(columns)[unique_col].nunique()
     total_combinations = len(numtrials)
     totaltrials = numtrials.sum()
     combinations = '_'.join(columns) + ' combined'

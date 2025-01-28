@@ -36,7 +36,11 @@ color_squares_EI    = {-70: {1:flare(0.2), 5:flare(.4), 7:flare(.6), 15:flare(.8
 color_EI            = {-70:flare(0.5), 0:crest(0.5)}
 Fs = 2e4
 
-Fs=2e4
+# sns.set_context('paper')
+mpl.rcParams['font.family'] = 'Arial'
+mpl.rcParams['font.size'] = 16
+mpl.rcParams['svg.fonttype'] = 'none'
+mpl.rcParams['lines.linewidth'] = 2
 
 def create_edge_colormap():
     # get only the middle row
@@ -73,7 +77,7 @@ def simplify_axes(axes, splines_to_keep=['bottom','left'], axis_offset=10, remov
                 ax.set_xticklabels([]) if side=='bottom' else ''
                 ax.set_yticklabels([]) if side=='left' else ''
             else:    # keep ticks on all splines
-                ax.spines[side].set_linewidth(0.5)
+                ax.spines[side].set_linewidth(2)
                 ax.spines[side].set_position(('outward', axis_offset))
                 ax.set_xticks(xtick_locs, labels=xtick_labels)
                 ax.set_yticks(ytick_locs, labels=ytick_labels)
@@ -111,7 +115,7 @@ def _adjust_spines(ax, visible_spines, offset_distance=10):
                 spine.set_visible(False)
 
 
-def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, labelx='', labely='', unitx='', unity='', fontsize=12, color='black', linewidth=2, pad=0.01, show_labels=False):
+def add_floating_scalebar(ax, scalebar_origin=[0,0], xlength=1.0, ylength=1.0, labelx='', labely='', unitx='', unity='', fontsize=16, color='black', linewidth=2, pad=0.01, show_labels=False):
     """Simplifies a matplotlib axes object and adds a floating scalebar.
     Args:
         ax: matplotlib axes object
@@ -297,7 +301,7 @@ def plot_data_from_df(df, data_start_column = 49, plot_mean=True, signals_to_plo
                 if i==0:
                     if signal=='Cell':
                         scalebarx = 0.05*T
-                        add_floating_scalebar(ax, scalebar_origin=[scalebarx, 0.4], xlength=0.1, ylength=1, labelx=f'{0.1*T}', labely=f' {signal_mapping["scalebar_cell"]/2:.2f}', unitx=f'ms', unity=unit_cell,
+                        add_floating_scalebar(ax, scalebar_origin=[scalebarx, 0.45], xlength=0.1, ylength=1, labelx=f'{0.1*T}', labely=f' {signal_mapping["scalebar_cell"]/2:.2f}', unitx=f'ms', unity=unit_cell,
                         fontsize=12, color=signal_colors[s], linewidth=2, pad=0.0, show_labels=True)
                     if signal == 'Field':
                         scalebarx = 0.05*T
