@@ -12,9 +12,6 @@ import matplotlib as mpl
 import seaborn as sns
 import matplotlib.gridspec as gridspec
 
-# from scipy.signal import filter_design
-# from scipy.signal import butter, bessel, decimate, sosfiltfilt
-# from scipy.signal import find_peaks, peak_widths
 from scipy import stats
 
 from eidynamics import utils

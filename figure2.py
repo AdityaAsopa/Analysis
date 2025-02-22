@@ -1,7 +1,3 @@
-# Short-term dynamics of Excitation-Inhibition Balance in Hippocampal CA3-CA1 circuit
-# Aditya Asopa, Upinder Singh Bhalla, NCBS
-# Publication: https://www.biorxiv.org/content/10.1101/2024.10.30.621034v1
-# Imports -----------------------------------------------------------------------------------------------
 from   pathlib      import Path
 import importlib
 
@@ -18,16 +14,10 @@ from statsmodels.formula.api import ols
 from statsmodels.multivariate.manova import MANOVA
 import statsmodels.formula.api as smf
 
-# from eidynamics     import utils, data_quality_checks, ephys_classes, plot_tools, expt_to_dataframe
-# from eidynamics     import pattern_index
-# from eidynamics     import abf_to_data
 from eidynamics.fit_PSC     import find_sweep_expected
-# from Findsim        import tab_presyn_patterns_LR_43
-# import parse_data
 from eidynamics     import utils, plot_tools
-import all_cells
-import plotFig2
-import stat_annotate
+import eidynamics.plotFig2 as plotFig2
+import eidynamics.stat_annotate as stat_annotate
 
 # sns.set_context('paper')
 # sns.set_context('paper')

@@ -22,9 +22,8 @@ from PIL            import Image
 from eidynamics.fit_PSC     import find_sweep_expected
 from eidynamics     import utils, plot_tools
 from eidynamics     import pattern_index
-import all_cells
-import plotFig2
-import stat_annotate
+import eidynamics.plotFig2 as plotFig2
+import eidynamics.stat_annotate as stat_annotate
 
 # sns.set_context('paper')
 mpl.rcParams['font.family'] = 'Arial'
@@ -52,7 +51,7 @@ Fs = 2e4
 freq_sweep_pulses = np.arange(9)
 
 # Load Data -----------------------------------------------------------------------------------------------
-figure_raw_material_location = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\paper_figure_matter")
+figure_raw_material_location = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\paper_figures\submission")
 paper_figure_export_location = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\paper_figures\submission")
 data_path_FS                 = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\FreqSweep")
 data_path_LTM                = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\LTMRand")
@@ -484,6 +483,7 @@ def main():
 
 
 def extended_data_figure():
+    # ## Generate image composites separately for high res
     # Fig 1A: Slice, polygon projection, and recording electrodes
     Fig1A_hr, ax1A_hr = plt.subplots(1, 1, figsize=(10, 5), constrained_layout=True)
     ax1A_hr.text(-0.1, 1.1, 'A', transform=ax1A_hr.transAxes, size=20, weight='bold')
@@ -529,7 +529,7 @@ def extended_data_figure():
 
 
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # Fig supp8: CA3 heatmap
+    # Fig extended data figure 1: CA3 heatmap
     plt.close('all')
     Fig1s1, [ax1s1, ax1s2] = plt.subplots(2, 1, figsize=(10, 10))
     ax1s1.text(-0.1, 1.1, '8A', transform=ax1s1.transAxes, size=20, weight='bold')
@@ -574,7 +574,7 @@ def extended_data_figure():
     ax1s1.plot([1, 1], [4, 6], color='white', linewidth=2)
     ax1s1.text(1.5, 2.5, '26 $\mu$m', color='white', fontsize=12)
 
-    # fig supp8 is a histogram of CA3 responses to grid patterns of different sizes
+    # a histogram of CA3 responses to grid patterns of different sizes
     ax1s2.set_ylim([0, 30])
     df_temp = xc_all_shortdf[ (xc_all_shortdf['cellID']==3161) ]
     df_temp2 = df_temp.copy()
@@ -601,7 +601,7 @@ def extended_data_figure():
     plt.tight_layout()
 
     # save figure
-    figure_name = 'Figure_ExtData1_CA3response'
+    figure_name = 'Figure1_ExtData1_CA3response'
     Fig1s1.savefig(paper_figure_export_location /  (figure_name + '.png'), dpi=300, bbox_inches='tight')
     Fig1s1.savefig(paper_figure_export_location /  (figure_name + '.svg'), dpi=300, bbox_inches='tight')
     Fig1s1.savefig(paper_figure_export_location /  (figure_name + '.pdf'), dpi=300, bbox_inches='tight')

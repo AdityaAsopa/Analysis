@@ -15,8 +15,3 @@ openpyxl    # required for handling images
 ipympl      # required for matplotlib widget in jupyterlab notebooks
 tables      # required for pandas module
 lmfit	    # required for fitting
-
-#Optional for interactive plots for notebooks
-# plotly
-# jupyter-dash
-# kaleido

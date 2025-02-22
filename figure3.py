@@ -16,7 +16,6 @@ from lmfit import Model, Parameters
 
 from eidynamics     import utils, plot_tools
 from eidynamics     import pattern_index
-# import all_cells
 
 sns.set_context('paper')
 mpl.rcParams['font.family'] = 'Arial'
