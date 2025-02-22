@@ -55,12 +55,11 @@ freq_sweep_pulses = np.arange(9)
 
 
 # Load data -----------------------------------------------------------------------------------------------
-figure_raw_material_location = Path(r"paper_figure_matter\\")
-paper_figure_export_location = Path(r"paper_figures\\")
-data_path_FS                 = Path(r"parsed_data\\FreqSweep\\")
-data_path_grid               = Path(r"parsed_data\\Grid\\")
-data_path_analysed           = Path(r"parsed_data\\second_order\\")
-raw_data_path_cellwise       = Path(r"..\Data\Screened_cells\\")
+figure_raw_material_location = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\paper_figure_matter")
+paper_figure_export_location = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\paper_figures\submission")
+data_path_FS                 = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\FreqSweep")
+data_path_grid               = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\Grid")
+data_path_analysed           = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\second_order")
 
 VC_FS_shortdf_withkernelfit_datapath = data_path_FS / "all_cells_FreqSweep_VC_kernelfit_response_measurements.h5"
 vc_FS_shortdf = pd.read_hdf(r"parsed_data\FreqSweep\all_cells_FreqSweep_VC_short.h5", key='data')
@@ -177,7 +176,7 @@ del cc_FS_longdf_slice, vc_FS_longdf_slice
 
 def main():
     # Setup the figure
-    w,h = 15,25   
+    w,h = 21, 29.7   
     fig = plt.figure(layout='constrained', figsize=(w,h))
 
     [Fig2Top, Fig2Mid, Fig2Bottom] = fig.subfigures(3,1, wspace=0.03, hspace=0.02, height_ratios=[2, 1, 2])
@@ -198,7 +197,7 @@ def main():
     ## -----------------------------------------------------------------------------------------------
     # Fig2A: CC heatmap of normPSC
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='CC')]
-    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['AP']==0], feature='normPSC_', Fig=subfigsA, figlabels=['Ai','Aii'], clampMode='CC', heatmap_palette={-70:'viridis'}, annot=False)
+    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['AP']==0], feature='normPSC_', Fig=subfigsA, figlabels=['Ai','Aii'], clampMode='CC', heatmap_palette={-70:'viridis'}, cbar_limits=[0,1.5], annot=False)
     a[0][-1].set_label('Normalized PSP', rotation=90, labelpad=10)
     a[1][-1].set_label('Normalized PSP', rotation=90, labelpad=10)
     # Load the data for stat
@@ -224,7 +223,7 @@ def main():
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='CC')]
     dftemp['numspikes'] = dftemp[[f'spike_{i}' for i in range(9)]].sum(axis=1)
     dftemp= dftemp[(dftemp['AP']==1) ]
-    f,a = plot_tools.plot_response_heatmaps(dftemp, feature='spike_', Fig=subfigsB, figlabels=['Bi','Bii'], clampMode='CC', heatmap_palette={-70:'viridis'}, annot=False, )
+    f,a = plot_tools.plot_response_heatmaps(dftemp, feature='spike_', Fig=subfigsB, figlabels=['Bi','Bii'], clampMode='CC', heatmap_palette={-70:'viridis'}, annot=False, cbar_limits=[0,1])
     a[0][-1].set_label('P(spike)', rotation=90, labelpad=10)
     a[1][-1].set_label('P(spike)', rotation=90, labelpad=10)
     # Load the data
@@ -251,8 +250,8 @@ def main():
     cell = 7492
     pattern = 52
     trial = 0 # or 1
-    exc_sweep = vc_FS_longdf_slice[(vc_FS_longdf_slice['cellID']==cell) & (vc_FS_longdf_slice['patternList']==pattern) & (vc_FS_longdf_slice['clampPotential']==-70)& (vc_FS_longdf_slice['stimFreq']==20)]
-    inh_sweep = vc_FS_longdf_slice[(vc_FS_longdf_slice['cellID']==cell) & (vc_FS_longdf_slice['patternList']==pattern) & (vc_FS_longdf_slice['clampPotential']==0)  & (vc_FS_longdf_slice['stimFreq']==20)]
+    exc_sweep = xc_FS_longdf_slice[(xc_FS_longdf_slice['cellID']==cell) & (xc_FS_longdf_slice['patternList']==pattern) & (xc_FS_longdf_slice['clampPotential']==-70)& (xc_FS_longdf_slice['stimFreq']==20)]
+    inh_sweep = xc_FS_longdf_slice[(xc_FS_longdf_slice['cellID']==cell) & (xc_FS_longdf_slice['patternList']==pattern) & (xc_FS_longdf_slice['clampPotential']==0)  & (xc_FS_longdf_slice['stimFreq']==20)]
 
     row = exc_sweep.iloc[0, :]
     _,_, npv_exc, _ = exc_results = plotFig2.deconv(row[49:80049], row['stimFreq'], row['probePulseStart'], row['pulseTrainStart'], None, noprobepulse=(row['probePulseStart']==0.5))
@@ -299,12 +298,12 @@ def main():
     ## -----------------------------------------------------------------------------------------------
     # Fig2E: VC heatmap of normPSC
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
-    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==-70], feature='normPSC_', Fig=subfigsE1, figlabels=['Ei','Eii'], clampMode='VC', annot=False)
+    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==-70], feature='normPSC_', Fig=subfigsE1, figlabels=['Ei','Eii'], clampMode='VC', annot=False, cbar_limits=[0,2])
     a[0][-1].set_label('Normalized EPSC', rotation=90, labelpad=10)
     a[1][-1].set_label('Normalized EPSC', rotation=90, labelpad=10)
 
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
-    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==0], feature='normPSC_', Fig=subfigsE2, figlabels=['Eiii', 'Eiv'], clampMode='VC', annot=False)
+    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==0], feature='normPSC_', Fig=subfigsE2, figlabels=['Eiii', 'Eiv'], clampMode='VC', annot=False, cbar_limits=[0,2])
     a[0][-1].set_label('Normalized IPSC', rotation=90, labelpad=10)
     a[1][-1].set_label('Normalized IPSC', rotation=90, labelpad=10)
 
@@ -327,12 +326,16 @@ def main():
     # Perform ANOVA
     anova_table = sm.stats.anova_lm(model, typ=2)
     print('\n## Stat test on normalized PSC response', '\n', anova_table)
+    ## -----------------------------------------------------------------------------------------------
+    # go through all the texts in the figure panels and change the fontsize to 20
+
 
     ## -----------------------------------------------------------------------------------------------
     # save fig
     figname = 'Figure2'
     fig.savefig(paper_figure_export_location / f"{figname}.svg", format='svg', dpi=300)
     fig.savefig(paper_figure_export_location / f"{figname}.png", format='png', dpi=300)
+    fig.savefig(paper_figure_export_location / f"{figname}.pdf", format='pdf', dpi=300)
 
 def stats():
     print('## ANOVA for PSC response')

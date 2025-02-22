@@ -52,12 +52,12 @@ Fs = 2e4
 freq_sweep_pulses = np.arange(9)
 
 # Load Data -----------------------------------------------------------------------------------------------
-figure_raw_material_location = Path(r"paper_figure_matter\\")
-paper_figure_export_location = Path(r"paper_figures\\")
-data_path_FS                 = Path(r"parsed_data\\FreqSweep\\")
-data_path_grid               = Path(r"parsed_data\\Grid\\")
-data_path_analysed           = Path(r"parsed_data\\second_order\\")
-raw_data_path_cellwise       = Path(r"..\Data\Screened_cells\\")
+figure_raw_material_location = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\paper_figure_matter")
+paper_figure_export_location = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\paper_figures\submission")
+data_path_FS                 = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\FreqSweep")
+data_path_LTM                = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\LTMRand")
+data_path_grid               = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\Grid")
+data_path_analysed           = Path(r"\\storage.ncbs.res.in\adityaa\Lab\Projects\EI_Dynamics\Analysis\parsed_data\Jan_2025\second_order")
 
 # short data path that contains the kernel fit data for FreqSweep protocol, also contains the field p2p data. latest and checked. Use this for all freqsweep measurements.
 # Contains screening parameters also.
@@ -480,9 +480,10 @@ def main():
     figure_name = 'Figure1'
     fig1.savefig(paper_figure_export_location /  (figure_name + '.png'), dpi=300, bbox_inches='tight')
     fig1.savefig(paper_figure_export_location /  (figure_name + '.svg'), dpi=300, bbox_inches='tight')
+    fig1.savefig(paper_figure_export_location /  (figure_name + '.pdf'), dpi=300, bbox_inches='tight')
 
 
-def supplementary():
+def extended_data_figure():
     # Fig 1A: Slice, polygon projection, and recording electrodes
     Fig1A_hr, ax1A_hr = plt.subplots(1, 1, figsize=(10, 5), constrained_layout=True)
     ax1A_hr.text(-0.1, 1.1, 'A', transform=ax1A_hr.transAxes, size=20, weight='bold')
@@ -504,6 +505,7 @@ def supplementary():
     figure_name = 'Figure1A_highres'
     Fig1A_hr.savefig(paper_figure_export_location /  (figure_name + '.png'), dpi=300, bbox_inches='tight')
     Fig1A_hr.savefig(paper_figure_export_location /  (figure_name + '.svg'), dpi=300, bbox_inches='tight')
+    Fig1A_hr.savefig(paper_figure_export_location /  (figure_name + '.pdf'), dpi=300, bbox_inches='tight')
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Fig 1B: Grid Pattern in Space overlaid on CA3 slice at 40x
     Fig1B_hr, ax1B_hr = plt.subplots(1, 1, figsize=(10, 5), constrained_layout=True)
@@ -523,6 +525,7 @@ def supplementary():
     figure_name = 'Figure1B_highres'
     Fig1B_hr.savefig(paper_figure_export_location /  (figure_name + '.png'), dpi=300, bbox_inches='tight')
     Fig1B_hr.savefig(paper_figure_export_location /  (figure_name + '.svg'), dpi=300, bbox_inches='tight')
+    Fig1B_hr.savefig(paper_figure_export_location /  (figure_name + '.pdf'), dpi=300, bbox_inches='tight')
 
 
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -553,7 +556,10 @@ def supplementary():
 
     # heatmap
     ax1s1.imshow(CA3p0, cmap='viridis', aspect='auto', interpolation='nearest', origin='upper')
-
+    
+    # add a small asterisk in the middle of the heatmap to show the recording spot
+    ax1s1.text(11.5, 12, '*', color='white', fontsize=16, ha='center', va='center')
+    
     # add colorbar to the axis correponding the heatmap image
     cbar = plt.colorbar(ax1s1.get_children()[1], ax=ax1s1, orientation='vertical', pad=0.01)
     cbar.set_label('Optical Depolarization (pA)', rotation=270, labelpad=10)
@@ -595,11 +601,12 @@ def supplementary():
     plt.tight_layout()
 
     # save figure
-    figure_name = 'Figure_Supp8_CA3response'
+    figure_name = 'Figure_ExtData1_CA3response'
     Fig1s1.savefig(paper_figure_export_location /  (figure_name + '.png'), dpi=300, bbox_inches='tight')
     Fig1s1.savefig(paper_figure_export_location /  (figure_name + '.svg'), dpi=300, bbox_inches='tight')
+    Fig1s1.savefig(paper_figure_export_location /  (figure_name + '.pdf'), dpi=300, bbox_inches='tight')
 
 
 if __name__ == '__main__':
     main()
-    supplementary()
+    extended_data_figure()
