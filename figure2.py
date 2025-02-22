@@ -180,16 +180,16 @@ def main():
     ax2C = subfigsC.subplots(1,1)
     ax2D = subfigsD.subplots(1,1)
     # [[ax2Ei, ax2Eii],[ax2Eiii, ax2Eiv]] = Fig2Bottom.subplots(2,2)
-    importlib.reload(plot_tools)
 
     # get location of subfigsA in the main figure
     # subfigsA_pos = subfigsA.get_position()
     ## -----------------------------------------------------------------------------------------------
     # Fig2A: CC heatmap of normPSC
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='CC')]
-    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['AP']==0], feature='normPSC_', Fig=subfigsA, figlabels=['Ai','Aii'], clampMode='CC', heatmap_palette={-70:'viridis'}, cbar_limits=[0,1.5], annot=False)
+    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['AP']==0], feature='normPSC_', Fig=subfigsA, figlabels=['i','ii'], clampMode='CC', heatmap_palette={-70:'viridis'}, cbar_limits=[0,1.5], annot=False)
     a[0][-1].set_label('Normalized PSP', rotation=90, labelpad=10)
     a[1][-1].set_label('Normalized PSP', rotation=90, labelpad=10)
+    a[0][1].text(-0.1, 1.1, 'A', transform=a[0][1].transAxes, fontsize=24, fontweight='bold', va='top', ha='right')
     # Load the data for stat
     to_plot = [f'normPSC_{i}' for i in freq_sweep_pulses]
     df_melt = pd.melt( dftemp, id_vars=['cellID','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
@@ -213,9 +213,10 @@ def main():
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='CC')]
     dftemp['numspikes'] = dftemp[[f'spike_{i}' for i in range(9)]].sum(axis=1)
     dftemp= dftemp[(dftemp['AP']==1) ]
-    f,a = plot_tools.plot_response_heatmaps(dftemp, feature='spike_', Fig=subfigsB, figlabels=['Bi','Bii'], clampMode='CC', heatmap_palette={-70:'viridis'}, annot=False, cbar_limits=[0,1])
+    f,a = plot_tools.plot_response_heatmaps(dftemp, feature='spike_', Fig=subfigsB, figlabels=['i','ii'], clampMode='CC', heatmap_palette={-70:'viridis'}, annot=False, cbar_limits=[0,1])
     a[0][-1].set_label('P(spike)', rotation=90, labelpad=10)
     a[1][-1].set_label('P(spike)', rotation=90, labelpad=10)
+    a[0][1].text(-0.1, 1.1, 'B', transform=a[0][1].transAxes, fontsize=24, fontweight='bold', va='top', ha='right')
     # Load the data
     to_plot = [f'spike_{i}' for i in freq_sweep_pulses]
     df_melt = pd.melt( dftemp, id_vars=['cellID','stimFreq','numSq','patternList'], value_vars=to_plot, var_name='pulseIndex', value_name='peak_response',)
@@ -234,9 +235,13 @@ def main():
     anova_table = sm.stats.anova_lm(model, typ=2)
     print('\n## Stat test on Spike Likelihood', '\n', anova_table)
 
+    # add panel label
+
+
+
     ## -----------------------------------------------------------------------------------------------
     # Fig2C: Upi's fitting of the kernel for both E and I
-    ax2C.text(-0.1, 1.1, 'C', transform=ax2C.transAxes, fontsize=20, fontweight='bold', va='top', ha='right')
+    ax2C.text(-0.1, 1.1, 'C', transform=ax2C.transAxes, fontsize=24, fontweight='bold', va='top', ha='right')
     cell = 7492
     pattern = 52
     trial = 0 # or 1
@@ -271,7 +276,7 @@ def main():
 
     ## -----------------------------------------------------------------------------------------------
     # Fig2D: E and I kernel fits
-    ax2D.text(-0.1, 1.1, 'D', transform=ax2D.transAxes, fontsize=20, fontweight='bold', va='top', ha='right')
+    ax2D.text(-0.1, 1.1, 'D', transform=ax2D.transAxes, fontsize=24, fontweight='bold', va='top', ha='right')
     ax2D.plot(range(9), exc_results[0], linewidth=2, color='#e46d5dff', label='Exc')
     ax2D.plot(range(9), inh_results[0], linewidth=2, color='#2f818dff', label='Inh')
     #cosmetics
@@ -288,12 +293,13 @@ def main():
     ## -----------------------------------------------------------------------------------------------
     # Fig2E: VC heatmap of normPSC
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
-    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==-70], feature='normPSC_', Fig=subfigsE1, figlabels=['Ei','Eii'], clampMode='VC', annot=False, cbar_limits=[0,2])
+    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==-70], feature='normPSC_', Fig=subfigsE1, figlabels=['i','ii'], clampMode='VC', annot=False, cbar_limits=[0,2.0])
+    a[0][1].text(-0.1, 1.1, 'E', transform=a[0][1].transAxes, fontsize=24, fontweight='bold', va='top', ha='right')
     a[0][-1].set_label('Normalized EPSC', rotation=90, labelpad=10)
     a[1][-1].set_label('Normalized EPSC', rotation=90, labelpad=10)
 
     dftemp = xc_FS_shortdf_slice[(xc_FS_shortdf_slice['clampMode']=='VC')]
-    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==0], feature='normPSC_', Fig=subfigsE2, figlabels=['Eiii', 'Eiv'], clampMode='VC', annot=False, cbar_limits=[0,2])
+    f,a = plot_tools.plot_response_heatmaps(dftemp[dftemp['clampPotential']==0], feature='normPSC_', Fig=subfigsE2, figlabels=['iii', 'iv'], clampMode='VC', annot=False, cbar_limits=[0,1.5])
     a[0][-1].set_label('Normalized IPSC', rotation=90, labelpad=10)
     a[1][-1].set_label('Normalized IPSC', rotation=90, labelpad=10)
 

@@ -519,9 +519,9 @@ def main():
 
     # Fig3.tight_layout()
     ## save fig 3
-    Fig3.savefig(paper_figure_export_location / 'Figure3v10.png', dpi=300, bbox_inches='tight')
-    Fig3.savefig(paper_figure_export_location / 'Figure3v10.svg', dpi=300, bbox_inches='tight')
-    Fig3.savefig(paper_figure_export_location / 'Figure3v10.pdf', dpi=300, bbox_inches='tight')
+    Fig3.savefig(paper_figure_export_location / 'Figure3.png', dpi=300, bbox_inches='tight')
+    Fig3.savefig(paper_figure_export_location / 'Figure3.svg', dpi=300, bbox_inches='tight')
+    Fig3.savefig(paper_figure_export_location / 'Figure3.pdf', dpi=300, bbox_inches='tight')
 
 # make dataset
 # sdn_df, fitdf, cc_delay_df, vc_delay_df, ebyi_df = make_dataset()
